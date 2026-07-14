@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vera.invalid/schemas/public-boundary-rules.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["forbiddenTokenHashes", "forbiddenPathSegments", "allowPaths"],
+  "properties": {
+    "forbiddenTokenHashes": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "uniqueItems": true
+    },
+    "forbiddenPathSegments": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "allowPaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  }
+}

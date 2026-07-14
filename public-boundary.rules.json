@@ -1,0 +1,25 @@
+{
+  "$schema": "./packages/public-boundary/rules.schema.json",
+  "forbiddenTokenHashes": [
+    "c1f026582fe6e8cb620d0c85a72fe421ddded756662a8ec00ed4c297ad10676b",
+    "3f711b3c4a24ed022a50c42d119b4dbb459f01f64914f57f64e4fcbe9c5ef1d6",
+    "74a00fe285aaf3087b124dfe75077b71bff8d5aa374a1289e991c557881c1cff",
+    "c51b8b5ed7ef1e499a8a26365e09e0d1b87edd6c6854bf1ca886eedb4a744612",
+    "c4c5b178d1681921b714349ac85f0687faac72e23396a1d43c226ae4183059dd",
+    "98881df94175031c58edd86e76a8ce982f0f193f2b6b1f724cb6704b4617716e",
+    "8a0bb632f14f30fbcacd266af1fe6f2a61a6f4dde9175c825bbe2ecabe565712",
+    "4821fa0f9322a193b818205ea06d803639511486c15cffda5a484495b2a38ead",
+    "ec0f0ab753882dbd62168daf6a52673fd6821755bfe7e7ab0c14abe03431e69a",
+    "d5f194a493f5d1022b0d75330f831b48a5997ca6beb66eeed1955ddf8d9f2096",
+    "c8089c952c97c68210b93ed8134e4e242208fbfb0b284310a49a388c06e428ed",
+    "31091d2ae0c771355899d52009707945e0b5896e9ecd0598d408da12ce8f8fd4",
+    "28bce3eaf0f2ccc9d4400dafa509bd2a808f2340d8b2dfa5a0628722c60a5bd5"
+  ],
+  "forbiddenPathSegments": ["datasets", "reports/private", ".vera-private"],
+  "allowPaths": [
+    ".gitignore",
+    ".dockerignore",
+    "README.md",
+    "docs/adr/0001-public-core-boundary.md"
+  ]
+}
