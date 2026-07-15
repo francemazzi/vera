@@ -1,0 +1,36 @@
+{
+  "validationScope": "TECHNICAL_DEMO",
+  "not": [
+    { "input": "TRUE", "expected": "FALSE" },
+    { "input": "FALSE", "expected": "TRUE" },
+    { "input": "UNKNOWN", "expected": "UNKNOWN" }
+  ],
+  "all": [
+    { "inputs": ["TRUE", "TRUE"], "expected": "TRUE" },
+    { "inputs": ["TRUE", "FALSE"], "expected": "FALSE" },
+    { "inputs": ["TRUE", "UNKNOWN"], "expected": "UNKNOWN" },
+    { "inputs": ["FALSE", "TRUE"], "expected": "FALSE" },
+    { "inputs": ["FALSE", "FALSE"], "expected": "FALSE" },
+    { "inputs": ["FALSE", "UNKNOWN"], "expected": "FALSE" },
+    { "inputs": ["UNKNOWN", "TRUE"], "expected": "UNKNOWN" },
+    { "inputs": ["UNKNOWN", "FALSE"], "expected": "FALSE" },
+    { "inputs": ["UNKNOWN", "UNKNOWN"], "expected": "UNKNOWN" }
+  ],
+  "any": [
+    { "inputs": ["TRUE", "TRUE"], "expected": "TRUE" },
+    { "inputs": ["TRUE", "FALSE"], "expected": "TRUE" },
+    { "inputs": ["TRUE", "UNKNOWN"], "expected": "TRUE" },
+    { "inputs": ["FALSE", "TRUE"], "expected": "TRUE" },
+    { "inputs": ["FALSE", "FALSE"], "expected": "FALSE" },
+    { "inputs": ["FALSE", "UNKNOWN"], "expected": "UNKNOWN" },
+    { "inputs": ["UNKNOWN", "TRUE"], "expected": "TRUE" },
+    { "inputs": ["UNKNOWN", "FALSE"], "expected": "UNKNOWN" },
+    { "inputs": ["UNKNOWN", "UNKNOWN"], "expected": "UNKNOWN" }
+  ],
+  "aggregation": [
+    { "inputs": ["PASS", "FAIL", "REVIEW"], "expected": "FAIL" },
+    { "inputs": ["NOT_APPLICABLE", "REVIEW", "PASS"], "expected": "REVIEW" },
+    { "inputs": ["NOT_APPLICABLE", "PASS"], "expected": "PASS" },
+    { "inputs": ["NOT_APPLICABLE", "NOT_APPLICABLE"], "expected": "NOT_APPLICABLE" }
+  ]
+}

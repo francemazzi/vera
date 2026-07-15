@@ -27,7 +27,7 @@ sicurezza a posteriori.
 | Ordine | Fase | Nome                          | Stato |
 | -----: | ---: | ----------------------------- | :---: |
 |      1 |    0 | Confini pubblici e fondazione | `[x]` |
-|      2 |    1 | Specifica metodologica        | `[ ]` |
+|      2 |    1 | Specifica metodologica        | `[x]` |
 |      3 |    2 | Fonti di conformità           | `[ ]` |
 |      4 |    3 | Rule Card                     | `[ ]` |
 |      5 |    4 | Facts, evidenze ed estrattori | `[ ]` |
@@ -88,25 +88,25 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 1 — Specifica metodologica
+## [x] Fase 1 — Specifica metodologica
 
 **Obiettivo:** rendere la metodologia implementabile senza decisioni interpretative residue.
 
-- [ ] Documentare il flusso `source → rule card → rule → test → approval → activation`.
-- [ ] Definire `PASS`, `FAIL`, `REVIEW` e `NOT_APPLICABLE` con truth table completa.
-- [ ] Definire categorie `OBLIGATION`, `PROHIBITION` e `PERMISSION`.
-- [ ] Formalizzare eccezioni, priorità, conflitti, override e non applicabilità.
-- [ ] Definire rischio `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` e costi d’errore.
-- [ ] Formalizzare intervalli UTC semiaperti e comportamento di `validTo=null`.
-- [ ] Definire workflow, ruoli, separazione dei compiti e approvazioni richieste.
-- [ ] Rendere gli esempi metodologici eseguibili come contract test.
-- [ ] Dichiarare il limite di validazione tecnica e il divieto di certificazione automatica.
+- [x] Documentare il flusso `source → rule card → rule → test → approval → activation`.
+- [x] Definire `PASS`, `FAIL`, `REVIEW` e `NOT_APPLICABLE` con truth table completa.
+- [x] Definire categorie `OBLIGATION`, `PROHIBITION` e `PERMISSION`.
+- [x] Formalizzare eccezioni, priorità, conflitti, override e non applicabilità.
+- [x] Definire rischio `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` e costi d’errore.
+- [x] Formalizzare intervalli UTC semiaperti e comportamento di `validTo=null`.
+- [x] Definire workflow, ruoli, separazione dei compiti e approvazioni richieste.
+- [x] Rendere gli esempi metodologici eseguibili come contract test.
+- [x] Dichiarare il limite di validazione tecnica e il divieto di certificazione automatica.
 
 ### Gate di fase
 
-- [ ] Schemi, esempi e truth table concordano e superano i contract test.
-- [ ] Ogni stato e transizione ha almeno un esempio sintetico valido e uno invalido.
-- [ ] `docs/verification/phase-1.md` rende ripetibile la verifica.
+- [x] Schemi, esempi e truth table concordano e superano i contract test.
+- [x] Ogni stato e transizione ha almeno un esempio sintetico valido e uno invalido.
+- [x] `docs/verification/phase-1.md` rende ripetibile la verifica.
 
 ---
 

@@ -140,7 +140,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 | Ordine | Fase | Risultato                       | Stato |
 | -----: | ---: | ------------------------------- | :---: |
 |      1 |    0 | Confini pubblici e fondazione   | `[x]` |
-|      2 |    1 | Specifica metodologica          | `[ ]` |
+|      2 |    1 | Specifica metodologica          | `[x]` |
 |      3 |    2 | Fonti di conformità             | `[ ]` |
 |      4 |    3 | Rule Card                       | `[ ]` |
 |      5 |    4 | Facts, evidenze ed estrattori   | `[ ]` |
@@ -172,7 +172,8 @@ già sopra contratti stabili e tracciabili.
 ## Documentazione
 
 - [Roadmap completa](docs/roadmap.md)
-- Le specifiche metodologiche, API e operative saranno aggiunte e versionate nelle rispettive fasi.
+- [Metodologia normativa](docs/methodology.md)
+- Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza
 

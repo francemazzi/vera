@@ -1,0 +1,54 @@
+{
+  "validationScope": "TECHNICAL_DEMO",
+  "scenarios": [
+    {
+      "id": "A",
+      "applies": "TRUE",
+      "exception": "FALSE",
+      "satisfied": "TRUE",
+      "expected": "PASS"
+    },
+    {
+      "id": "B",
+      "applies": "TRUE",
+      "exception": "FALSE",
+      "satisfied": "FALSE",
+      "expected": "FAIL"
+    },
+    {
+      "id": "C",
+      "applies": "TRUE",
+      "exception": "FALSE",
+      "satisfied": "UNKNOWN",
+      "expected": "REVIEW"
+    },
+    {
+      "id": "D",
+      "applies": "FALSE",
+      "exception": null,
+      "satisfied": null,
+      "expected": "NOT_APPLICABLE"
+    },
+    {
+      "id": "E",
+      "applies": "TRUE",
+      "exception": "TRUE",
+      "satisfied": null,
+      "expected": "NOT_APPLICABLE"
+    },
+    {
+      "id": "F",
+      "applies": "TRUE",
+      "exception": "UNKNOWN",
+      "satisfied": null,
+      "expected": "REVIEW"
+    },
+    {
+      "id": "G",
+      "applies": "UNKNOWN",
+      "exception": null,
+      "satisfied": null,
+      "expected": "REVIEW"
+    }
+  ]
+}
