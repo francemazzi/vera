@@ -74,3 +74,5 @@ export type {
   UnicodeComparisonOptions,
   VisualRegion,
 } from "./dsl-semantic-primitives.js";
+export { evaluateExpression, evaluateRule } from "./dsl-evaluator.js";
+export { resolveRuleFindings } from "./rule-resolution.js";

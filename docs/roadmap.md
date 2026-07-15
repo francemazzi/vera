@@ -32,7 +32,7 @@ sicurezza a posteriori.
 |      4 |    3 | Rule Card                     | `[x]` |
 |      5 |    4 | Facts, evidenze ed estrattori | `[x]` |
 |      6 |    5 | DSL dichiarativa              | `[x]` |
-|      7 |    6 | Kernel deterministico         | `[ ]` |
+|      7 |    6 | Kernel deterministico         | `[x]` |
 |      8 |    7 | Rule Pack e versionamento     | `[ ]` |
 |      9 |    8 | Test runner e version diff    | `[ ]` |
 |     10 |    9 | Benchmark sintetico           | `[ ]` |
@@ -202,26 +202,26 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 6 — Kernel deterministico
+## [x] Fase 6 — Kernel deterministico
 
 **Obiettivo:** valutare facts e regole in memoria con risultati ripetibili e spiegabili.
 
-- [ ] Implementare parser ed evaluator puri.
-- [ ] Valutare applicabilità, requisito, eccezioni e valori sconosciuti separatamente.
-- [ ] Produrre `RuleFinding` e trace completa di operatori, attesi e osservati.
-- [ ] Propagare le evidenze usate in ogni nodo della trace.
-- [ ] Aggregare con precedenza `FAIL > REVIEW > PASS`; tutte non applicabili producono
+- [x] Implementare parser ed evaluator puri.
+- [x] Valutare applicabilità, requisito, eccezioni e valori sconosciuti separatamente.
+- [x] Produrre `RuleFinding` e trace completa di operatori, attesi e osservati.
+- [x] Propagare le evidenze usate in ogni nodo della trace.
+- [x] Aggregare con precedenza `FAIL > REVIEW > PASS`; tutte non applicabili producono
       `NOT_APPLICABLE`.
-- [ ] Risolvere override tramite grafo aciclico.
-- [ ] Produrre `REVIEW` per conflitti privi di precedenza esplicita.
-- [ ] Garantire assenza di dipendenze da UI, storage, rete e AI.
+- [x] Risolvere override tramite grafo aciclico.
+- [x] Produrre `REVIEW` per conflitti privi di precedenza esplicita.
+- [x] Garantire assenza di dipendenze da UI, storage, rete e AI.
 
 ### Gate di fase
 
-- [ ] Test unitari e property-based provano determinismo, idempotenza e combinazioni logiche.
-- [ ] Test avversi verificano limiti di risorse, cicli e assenza di effetti collaterali.
-- [ ] Replay dello stesso JSON produce byte canonicalizzati equivalenti.
-- [ ] `docs/verification/phase-6.md` registra i risultati.
+- [x] Test unitari e property-based provano determinismo, idempotenza e combinazioni logiche.
+- [x] Test avversi verificano limiti di risorse, cicli e assenza di effetti collaterali.
+- [x] Replay dello stesso JSON produce byte canonicalizzati equivalenti.
+- [x] `docs/verification/phase-6.md` registra i risultati.
 
 ---
 

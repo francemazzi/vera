@@ -109,6 +109,26 @@ export type {
   VisualAreaQuantifier,
   WhitespaceHandling,
 } from "./dsl.js";
+export {
+  EVALUATION_RESULT_JSON_SCHEMA_HASH,
+  EvaluationResultJsonSchema,
+  EvaluationResultSchema,
+  EvaluationTraceReasonSchema,
+  ExpressionTraceSchema,
+  ResolvedRuleFindingSchema,
+  RuleFindingResolutionSchema,
+  RuleFindingSchema,
+  RuleOverrideTraceSchema,
+} from "./evaluation.js";
+export type {
+  EvaluationResult,
+  EvaluationTraceReason,
+  ExpressionTrace,
+  ResolvedRuleFinding,
+  RuleFinding,
+  RuleFindingResolution,
+  RuleOverrideTrace,
+} from "./evaluation.js";
 export { canonicalizeJson, sha256Bytes, sha256CanonicalJson } from "./hash.js";
 export type { JsonPrimitive, JsonValue } from "./hash.js";
 export {

@@ -18,10 +18,12 @@
     "test:integration": "vitest run test/integration"
   },
   "dependencies": {
-    "@vera/contracts": "workspace:*"
+    "@vera/contracts": "workspace:*",
+    "re2js": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

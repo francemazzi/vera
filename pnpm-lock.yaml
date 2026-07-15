@@ -12,6 +12,9 @@ catalogs:
     ajv:
       specifier: 8.20.0
       version: 8.20.0
+    fast-check:
+      specifier: 4.9.0
+      version: 4.9.0
     re2js:
       specifier: 2.8.6
       version: 2.8.6
@@ -139,10 +142,16 @@ importers:
       "@vera/contracts":
         specifier: workspace:*
         version: link:../contracts
+      re2js:
+        specifier: "catalog:"
+        version: 2.8.6
     devDependencies:
       "@types/node":
         specifier: "catalog:"
         version: 22.20.1
+      fast-check:
+        specifier: "catalog:"
+        version: 4.9.0
       typescript:
         specifier: "catalog:"
         version: 6.0.3
@@ -1119,6 +1128,13 @@ packages:
       }
     engines: { node: ">=12.0.0" }
 
+  fast-check@4.9.0:
+    resolution:
+      {
+        integrity: sha512-7ms6T7SybUev/PQITciI0yLM2pOSFy5zpG8Ty7tQofcVaQUvrMXp6CBwqF6fThLCLOrfBtuHAtwq6Yu4XPCllg==,
+      }
+    engines: { node: ">=12.17.0" }
+
   fast-deep-equal@3.1.3:
     resolution:
       {
@@ -1567,6 +1583,12 @@ packages:
         integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==,
       }
     engines: { node: ">=6" }
+
+  pure-rand@8.4.2:
+    resolution:
+      {
+        integrity: sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==,
+      }
 
   re2js@2.8.6:
     resolution:
@@ -2411,6 +2433,10 @@ snapshots:
 
   expect-type@1.4.0: {}
 
+  fast-check@4.9.0:
+    dependencies:
+      pure-rand: 8.4.2
+
   fast-deep-equal@3.1.3: {}
 
   fast-json-stable-stringify@2.1.0: {}
@@ -2613,6 +2639,8 @@ snapshots:
   prettier@3.9.5: {}
 
   punycode@2.3.1: {}
+
+  pure-rand@8.4.2: {}
 
   re2js@2.8.6: {}
 
