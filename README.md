@@ -150,7 +150,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |      8 |    7 | Rule Pack e versionamento       | `[x]` |
 |      9 |    8 | Test runner e version diff      | `[x]` |
 |     10 |    9 | Benchmark sintetico             | `[x]` |
-|     11 |   10 | Calibrazione e astensione       | `[ ]` |
+|     11 |   10 | Calibrazione e astensione       | `[x]` |
 |     12 |   13 | Provenienza e audit             | `[ ]` |
 |     13 |   14 | API, persistenza e sicurezza    | `[ ]` |
 |     14 |   11 | RAG e ingestione                | `[ ]` |
@@ -179,6 +179,7 @@ già sopra contratti stabili e tracciabili.
 - [Rule Pack e risoluzione temporale](docs/rule-packs.md)
 - [Rule testing e version diff](docs/rule-testing.md)
 - [Benchmark sintetico](docs/benchmark.md)
+- [Calibrazione e astensione](docs/calibration.md)
 - Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza

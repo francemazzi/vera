@@ -36,7 +36,7 @@ sicurezza a posteriori.
 |      8 |    7 | Rule Pack e versionamento     | `[x]` |
 |      9 |    8 | Test runner e version diff    | `[x]` |
 |     10 |    9 | Benchmark sintetico           | `[x]` |
-|     11 |   10 | Calibrazione e astensione     | `[ ]` |
+|     11 |   10 | Calibrazione e astensione     | `[x]` |
 |     12 |   13 | Provenienza e audit           | `[ ]` |
 |     13 |   14 | API, persistenza e sicurezza  | `[ ]` |
 |     14 |   11 | RAG e ingestione              | `[ ]` |
@@ -294,26 +294,26 @@ pubblicabili.
 
 ---
 
-## [ ] Fase 10 — Calibrazione e astensione
+## [x] Fase 10 — Calibrazione e astensione
 
 **Obiettivo:** rendere esplicito quando il sistema deve astenersi, senza trasformare confidence
 grezze in garanzie.
 
-- [ ] Implementare `CalibrationProfile` versionato per modello, tipo di fatto e corpus hash.
-- [ ] Separare development, calibration e blind nel calcolo delle soglie.
-- [ ] Implementare reliability diagram e risk-coverage curve.
-- [ ] Applicare fallback gerarchico soltanto sopra numerosità minime documentate.
-- [ ] Produrre `REVIEW` quando non esiste un profilo applicabile o sufficiente.
-- [ ] Impedire `PASS` automatici per rischio `HIGH` o `CRITICAL` nei profili dimostrativi.
-- [ ] Marcare ogni profilo sintetico con `validationScope=TECHNICAL_DEMO`.
-- [ ] Conservare dati, algoritmo, parametri e hash necessari al replay.
+- [x] Implementare `CalibrationProfile` versionato per modello, tipo di fatto e corpus hash.
+- [x] Separare development, calibration e blind nel calcolo delle soglie.
+- [x] Implementare reliability diagram e risk-coverage curve.
+- [x] Applicare fallback gerarchico soltanto sopra numerosità minime documentate.
+- [x] Produrre `REVIEW` quando non esiste un profilo applicabile o sufficiente.
+- [x] Impedire `PASS` automatici per rischio `HIGH` o `CRITICAL` nei profili dimostrativi.
+- [x] Marcare ogni profilo sintetico con `validationScope=TECHNICAL_DEMO`.
+- [x] Conservare dati, algoritmo, parametri e hash necessari al replay.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono binning, fallback, soglie e astensione.
-- [ ] Test d’integrazione provano profili incompatibili, insufficienti e versionati.
-- [ ] Smoke test locale riproduce curve e report dal corpus sintetico.
-- [ ] `docs/verification/phase-10.md` registra risultati e limiti.
+- [x] Test unitari coprono binning, fallback, soglie e astensione.
+- [x] Test d’integrazione provano profili incompatibili, insufficienti e versionati.
+- [x] Smoke test locale riproduce curve e report dal corpus sintetico.
+- [x] `docs/verification/phase-10.md` registra risultati e limiti.
 
 ---
 
