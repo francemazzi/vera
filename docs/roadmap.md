@@ -26,7 +26,7 @@ sicurezza a posteriori.
 
 | Ordine | Fase | Nome                          | Stato |
 | -----: | ---: | ----------------------------- | :---: |
-|      1 |    0 | Confini pubblici e fondazione | `[~]` |
+|      1 |    0 | Confini pubblici e fondazione | `[x]` |
 |      2 |    1 | Specifica metodologica        | `[ ]` |
 |      3 |    2 | Fonti di conformità           | `[ ]` |
 |      4 |    3 | Rule Card                     | `[ ]` |
@@ -58,33 +58,33 @@ sicurezza a posteriori.
 
 ---
 
-## [~] Fase 0 — Confini pubblici e fondazione
+## [x] Fase 0 — Confini pubblici e fondazione
 
 **Obiettivo:** predisporre un solo repository genericamente pubblicabile, una toolchain
 riproducibile e controlli automatici contro l’inclusione accidentale di materiali locali.
 
-- [ ] Riscrivere README e roadmap senza riferimenti a casi d’uso, organizzazioni, tassonomie o
+- [x] Riscrivere README e roadmap senza riferimenti a casi d’uso, organizzazioni, tassonomie o
       corpus riservati.
-- [ ] Stabilire il confine unico: codice ed esempi sintetici tracciati; `datasets/` e altri
+- [x] Stabilire il confine unico: codice ed esempi sintetici tracciati; `datasets/` e altri
       materiali locali ignorati da Git.
-- [ ] Creare monorepo pnpm TypeScript strict/ESM con runtime e package manager fissati.
-- [ ] Aggiungere configurazioni condivise per format-check, lint, typecheck, build e test.
-- [ ] Aggiungere Docker Compose per i servizi locali previsti, senza dipendenze cloud obbligatorie.
-- [ ] Configurare CI, scansione di segreti, dipendenze, licenze e confine pubblico.
-- [ ] Implementare uno scanner configurabile per contenuti vietati e testarlo su working tree,
+- [x] Creare monorepo pnpm TypeScript strict/ESM con runtime e package manager fissati.
+- [x] Aggiungere configurazioni condivise per format-check, lint, typecheck, build e test.
+- [x] Aggiungere Docker Compose per i servizi locali previsti, senza dipendenze cloud obbligatorie.
+- [x] Configurare CI, scansione di segreti, dipendenze, licenze e confine pubblico.
+- [x] Implementare uno scanner configurabile per contenuti vietati e testarlo su working tree,
       indice e cronologia raggiungibile.
-- [ ] Verificare che esempi e fixture iniziali siano esclusivamente sintetici.
-- [ ] Salvare un bundle Git locale prima di qualsiasi riscrittura della cronologia.
-- [ ] Richiedere conferma esplicita prima di riscrivere i commit esistenti e prima dell’unico
+- [x] Verificare che esempi e fixture iniziali siano esclusivamente sintetici.
+- [x] Salvare un bundle Git locale prima di qualsiasi riscrittura della cronologia.
+- [x] Richiedere conferma esplicita prima di riscrivere i commit esistenti e prima dell’unico
       force-push previsto.
 
 ### Gate di fase
 
-- [ ] Installazione pulita, lint, typecheck, build e test completano con successo.
-- [ ] Scanner di segreti e confine pubblico completano con successo su tutti i ref raggiungibili.
-- [ ] `datasets/` e materiali locali risultano ignorati e assenti da indice e cronologia
+- [x] Installazione pulita, lint, typecheck, build e test completano con successo.
+- [x] Scanner di segreti e confine pubblico completano con successo su tutti i ref raggiungibili.
+- [x] `datasets/` e materiali locali risultano ignorati e assenti da indice e cronologia
       pubblicabile.
-- [ ] `docs/verification/phase-0.md` registra comandi, versioni, risultati e limiti.
+- [x] `docs/verification/phase-0.md` registra comandi, versioni, risultati e limiti.
 
 ---
 

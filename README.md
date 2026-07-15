@@ -139,7 +139,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 
 | Ordine | Fase | Risultato                       | Stato |
 | -----: | ---: | ------------------------------- | :---: |
-|      1 |    0 | Confini pubblici e fondazione   | `[~]` |
+|      1 |    0 | Confini pubblici e fondazione   | `[x]` |
 |      2 |    1 | Specifica metodologica          | `[ ]` |
 |      3 |    2 | Fonti di conformità             | `[ ]` |
 |      4 |    3 | Rule Card                       | `[ ]` |
