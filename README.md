@@ -143,7 +143,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |      2 |    1 | Specifica metodologica          | `[x]` |
 |      3 |    2 | Fonti di conformità             | `[x]` |
 |      4 |    3 | Rule Card                       | `[x]` |
-|      5 |    4 | Facts, evidenze ed estrattori   | `[ ]` |
+|      5 |    4 | Facts, evidenze ed estrattori   | `[x]` |
 |      6 |    5 | DSL dichiarativa                | `[ ]` |
 |      7 |    6 | Kernel deterministico           | `[ ]` |
 |      8 |    7 | Rule Pack e versionamento       | `[ ]` |

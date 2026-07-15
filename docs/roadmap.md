@@ -30,7 +30,7 @@ sicurezza a posteriori.
 |      2 |    1 | Specifica metodologica        | `[x]` |
 |      3 |    2 | Fonti di conformità           | `[x]` |
 |      4 |    3 | Rule Card                     | `[x]` |
-|      5 |    4 | Facts, evidenze ed estrattori | `[ ]` |
+|      5 |    4 | Facts, evidenze ed estrattori | `[x]` |
 |      6 |    5 | DSL dichiarativa              | `[ ]` |
 |      7 |    6 | Kernel deterministico         | `[ ]` |
 |      8 |    7 | Rule Pack e versionamento     | `[ ]` |
@@ -153,30 +153,30 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 4 — Facts, evidenze ed estrattori
+## [x] Fase 4 — Facts, evidenze ed estrattori
 
 **Obiettivo:** rappresentare input e provenienza in modo indipendente dal metodo di estrazione.
 
-- [ ] Implementare `Fact<T>` con valore originale, normalizzato, stato, provider e confidence
+- [x] Implementare `Fact<T>` con valore originale, normalizzato, stato, provider e confidence
       grezza.
-- [ ] Gestire `NULL`, `NOT_FOUND`, `NOT_READABLE` e `CONFLICT` senza conversioni implicite.
-- [ ] Implementare `Evidence` con hash documento, pagina 1-based, testo, lingua e bounding box
+- [x] Gestire `NULL`, `NOT_FOUND`, `NOT_READABLE` e `CONFLICT` senza conversioni implicite.
+- [x] Implementare `Evidence` con hash documento, pagina 1-based, testo, lingua e bounding box
       normalizzata `[0,1]`.
-- [ ] Definire `ExtractorAdapter` comune che non possa restituire esiti normativi.
-- [ ] Implementare adapter manuale e JSON.
-- [ ] Implementare adapter OCR, vision, LLM ed embedding tramite Ollama locale.
-- [ ] Registrare modello, digest, parametri, prompt e output grezzo.
-- [ ] Validare ogni output con gli schemi condivisi.
-- [ ] Implementare timeout, retry limitato e fallimento esplicito quando un modello non è
+- [x] Definire `ExtractorAdapter` comune che non possa restituire esiti normativi.
+- [x] Implementare adapter manuale e JSON.
+- [x] Implementare adapter OCR, vision, LLM ed embedding tramite Ollama locale.
+- [x] Registrare modello, digest, parametri, prompt e output grezzo.
+- [x] Validare ogni output con gli schemi condivisi.
+- [x] Implementare timeout, retry limitato e fallimento esplicito quando un modello non è
       disponibile.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono normalizzazione, contraddizioni e validazione.
-- [ ] Test d’integrazione usano un server Ollama simulato in CI.
-- [ ] Uno smoke test offline usa modelli locali pinnati e registra l’ambiente.
-- [ ] Nessun adapter può produrre `PASS`, `FAIL` o `NOT_APPLICABLE`.
-- [ ] `docs/verification/phase-4.md` registra i risultati.
+- [x] Test unitari coprono normalizzazione, contraddizioni e validazione.
+- [x] Test d’integrazione usano un server Ollama simulato in CI.
+- [x] Uno smoke test offline usa modelli locali pinnati e registra l’ambiente.
+- [x] Nessun adapter può produrre `PASS`, `FAIL` o `NOT_APPLICABLE`.
+- [x] `docs/verification/phase-4.md` registra i risultati.
 
 ---
 
