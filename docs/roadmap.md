@@ -40,7 +40,7 @@ sicurezza a posteriori.
 |     12 |   13 | Provenienza e audit           | `[x]` |
 |     13 |   14 | API, persistenza e sicurezza  | `[x]` |
 |     14 |   11 | RAG e ingestione              | `[x]` |
-|     15 |   12 | UI di revisione               | `[ ]` |
+|     15 |   12 | UI di revisione               | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico    | `[ ]` |
 |     17 |   16 | Apertura e release            | `[ ]` |
 
@@ -387,25 +387,25 @@ tramite API o UI.
 
 ---
 
-## [ ] Fase 12 — UI di revisione
+## [x] Fase 12 — UI di revisione
 
 **Obiettivo:** offrire una revisione comprensibile, accessibile e tracciata.
 
-- [ ] Realizzare un audit desk con documento/evidenze e regola/trace affiancati.
-- [ ] Implementare una coda di revisione persistente.
-- [ ] Consentire conferma, correzione, non applicabilità e richiesta di approfondimento.
-- [ ] Richiedere motivazione per override critici.
-- [ ] Non mostrare confidence non calibrata come indicatore di affidabilità.
-- [ ] Rendere visibili limiti, provenienza e ambito `TECHNICAL_DEMO`.
-- [ ] Impedire export finale senza revisione richiesta dal workflow.
-- [ ] Applicare ruoli e optimistic concurrency anche nell’interfaccia.
-- [ ] Raggiungere WCAG 2.2 AA per i flussi principali.
+- [x] Realizzare un audit desk con documento/evidenze e regola/trace affiancati.
+- [x] Implementare una coda di revisione persistente.
+- [x] Consentire conferma, correzione, non applicabilità e richiesta di approfondimento.
+- [x] Richiedere motivazione per override critici.
+- [x] Non mostrare confidence non calibrata come indicatore di affidabilità.
+- [x] Rendere visibili limiti, provenienza e ambito `TECHNICAL_DEMO`.
+- [x] Impedire export finale senza revisione richiesta dal workflow.
+- [x] Applicare ruoli e optimistic concurrency anche nell’interfaccia.
+- [x] Raggiungere WCAG 2.2 AA per i flussi principali.
 
 ### Gate di fase
 
-- [ ] Test di componenti coprono stati, errori, permessi e accessibilità.
-- [ ] Playwright copre login, coda, evidenze, decisione, conflitto ed export bloccato.
-- [ ] `docs/verification/phase-12.md` registra i risultati.
+- [x] Test di componenti coprono stati, errori, permessi e accessibilità.
+- [x] Playwright copre login, coda, evidenze, decisione, conflitto ed export bloccato.
+- [x] `docs/verification/phase-12.md` registra i risultati.
 
 ---
 
