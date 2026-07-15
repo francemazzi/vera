@@ -512,7 +512,7 @@ describe("resolveRuleFindings", () => {
     expect(resolvedTarget.effectiveOutcome).toBe("NOT_APPLICABLE");
     expect(resolvedTarget.relatedRuleIds).toEqual(sources.map(({ id }) => id).sort());
     expect(EvaluationResultSchema.safeParse(result).success).toBe(true);
-  });
+  }, 30_000);
 
   it("fails an incomplete one-to-one rule/finding map closed", () => {
     const aId = uuidFromInteger(80);

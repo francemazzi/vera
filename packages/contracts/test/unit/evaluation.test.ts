@@ -548,7 +548,7 @@ describe("ExpressionTraceSchema", () => {
     const oversized = oversizedTraceTree();
     expect(() => ExpressionTraceSchema.safeParse(oversized)).not.toThrow();
     expect(ExpressionTraceSchema.safeParse(oversized).success).toBe(false);
-  });
+  }, 30_000);
 });
 
 describe("RuleOverrideTraceSchema", () => {

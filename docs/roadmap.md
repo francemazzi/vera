@@ -35,7 +35,7 @@ sicurezza a posteriori.
 |      7 |    6 | Kernel deterministico         | `[x]` |
 |      8 |    7 | Rule Pack e versionamento     | `[x]` |
 |      9 |    8 | Test runner e version diff    | `[x]` |
-|     10 |    9 | Benchmark sintetico           | `[ ]` |
+|     10 |    9 | Benchmark sintetico           | `[x]` |
 |     11 |   10 | Calibrazione e astensione     | `[ ]` |
 |     12 |   13 | Provenienza e audit           | `[ ]` |
 |     13 |   14 | API, persistenza e sicurezza  | `[ ]` |
@@ -267,30 +267,30 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 9 — Benchmark sintetico
+## [x] Fase 9 — Benchmark sintetico
 
 **Obiettivo:** misurare la pipeline in modo riproducibile senza usare o descrivere materiali non
 pubblicabili.
 
-- [ ] Generare deterministicamente un corpus neutrale di PDF, immagini e JSON chiaramente fittizi.
-- [ ] Versionare generatori, seed, manifest, hash e risultati attesi sintetici.
-- [ ] Congelare lo split per `caseId` con seed `42`: sviluppo 60%, calibrazione 20%, blind 20%.
-- [ ] Vietare tuning e ispezione orientata alla correzione sullo split blind.
-- [ ] Eseguire una matrice Ollama configurabile, senza rendere un modello locale specifico requisito
+- [x] Generare deterministicamente un corpus neutrale di PDF, immagini e JSON chiaramente fittizi.
+- [x] Versionare generatori, seed, manifest, hash e risultati attesi sintetici.
+- [x] Congelare lo split per `caseId` con seed `42`: sviluppo 60%, calibrazione 20%, blind 20%.
+- [x] Vietare tuning e ispezione orientata alla correzione sullo split blind.
+- [x] Eseguire una matrice Ollama configurabile, senza rendere un modello locale specifico requisito
       universale.
-- [ ] Registrare modello, digest, runtime, prompt, opzioni, hardware, corpus hash e output grezzo.
-- [ ] Calcolare precision, recall, F1, missing rate e hallucination rate per estrazione.
-- [ ] Calcolare sensitivity, specificity, macro-F1 e false-negative rate per findings sintetici.
-- [ ] Calcolare intervalli bootstrap raggruppati per `caseId`.
-- [ ] Dichiarare che il gate misura riproducibilità e correttezza del runner, non accuratezza su
+- [x] Registrare modello, digest, runtime, prompt, opzioni, hardware, corpus hash e output grezzo.
+- [x] Calcolare precision, recall, F1, missing rate e hallucination rate per estrazione.
+- [x] Calcolare sensitivity, specificity, macro-F1 e false-negative rate per findings sintetici.
+- [x] Calcolare intervalli bootstrap raggruppati per `caseId`.
+- [x] Dichiarare che il gate misura riproducibilità e correttezza del runner, non accuratezza su
       scenari reali.
 
 ### Gate di fase
 
-- [ ] Due run con stessi input producono split, manifest e metriche equivalenti.
-- [ ] CI verifica generazione, schema e calcolo metriche con provider simulato.
-- [ ] Smoke test Ollama locale registra modelli disponibili e limiti.
-- [ ] `docs/verification/phase-9.md` include metriche, numerosità, intervalli e disclaimer.
+- [x] Due run con stessi input producono split, manifest e metriche equivalenti.
+- [x] CI verifica generazione, schema e calcolo metriche con provider simulato.
+- [x] Smoke test Ollama locale registra modelli disponibili e limiti.
+- [x] `docs/verification/phase-9.md` include metriche, numerosità, intervalli e disclaimer.
 
 ---
 
