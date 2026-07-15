@@ -148,7 +148,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |      6 |    5 | DSL dichiarativa                | `[x]` |
 |      7 |    6 | Kernel deterministico           | `[x]` |
 |      8 |    7 | Rule Pack e versionamento       | `[x]` |
-|      9 |    8 | Test runner e version diff      | `[ ]` |
+|      9 |    8 | Test runner e version diff      | `[x]` |
 |     10 |    9 | Benchmark sintetico             | `[ ]` |
 |     11 |   10 | Calibrazione e astensione       | `[ ]` |
 |     12 |   13 | Provenienza e audit             | `[ ]` |
@@ -177,6 +177,7 @@ già sopra contratti stabili e tracciabili.
 - [DSL dichiarativa](docs/dsl.md)
 - [Kernel deterministico](docs/kernel.md)
 - [Rule Pack e risoluzione temporale](docs/rule-packs.md)
+- [Rule testing e version diff](docs/rule-testing.md)
 - Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza

@@ -60,6 +60,16 @@ export interface RulePackCardEligibilityReader {
 
 export type RulePackEligibilityPurpose = "PUBLICATION" | "ACTIVATION";
 
+export interface RulePackReadinessGateContext {
+  readonly purpose: RulePackEligibilityPurpose;
+  readonly checkedAt: UtcDateTime;
+}
+
+/** Optional phase gate used by external test runners before publication or activation. */
+export interface RulePackReadinessGate {
+  assertRulePackReady(version: RulePackVersion, context: RulePackReadinessGateContext): void;
+}
+
 export interface RulePackRuleEligibilitySnapshot {
   readonly source: ComplianceSource;
   readonly sourceVersion: ComplianceSourceVersion;
@@ -308,6 +318,7 @@ interface RulePackContentSnapshot {
 
 export class InMemoryRulePackRepository {
   readonly #eligibility: RulePackRuleEligibilityReader;
+  readonly #readinessGate: RulePackReadinessGate | null;
   readonly #drafts = new Map<string, RulePackDraft>();
   readonly #versions = new Map<string, RulePackVersion>();
   readonly #versionIdsByPack = new Map<string, string[]>();
@@ -315,8 +326,12 @@ export class InMemoryRulePackRepository {
   readonly #contributorIdsByDraft = new Map<string, Set<string>>();
   readonly #excludedActivatorIdsByVersion = new Map<string, Set<string>>();
 
-  public constructor(eligibility: RulePackRuleEligibilityReader) {
+  public constructor(
+    eligibility: RulePackRuleEligibilityReader,
+    readinessGate: RulePackReadinessGate | null = null,
+  ) {
     this.#eligibility = eligibility;
+    this.#readinessGate = readinessGate;
   }
 
   public addDraft(draft: RulePackDraft, actor: Actor): RulePackDraft {
@@ -561,6 +576,8 @@ export class InMemoryRulePackRepository {
       );
     }
 
+    this.#assertReadinessGate(parsedVersion.data, "PUBLICATION", validRequest.publishedAt);
+
     const stored = immutableCopy(parsedVersion.data);
     this.#versions.set(stored.id, stored);
     const versionIds = this.#versionIdsByPack.get(stored.packId) ?? [];
@@ -633,7 +650,26 @@ export class InMemoryRulePackRepository {
       );
     }
     this.#assertRulesEligible(version, activationAt, "ACTIVATION");
+    this.#assertReadinessGate(version, "ACTIVATION", activationAt);
     return immutableCopy(version);
+  }
+
+  #assertReadinessGate(
+    version: RulePackVersion,
+    purpose: RulePackEligibilityPurpose,
+    checkedAt: UtcDateTime,
+  ): void {
+    if (this.#readinessGate === null) return;
+    try {
+      this.#readinessGate.assertRulePackReady(version, { purpose, checkedAt });
+    } catch (error) {
+      if (error instanceof RulePackEligibilityError) throw error;
+      throw new RulePackEligibilityError(
+        "RULE_PACK_TEST_GATE_FAILED",
+        "Rule Pack test gate failed before publication or activation",
+        { checkedAt, purpose, versionId: version.id },
+      );
+    }
   }
 
   #assertDraftIsUnpublished(draftId: string): void {

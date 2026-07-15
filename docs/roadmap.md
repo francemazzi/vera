@@ -34,7 +34,7 @@ sicurezza a posteriori.
 |      6 |    5 | DSL dichiarativa              | `[x]` |
 |      7 |    6 | Kernel deterministico         | `[x]` |
 |      8 |    7 | Rule Pack e versionamento     | `[x]` |
-|      9 |    8 | Test runner e version diff    | `[ ]` |
+|      9 |    8 | Test runner e version diff    | `[x]` |
 |     10 |    9 | Benchmark sintetico           | `[ ]` |
 |     11 |   10 | Calibrazione e astensione     | `[ ]` |
 |     12 |   13 | Provenienza e audit           | `[ ]` |
@@ -246,24 +246,24 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 8 — Test runner e version diff
+## [x] Fase 8 — Test runner e version diff
 
 **Obiettivo:** impedire l’attivazione di regole prive di copertura o con regressioni non accettate.
 
-- [ ] Richiedere fixture sintetiche `PASS`, `FAIL`, `REVIEW`, `NOT_APPLICABLE` per ogni regola.
-- [ ] Richiedere casi per eccezioni, override, evidenze e validità temporale.
-- [ ] Bloccare l’attivazione se manca una fixture obbligatoria o un test fallisce.
-- [ ] Confrontare deterministicamente due versioni sugli stessi casi.
-- [ ] Elencare cambi di esito, nuovi casi incerti e possibili false conformità.
-- [ ] Salvare l’impact report con hash e riferimenti alle versioni.
-- [ ] Rendere il runner utilizzabile da CLI e API con lo stesso contratto.
+- [x] Richiedere fixture sintetiche `PASS`, `FAIL`, `REVIEW`, `NOT_APPLICABLE` per ogni regola.
+- [x] Richiedere casi per eccezioni, override, evidenze e validità temporale.
+- [x] Bloccare l’attivazione se manca una fixture obbligatoria o un test fallisce.
+- [x] Confrontare deterministicamente due versioni sugli stessi casi.
+- [x] Elencare cambi di esito, nuovi casi incerti e possibili false conformità.
+- [x] Salvare l’impact report con hash e riferimenti alle versioni.
+- [x] Rendere il runner utilizzabile da CLI e API con lo stesso contratto.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono classificazione e diff.
-- [ ] Test d’integrazione provano il blocco di pubblicazione e la stabilità del report.
-- [ ] Tutte le regole dimostrative hanno la matrice minima completa.
-- [ ] `docs/verification/phase-8.md` registra i risultati.
+- [x] Test unitari coprono classificazione e diff.
+- [x] Test d’integrazione provano il blocco di pubblicazione e la stabilità del report.
+- [x] Tutte le regole dimostrative hanno la matrice minima completa.
+- [x] `docs/verification/phase-8.md` registra i risultati.
 
 ---
 

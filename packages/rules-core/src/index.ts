@@ -67,6 +67,8 @@ export {
 export type {
   CloneRulePackVersionRequest,
   PublishRulePackDraftRequest,
+  RulePackReadinessGate,
+  RulePackReadinessGateContext,
   RulePackCardEligibilityReader,
   RulePackEligibilityPurpose,
   RulePackRuleEligibilityReader,
