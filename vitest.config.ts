@@ -13,7 +13,7 @@ export default defineConfig({
         statements: 90,
       },
       include: ["packages/*/src/**/*.ts"],
-      exclude: ["**/*.d.ts", "**/cli.ts"],
+      exclude: ["**/*.d.ts", "**/cli.ts", "**/generated/**"],
     },
     passWithNoTests: false,
     restoreMocks: true,

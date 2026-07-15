@@ -11,9 +11,10 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "clean": "pnpm -r --if-present clean",
+    "generate": "pnpm -r --if-present generate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "pnpm generate && eslint . --max-warnings 0",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "pnpm -r --if-present test:unit",
@@ -22,7 +23,7 @@
     "test:coverage": "vitest run --coverage",
     "public-boundary:check": "pnpm --filter @vera/public-boundary scan",
     "security:check": "docker run --rm -v \"$PWD:/src:ro\" ghcr.io/google/osv-scanner:v2.4.0 scan source -L /src/pnpm-lock.yaml",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:contract && pnpm build && pnpm test:coverage && pnpm public-boundary:check"
+    "verify": "pnpm generate && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:contract && pnpm build && pnpm test:coverage && pnpm public-boundary:check"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -30,6 +31,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.7.0",
     "prettier": "3.9.5",
+    "prisma": "7.8.0",
     "tsx": "4.23.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0",
@@ -37,6 +39,9 @@
     "vitest": "4.1.10"
   },
   "pnpm": {
+    "overrides": {
+      "@hono/node-server": "1.19.13"
+    },
     "onlyBuiltDependencies": [
       "esbuild"
     ]
