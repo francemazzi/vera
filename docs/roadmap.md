@@ -28,7 +28,7 @@ sicurezza a posteriori.
 | -----: | ---: | ----------------------------- | :---: |
 |      1 |    0 | Confini pubblici e fondazione | `[x]` |
 |      2 |    1 | Specifica metodologica        | `[x]` |
-|      3 |    2 | Fonti di conformità           | `[ ]` |
+|      3 |    2 | Fonti di conformità           | `[x]` |
 |      4 |    3 | Rule Card                     | `[ ]` |
 |      5 |    4 | Facts, evidenze ed estrattori | `[ ]` |
 |      6 |    5 | DSL dichiarativa              | `[ ]` |
@@ -110,24 +110,24 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 2 — Fonti di conformità
+## [x] Fase 2 — Fonti di conformità
 
 **Obiettivo:** rendere ogni fonte identificabile, verificabile e temporalmente ricostruibile.
 
-- [ ] Implementare `ComplianceSource` e versioni append-only.
-- [ ] Registrare tipo, dominio, giurisdizione, titolo, versione e riferimenti stabili.
-- [ ] Registrare licenza, hash SHA-256, `validFrom` e `validTo`.
-- [ ] Implementare `UPLOADED → REVIEWED → APPROVED → RETIRED`.
-- [ ] Registrare attori e timestamp per ogni transizione.
-- [ ] Vietare l’uso in Rule Pack attivi di fonti non approvate.
-- [ ] Consentire sostituzioni senza sovrascrivere versioni storiche.
-- [ ] Implementare un repository in memoria per i test di integrazione del dominio.
+- [x] Implementare `ComplianceSource` e versioni append-only.
+- [x] Registrare tipo, dominio, giurisdizione, titolo, versione e riferimenti stabili.
+- [x] Registrare licenza, hash SHA-256, `validFrom` e `validTo`.
+- [x] Implementare `UPLOADED → REVIEWED → APPROVED → RETIRED`.
+- [x] Registrare attori e timestamp per ogni transizione.
+- [x] Vietare l’uso in Rule Pack attivi di fonti non approvate.
+- [x] Consentire sostituzioni senza sovrascrivere versioni storiche.
+- [x] Implementare un repository in memoria per i test di integrazione del dominio.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono hash, date, intervalli e transizioni valide/non valide.
-- [ ] Test d’integrazione provano immutabilità, ricostruzione e blocco delle fonti non approvate.
-- [ ] `docs/verification/phase-2.md` registra i risultati.
+- [x] Test unitari coprono hash, date, intervalli e transizioni valide/non valide.
+- [x] Test d’integrazione provano immutabilità, ricostruzione e blocco delle fonti non approvate.
+- [x] `docs/verification/phase-2.md` registra i risultati.
 
 ---
 

@@ -23,3 +23,18 @@ export const ValidityIntervalSchema = z
   });
 
 export type ValidityInterval = z.infer<typeof ValidityIntervalSchema>;
+
+/** Evaluates the public half-open validity rule: validFrom <= date < validTo. */
+export function isWithinValidityInterval(
+  interval: ValidityInterval,
+  evaluationDate: UtcDateTime,
+): boolean {
+  const parsedInterval = ValidityIntervalSchema.parse(interval);
+  const parsedEvaluationDate = UtcDateTimeSchema.parse(evaluationDate);
+  const evaluationTimestamp = Date.parse(parsedEvaluationDate);
+
+  return (
+    evaluationTimestamp >= Date.parse(parsedInterval.validFrom) &&
+    (parsedInterval.validTo === null || evaluationTimestamp < Date.parse(parsedInterval.validTo))
+  );
+}

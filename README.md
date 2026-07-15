@@ -141,7 +141,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 | -----: | ---: | ------------------------------- | :---: |
 |      1 |    0 | Confini pubblici e fondazione   | `[x]` |
 |      2 |    1 | Specifica metodologica          | `[x]` |
-|      3 |    2 | Fonti di conformità             | `[ ]` |
+|      3 |    2 | Fonti di conformità             | `[x]` |
 |      4 |    3 | Rule Card                       | `[ ]` |
 |      5 |    4 | Facts, evidenze ed estrattori   | `[ ]` |
 |      6 |    5 | DSL dichiarativa                | `[ ]` |
