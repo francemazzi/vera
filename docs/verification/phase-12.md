@@ -18,6 +18,8 @@ Data verifica: 2026-07-15T18:51:31+02:00
 - Bloccato l’export finché tutte le revisioni richieste non sono completate.
 - Non vengono mostrati valori di confidence non calibrata.
 - Aggiunta documentazione operativa in `docs/ui-review.md`.
+- Corretto il workflow CI per installare Chromium Playwright dal workspace `@vera/web`, dove
+  Playwright è dichiarato come dipendenza di sviluppo.
 
 ## Test e gate locali
 
@@ -43,7 +45,7 @@ Risultati registrati prima del commit:
 - Test Playwright: login, coda, evidenze, decisione, conflitto, ruolo read-only, export bloccato e
   scansione axe del flusso principale.
 - Scansione sicurezza: superata su 597 pacchetti, nessuna issue rilevata.
-- Scansione confine pubblico su working tree, indice e cronologia: superata con 831 snapshot
+- Scansione confine pubblico su working tree, indice e cronologia: superata con 886 snapshot
   testuali.
 - Licenze produzione: 359 righe inventario, nessun match `GPL`, `AGPL` o `LGPL`.
 - `git diff --check`: nessun errore.
