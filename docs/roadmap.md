@@ -437,24 +437,24 @@ riservati.
 **Obiettivo:** produrre una release sperimentale autonoma e verificare il confine pubblico su tutti
 i ref.
 
-- [ ] Eseguire la verifica da clean clone.
-- [ ] Scansionare working tree, indice, cronologia, tag e ref remoti per segreti e contenuti
+- [x] Eseguire la verifica da clean clone.
+- [x] Scansionare working tree, indice, cronologia, tag e ref remoti per segreti e contenuti
       vietati.
-- [ ] Verificare assenza di materiali locali, identificatori riservati e metadati non pubblicabili.
-- [ ] Completare documentazione di architettura, API, sviluppo, sicurezza e limiti.
-- [ ] Includere esclusivamente esempi, fonti, Rule Pack e corpus sintetici.
-- [ ] Aggiungere licenza Apache-2.0 e generare SBOM.
-- [ ] Verificare attribuzioni e compatibilità delle licenze.
-- [ ] Creare la release sperimentale `v0.1.0` senza pubblicazione npm.
+- [x] Verificare assenza di materiali locali, identificatori riservati e metadati non pubblicabili.
+- [x] Completare documentazione di architettura, API, sviluppo, sicurezza e limiti.
+- [x] Includere esclusivamente esempi, fonti, Rule Pack e corpus sintetici.
+- [x] Aggiungere licenza Apache-2.0 e generare SBOM.
+- [x] Verificare attribuzioni e compatibilità delle licenze.
+- [x] Creare la release sperimentale `v0.1.0` senza pubblicazione npm.
 - [ ] Richiedere conferma esplicita immediatamente prima di modificare la visibilità del repository.
 
 ### Gate di fase
 
-- [ ] Tutti i gate locali e CI sono verdi da clean clone.
-- [ ] Scanner di confine, segreti, licenze e SBOM sono verdi su tutti i ref.
-- [ ] La release contiene soltanto asset sintetici e documentazione coerente.
+- [x] Tutti i gate locali e CI sono verdi da clean clone.
+- [x] Scanner di confine, segreti, licenze e SBOM sono verdi su tutti i ref.
+- [x] La release contiene soltanto asset sintetici e documentazione coerente.
 - [ ] `main` è pulita, sincronizzata e tutte le fasi risultano `[x]`.
-- [ ] `docs/verification/phase-16.md` registra la verifica finale.
+- [x] `docs/verification/phase-16.md` registra la verifica finale.
 
 ---
 

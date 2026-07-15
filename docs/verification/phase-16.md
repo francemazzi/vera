@@ -1,6 +1,6 @@
 # Verifica Fase 16 — Apertura e release
 
-Data verifica: 2026-07-15T19:45:40+02:00
+Data verifica: 2026-07-15T20:08:57+02:00
 
 ## Ambito implementato
 
@@ -65,7 +65,7 @@ Risultati:
   testuali.
 - Licenze produzione: 359 righe inventario, nessun match `GPL`, `AGPL` o `LGPL`.
 - `git diff --check`: nessun errore.
-- Gitleaks `v8.28.0`: 22 commit scansionati, nessun leak rilevato.
+- Gitleaks `v8.28.0`: cronologia raggiungibile scansionata, nessun leak rilevato.
 - Nessun file tracciato in `datasets/`, `reports/private/` o `.vera-private/`.
 - Nessun percorso privato rilevato nella cronologia raggiungibile.
 - Ref raggiungibili verificate:
@@ -73,11 +73,56 @@ Risultati:
   - `refs/remotes/origin/main`
   - branch remoti Dependabot per aggiornamenti automatici.
 
-## Passi finali ancora richiesti
+## GitHub Actions
 
-- Eseguire verifica da clean clone dopo il commit della Fase 16.
-- Attendere GitHub Actions dopo il push su `main`.
-- Creare la release sperimentale `v0.1.0` senza pubblicazione npm.
+- Workflow richiesti prima della release: `CI` e `Security`.
+- Entrambi i workflow devono risultare verdi sul commit pubblicato prima di creare il tag `v0.1.0`.
+- Il push di preparazione Fase 16 `099c32c0e3aeac9313cda1eebe96b78b119e8608` ha superato `CI` run
+  `29437948922` e `Security` run `29437948874`.
+
+## Clean clone
+
+Comandi eseguiti:
+
+```bash
+rm -rf /tmp/vera-clean-phase16
+git clone https://github.com/francemazzi/vera.git /tmp/vera-clean-phase16
+git -C /tmp/vera-clean-phase16 rev-parse HEAD
+NODE22_BIN="$(dirname "$(npx -y -p node@22.22.1 which node)")"
+PATH="$NODE22_BIN:$PATH" pnpm install --frozen-lockfile
+PATH="$NODE22_BIN:$PATH" pnpm verify
+PATH="$NODE22_BIN:$PATH" pnpm security:check
+PATH="$NODE22_BIN:$PATH" \
+  VERA_BOUNDARY_SCOPES=working,index,history pnpm --filter @vera/public-boundary scan
+PATH="$NODE22_BIN:$PATH" pnpm licenses list --prod > /tmp/vera-clean-licenses.txt
+rg "GPL|AGPL|LGPL" /tmp/vera-clean-licenses.txt || true
+git status --short --branch
+```
+
+Risultati:
+
+- Clean clone da `origin/main` del commit di verifica.
+- Runtime usato per il gate clean clone: Node `22.22.1`, pnpm `10.33.0`.
+- `pnpm verify`: superato.
+- `pnpm security:check`: superato su 597 pacchetti, nessuna issue rilevata.
+- Scansione confine pubblico clean clone: superata con 949 snapshot testuali dopo build e coverage.
+- Licenze produzione clean clone: 359 righe inventario, nessun match `GPL`, `AGPL` o `LGPL`.
+- Stato Git clean clone: `main...origin/main`, nessuna modifica tracciata.
+
+La prima esecuzione locale del clean clone con Node `24.3.0` non è stata considerata valida: pnpm ha
+emesso warning `Unsupported engine` e ha contaminato l’output stdout di un contract test CLI. La
+riesecuzione con Node `22.22.1` corrisponde ai file `.node-version` e `.nvmrc`.
+
+## Release
+
+- Release prevista: `v0.1.0`.
+- Stato: release sperimentale tecnica, senza pubblicazione npm.
+- Asset pubblicabili: sorgenti, documentazione, SBOM ed esempi sintetici inclusi nel repository.
+- Vincolo operativo: la release viene creata soltanto da un commit con gate locali, clean clone e
+  GitHub Actions verdi.
+
+## Passo finale ancora richiesto
+
 - Richiedere conferma esplicita prima di modificare la visibilità del repository.
 
 ## Limiti
