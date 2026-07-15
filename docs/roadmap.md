@@ -41,7 +41,7 @@ sicurezza a posteriori.
 |     13 |   14 | API, persistenza e sicurezza  | `[x]` |
 |     14 |   11 | RAG e ingestione              | `[x]` |
 |     15 |   12 | UI di revisione               | `[x]` |
-|     16 |   15 | MVP dimostrativo sintetico    | `[ ]` |
+|     16 |   15 | MVP dimostrativo sintetico    | `[x]` |
 |     17 |   16 | Apertura e release            | `[ ]` |
 
 ## Invarianti trasversali
@@ -409,26 +409,26 @@ tramite API o UI.
 
 ---
 
-## [ ] Fase 15 — MVP dimostrativo sintetico
+## [x] Fase 15 — MVP dimostrativo sintetico
 
 **Obiettivo:** dimostrare l’intero percorso tecnico senza dipendere da scenari o materiali
 riservati.
 
-- [ ] Definire fonti e Rule Pack interamente sintetici e neutrali.
-- [ ] Eseguire ingestione, estrazione, valutazione, revisione, audit ed export end-to-end.
-- [ ] Usare il corpus sintetico congelato della Fase 9.
-- [ ] Consentire al massimo due cicli di tuning sul solo split development.
-- [ ] Non modificare calibration o blind in seguito all’osservazione dei risultati finali.
-- [ ] Misurare metriche, intervalli, latenza, errori tecnici e review rate.
-- [ ] Produrre model card e report di limiti per ogni configurazione eseguita.
-- [ ] Dichiarare in UI ed export che la validazione è esclusivamente tecnica.
+- [x] Definire fonti e Rule Pack interamente sintetici e neutrali.
+- [x] Eseguire ingestione, estrazione, valutazione, revisione, audit ed export end-to-end.
+- [x] Usare il corpus sintetico congelato della Fase 9.
+- [x] Consentire al massimo due cicli di tuning sul solo split development.
+- [x] Non modificare calibration o blind in seguito all’osservazione dei risultati finali.
+- [x] Misurare metriche, intervalli, latenza, errori tecnici e review rate.
+- [x] Produrre model card e report di limiti per ogni configurazione eseguita.
+- [x] Dichiarare in UI ed export che la validazione è esclusivamente tecnica.
 
 ### Gate di fase
 
-- [ ] Playwright completa il percorso end-to-end con asset sintetici.
-- [ ] Il report è riproducibile da seed, hash, snapshot e digest registrati.
-- [ ] Nessun claim estende i risultati oltre il corpus dimostrativo.
-- [ ] `docs/verification/phase-15.md` registra i risultati.
+- [x] Playwright completa il percorso end-to-end con asset sintetici.
+- [x] Il report è riproducibile da seed, hash, snapshot e digest registrati.
+- [x] Nessun claim estende i risultati oltre il corpus dimostrativo.
+- [x] `docs/verification/phase-15.md` registra i risultati.
 
 ---
 

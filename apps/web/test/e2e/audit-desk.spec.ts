@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
+import { runDemoMvp } from "@vera/demo-mvp";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -19,6 +20,23 @@ test("login, queue, evidence and export blocking", async ({ page }) => {
   await page.getByRole("button", { name: "Salva decisione" }).click();
   await expect(page.getByText("revisionato").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Esporta audit" })).toBeDisabled();
+});
+
+test("synthetic MVP end-to-end report completes the review desk workflow", async ({ page }) => {
+  const { report } = await runDemoMvp();
+  expect(report.evaluation.matchedExpectedCases).toBe(report.corpus.caseCount);
+  expect(report.audit.exportedRuns).toBe(report.corpus.caseCount);
+  expect(report.rulePack.testGatePassed).toBe(true);
+  expect(report.disclaimer).toContain("Synthetic technical demonstration only");
+
+  await page.getByRole("button", { name: "Entra come REVIEWER" }).click();
+  await expect(page.getByRole("button", { name: "Esporta audit" })).toBeDisabled();
+
+  await page.getByRole("button", { name: "Salva decisione" }).click();
+  await page.getByRole("button", { name: /Synthetic JSON facts/ }).click();
+  await page.getByRole("button", { name: "Salva decisione" }).click();
+
+  await expect(page.getByRole("button", { name: "Esporta audit" })).toBeEnabled();
 });
 
 test("critical override requires rationale", async ({ page }) => {

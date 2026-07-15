@@ -155,7 +155,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |     13 |   14 | API, persistenza e sicurezza    | `[x]` |
 |     14 |   11 | RAG e ingestione                | `[x]` |
 |     15 |   12 | UI di revisione                 | `[x]` |
-|     16 |   15 | MVP dimostrativo sintetico      | `[ ]` |
+|     16 |   15 | MVP dimostrativo sintetico      | `[x]` |
 |     17 |   16 | Apertura e release sperimentale | `[ ]` |
 
 L’ordine intenzionale porta audit e persistenza prima di RAG e UI, così queste funzionalità nascono
@@ -184,6 +184,7 @@ già sopra contratti stabili e tracciabili.
 - [API, persistenza e sicurezza locale](docs/api-storage.md)
 - [RAG e ingestione editoriale](docs/rag.md)
 - [UI di revisione](docs/ui-review.md)
+- [MVP dimostrativo sintetico](docs/demo-mvp.md)
 - Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza
