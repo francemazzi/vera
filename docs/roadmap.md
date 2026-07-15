@@ -31,7 +31,7 @@ sicurezza a posteriori.
 |      3 |    2 | Fonti di conformità           | `[x]` |
 |      4 |    3 | Rule Card                     | `[x]` |
 |      5 |    4 | Facts, evidenze ed estrattori | `[x]` |
-|      6 |    5 | DSL dichiarativa              | `[ ]` |
+|      6 |    5 | DSL dichiarativa              | `[x]` |
 |      7 |    6 | Kernel deterministico         | `[ ]` |
 |      8 |    7 | Rule Pack e versionamento     | `[ ]` |
 |      9 |    8 | Test runner e version diff    | `[ ]` |
@@ -180,25 +180,25 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 5 — DSL dichiarativa
+## [x] Fase 5 — DSL dichiarativa
 
 **Obiettivo:** esprimere regole con un AST JSON validabile, limitato e privo di codice arbitrario.
 
-- [ ] Definire un AST discriminato e generare JSON Schema dagli schemi Zod.
-- [ ] Implementare `present`, `eq`, `not_eq`, `contains`, `contains_any` e `matches`.
-- [ ] Implementare `greater_than`, `less_than`, `between` e operatori temporali.
-- [ ] Implementare `all`, `any`, `not`, `language_present` e `same_visual_area`.
-- [ ] Separare `appliesWhen` da `satisfiedWhen`.
-- [ ] Implementare eccezioni, override e `unknownPolicy=REVIEW`.
-- [ ] Definire confronti numerici, Unicode, date e aree visuali senza coercizioni ambigue.
-- [ ] Usare regex RE2-compatible con limiti di dimensione, profondità e complessità.
-- [ ] Vietare `eval`, codice arbitrario, SQL e rete.
+- [x] Definire un AST discriminato e generare JSON Schema dagli schemi Zod.
+- [x] Implementare `truth`, `present`, `eq`, `not_eq`, `contains`, `contains_any` e `matches`.
+- [x] Implementare `greater_than`, `less_than`, `between` e operatori temporali.
+- [x] Implementare `all`, `any`, `not`, `language_present` e `same_visual_area`.
+- [x] Separare `appliesWhen` da `satisfiedWhen`.
+- [x] Implementare eccezioni, override e `unknownPolicy=REVIEW`.
+- [x] Definire confronti numerici, Unicode, date e aree visuali senza coercizioni ambigue.
+- [x] Usare regex RE2-compatible con limiti di dimensione, profondità e complessità.
+- [x] Vietare `eval`, codice arbitrario, SQL e rete.
 
 ### Gate di fase
 
-- [ ] Ogni operatore ha casi `TRUE`, `FALSE`, `UNKNOWN`, schema invalido e input avverso.
-- [ ] I rami degli operatori e delle invarianti critiche hanno copertura completa.
-- [ ] `docs/verification/phase-5.md` registra i risultati.
+- [x] Ogni operatore ha casi `TRUE`, `FALSE`, `UNKNOWN`, schema invalido e input avverso.
+- [x] I rami degli operatori e delle invarianti critiche hanno copertura completa.
+- [x] `docs/verification/phase-5.md` registra i risultati.
 
 ---
 

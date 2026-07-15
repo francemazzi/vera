@@ -5,6 +5,7 @@ import {
   ComplianceSourceVersionSchema,
   UtcDateTimeSchema,
   canPerformComplianceSourceTransition,
+  compareUtcDateTimes,
   isWithinValidityInterval,
 } from "@vera/contracts";
 import type {
@@ -228,7 +229,7 @@ export class InMemoryComplianceSourceRepository {
     }
 
     const previousTimestamp = last?.at ?? version.createdAt;
-    if (Date.parse(validEvent.at) < Date.parse(previousTimestamp)) {
+    if (compareUtcDateTimes(validEvent.at, previousTimestamp) < 0) {
       throw new ComplianceSourceInvariantError(
         "TRANSITION_TIME_NOT_MONOTONIC",
         "Transition event timestamp cannot precede the version or prior event timestamp",
@@ -314,7 +315,7 @@ export class InMemoryComplianceSourceRepository {
     let state: ComplianceSourceState | null = null;
 
     for (const event of history) {
-      if (Date.parse(event.at) > Date.parse(parsedAt.data)) break;
+      if (compareUtcDateTimes(event.at, parsedAt.data) > 0) break;
       state = event.to;
     }
 

@@ -19,10 +19,12 @@
     "test:contract": "vitest run test/contract"
   },
   "dependencies": {
+    "re2js": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "ajv": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

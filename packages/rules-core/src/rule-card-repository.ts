@@ -7,8 +7,10 @@ import {
   RuleCardRevisionSchema,
   RuleCardSchema,
   RuleCardTransitionEventSchema,
+  compareUtcDateTimes,
   effectiveRisk,
   isWithinValidityInterval,
+  validityIntervalsOverlap,
 } from "@vera/contracts";
 import type {
   Actor,
@@ -79,16 +81,6 @@ export interface RuleCardHistory {
 
 function clone<T>(value: T): T {
   return structuredClone(value);
-}
-
-function intervalsOverlap(
-  left: RuleCardRevision["validity"],
-  right: ComplianceSourceVersion["validity"],
-): boolean {
-  const start = Math.max(Date.parse(left.validFrom), Date.parse(right.validFrom));
-  const leftEnd = left.validTo === null ? Number.POSITIVE_INFINITY : Date.parse(left.validTo);
-  const rightEnd = right.validTo === null ? Number.POSITIVE_INFINITY : Date.parse(right.validTo);
-  return start < Math.min(leftEnd, rightEnd);
 }
 
 function approvalRequirement(revision: RuleCardRevision): 1 | 2 {
@@ -226,7 +218,7 @@ export class InMemoryRuleCardRepository {
       const predecessorAt = predecessorAudit.at(-1)?.record.at;
       if (
         predecessorAt !== undefined &&
-        Date.parse(validRevision.createdAt) < Date.parse(predecessorAt)
+        compareUtcDateTimes(validRevision.createdAt, predecessorAt) < 0
       ) {
         throw new RuleCardInvariantError(
           "AUDIT_TIME_NOT_MONOTONIC",
@@ -252,7 +244,7 @@ export class InMemoryRuleCardRepository {
       validEvent.actorId !== validActor.id ||
       validEvent.exercisedRole !== validActor.role ||
       validEvent.revisionContentHash !== validRevision.contentHash ||
-      Date.parse(validEvent.at) < Date.parse(validRevision.createdAt)
+      compareUtcDateTimes(validEvent.at, validRevision.createdAt) < 0
     ) {
       throw new RuleCardInvariantError(
         "RULE_CARD_TRANSITION_NOT_AUTHORIZED",
@@ -577,7 +569,7 @@ export class InMemoryRuleCardRepository {
       .at(approvalRequirement(revision) - 1);
     if (
       approval?.kind !== "APPROVAL" ||
-      Date.parse(validRequest.generationAt) < Date.parse(approval.record.at)
+      compareUtcDateTimes(validRequest.generationAt, approval.record.at) < 0
     ) {
       throw new RuleCardEligibilityError(
         "RULE_CARD_REVISION_NOT_APPROVED",
@@ -667,7 +659,7 @@ export class InMemoryRuleCardRepository {
         { revisionId: revision.id },
       );
     }
-    if (Date.parse(record.at) < Date.parse(previousAt)) {
+    if (compareUtcDateTimes(record.at, previousAt) < 0) {
       throw new RuleCardInvariantError(
         "AUDIT_TIME_NOT_MONOTONIC",
         "Rule Card audit timestamps must be monotonic",
@@ -739,7 +731,7 @@ export class InMemoryRuleCardRepository {
         { revisionId: revision.id, sourceVersionId: sourceVersion.id },
       );
     }
-    if (!intervalsOverlap(revision.validity, sourceVersion.validity)) {
+    if (!validityIntervalsOverlap(revision.validity, sourceVersion.validity)) {
       throw new RuleCardInvariantError(
         "SOURCE_VERSION_MISMATCH",
         "Rule Card and source validity intervals do not overlap",

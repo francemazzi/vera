@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { canonicalizeJson, type JsonValue } from "./hash.js";
-import { UtcDateTimeSchema } from "./time.js";
+import { snapshotJsonValue } from "./json-snapshot.js";
+import { UtcDateTimeSchema, compareUtcDateTimes } from "./time.js";
 import { ValidationScopeSchema } from "./vocabulary.js";
 
 const Sha256DigestSchema = z
@@ -31,7 +32,7 @@ const CanonicalBase64Schema = z
 const MAX_RESULT_ITEMS = 10_000;
 const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 50_000;
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u;
+export const MAX_EVALUABLE_TEXT_CODE_UNITS = 100_000;
 
 function canonicalizeJsonSafely(value: unknown): string | null {
   try {
@@ -41,64 +42,31 @@ function canonicalizeJsonSafely(value: unknown): string | null {
   }
 }
 
-function isBoundedJsonValue(value: unknown): value is JsonValue {
-  const stack: Array<{ readonly depth: number; readonly value: unknown }> = [{ depth: 0, value }];
-  const seen = new WeakSet<object>();
-  let nodes = 0;
-
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (current === undefined) break;
-    nodes += 1;
-    if (nodes > MAX_JSON_NODES || current.depth > MAX_JSON_DEPTH) return false;
-
-    const item = current.value;
-    if (item === null || typeof item === "boolean") continue;
-    if (typeof item === "string") {
-      if (LONE_SURROGATE.test(item)) return false;
-      continue;
-    }
-    if (typeof item === "number") {
-      if (!Number.isFinite(item)) return false;
-      continue;
-    }
-    if (typeof item !== "object" || seen.has(item)) return false;
-    seen.add(item);
-
-    if (Object.getOwnPropertySymbols(item).length > 0) return false;
-    if (Array.isArray(item)) {
-      if (item.length > MAX_JSON_NODES) return false;
-      for (let index = 0; index < item.length; index += 1) {
-        const descriptor = Object.getOwnPropertyDescriptor(item, index);
-        if (descriptor === undefined || !("value" in descriptor)) return false;
-        stack.push({ depth: current.depth + 1, value: descriptor.value });
-      }
-      continue;
-    }
-
-    const prototype = Object.getPrototypeOf(item) as object | null;
-    if (prototype !== Object.prototype && prototype !== null) return false;
-    const keys = Object.keys(item);
-    if (keys.length > MAX_JSON_NODES) return false;
-    for (const key of keys) {
-      if (LONE_SURROGATE.test(key)) return false;
-      const descriptor = Object.getOwnPropertyDescriptor(item, key);
-      if (descriptor === undefined || !("value" in descriptor)) return false;
-      stack.push({ depth: current.depth + 1, value: descriptor.value });
-    }
-  }
-  return true;
+class InvalidJsonSnapshot {
+  public constructor(public readonly issue: string) {}
 }
 
-const JsonValueRuntimeSchema = z.unknown().superRefine((value, context) => {
-  if (!isBoundedJsonValue(value) || canonicalizeJsonSafely(value) === null) {
-    context.addIssue({
-      code: "custom",
-      message: "JSON values must be bounded and deterministically canonicalizable",
-      path: [],
+const JsonValueRuntimeSchema = z
+  .unknown()
+  .overwrite((value) => {
+    const result = snapshotJsonValue(value, {
+      maxDepth: MAX_JSON_DEPTH,
+      maxNodes: MAX_JSON_NODES,
+      maxCanonicalBytes: null,
+      rejectNegativeZero: true,
+      rejectUnsafeIntegers: true,
     });
-  }
-});
+    return result.success ? result.value : new InvalidJsonSnapshot(result.issue);
+  })
+  .superRefine((value, context) => {
+    if (value instanceof InvalidJsonSnapshot) {
+      context.addIssue({
+        code: "custom",
+        message: `JSON values must be bounded and deterministically canonicalizable: ${value.issue}`,
+        path: [],
+      });
+    }
+  });
 
 export const JsonValueSchema = JsonValueRuntimeSchema as z.ZodType<JsonValue>;
 
@@ -171,9 +139,14 @@ function matchesValueType(valueType: FactValueType, value: JsonValue): boolean {
   if (value === null) return false;
   switch (valueType) {
     case "STRING":
-      return typeof value === "string";
+      return typeof value === "string" && value.length <= MAX_EVALUABLE_TEXT_CODE_UNITS;
     case "NUMBER":
-      return typeof value === "number" && Number.isFinite(value);
+      return (
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        !Object.is(value, -0) &&
+        (!Number.isInteger(value) || Number.isSafeInteger(value))
+      );
     case "BOOLEAN":
       return typeof value === "boolean";
     case "DATE":
@@ -384,7 +357,7 @@ export const ExtractorRunSchema = z
   })
   .strict()
   .superRefine(({ kind, startedAt, completedAt, model, prompt, rawOutput }, context) => {
-    if (Date.parse(completedAt) < Date.parse(startedAt)) {
+    if (compareUtcDateTimes(completedAt, startedAt) < 0) {
       context.addIssue({
         code: "custom",
         message: "completedAt cannot precede startedAt",

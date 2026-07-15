@@ -34,6 +34,7 @@ export {
   FactStatusSchema,
   FactValueTypeSchema,
   JsonValueSchema,
+  MAX_EVALUABLE_TEXT_CODE_UNITS,
   NormalizedBoundingBoxSchema,
   NotFoundFactSchema,
   NotReadableFactSchema,
@@ -66,6 +67,48 @@ export type {
   NormalizedBoundingBox,
   ResolvedFact,
 } from "./extraction.js";
+export {
+  CaseSensitivitySchema,
+  ComparableExpectedValueSchema,
+  DSL_LIMITS,
+  DSL_VERSION,
+  DslExpressionSchema,
+  DslOperatorSchema,
+  LanguageMatchModeSchema,
+  RULE_DEFINITION_JSON_SCHEMA_HASH,
+  RegexMatchModeSchema,
+  RuleDefinitionHashInputSchema,
+  RuleDefinitionBindingSchema,
+  RuleDefinitionJsonSchema,
+  RuleDefinitionSchema,
+  RuleEvidenceBindingSchema,
+  RuleExceptionDefinitionSchema,
+  RuleOverrideDefinitionSchema,
+  TextComparisonSchema,
+  UnicodeNormalizationSchema,
+  VisualAreaQuantifierSchema,
+  WhitespaceHandlingSchema,
+  computeRuleDefinitionHash,
+  verifyRuleDefinitionHash,
+} from "./dsl.js";
+export type {
+  ComparableExpectedValue,
+  CaseSensitivity,
+  DslExpression,
+  DslOperator,
+  LanguageMatchMode,
+  RegexMatchMode,
+  RuleDefinition,
+  RuleDefinitionBinding,
+  RuleDefinitionHashInput,
+  RuleEvidenceBinding,
+  RuleExceptionDefinition,
+  RuleOverrideDefinition,
+  TextComparison,
+  UnicodeNormalization,
+  VisualAreaQuantifier,
+  WhitespaceHandling,
+} from "./dsl.js";
 export { canonicalizeJson, sha256Bytes, sha256CanonicalJson } from "./hash.js";
 export type { JsonPrimitive, JsonValue } from "./hash.js";
 export {
@@ -110,8 +153,14 @@ export type {
   RuleCardRevision,
   RuleCardTransitionEvent,
 } from "./rule-card.js";
-export { isWithinValidityInterval, UtcDateTimeSchema, ValidityIntervalSchema } from "./time.js";
-export type { UtcDateTime, ValidityInterval } from "./time.js";
+export {
+  compareUtcDateTimes,
+  isWithinValidityInterval,
+  UtcDateTimeSchema,
+  ValidityIntervalSchema,
+  validityIntervalsOverlap,
+} from "./time.js";
+export type { UtcDateTime, UtcDateTimeComparison, ValidityInterval } from "./time.js";
 export {
   ActorRoleSchema,
   ComplianceSourceStateSchema,

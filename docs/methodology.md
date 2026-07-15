@@ -109,10 +109,11 @@ l'hash candidato differisce da quello approvato.
 Ogni espressione DSL restituisce esattamente `TRUE`, `FALSE` o `UNKNOWN`. `UNKNOWN` non equivale a
 `FALSE` e non può essere convertito implicitamente in un booleano.
 
-Un operatore che richiede un fact restituisce `UNKNOWN` quando il fact è assente, `NULL`,
+Un operatore che richiede un valore restituisce `UNKNOWN` quando il fact è assente, `NULL`,
 `NOT_FOUND`, `NOT_READABLE`, `CONFLICT`, non valido per tipo oppure privo dell'evidenza richiesta.
-Un fact manuale deve avere un'evidenza di attestazione; il solo inserimento di un valore non è
-sufficiente.
+L'unica eccezione è `present`: un'osservazione `NOT_FOUND` supportata da evidenza produce `FALSE`;
+senza evidenza resta `UNKNOWN`. Un fact manuale deve avere un'evidenza di attestazione; il solo
+inserimento di un valore non è sufficiente.
 
 ### 3.1 Operatori logici
 
@@ -264,10 +265,12 @@ esportabile rimane `REVIEW_REQUIRED` fino a decisione umana.
 
 ## 7. Tempo e validità
 
-Tutti gli istanti pubblici sono stringhe RFC 3339 già canonicalizzate in UTC con suffisso `Z` e sono
-confrontati come istanti, non come testo. Date locali, timestamp non validi e offset equivalenti ma
-non canonicalizzati devono essere rifiutati al confine; un adapter può normalizzarli prima della
-validazione del contratto pubblico.
+Tutti gli istanti pubblici sono stringhe RFC 3339 validate in UTC con suffisso `Z` e sono
+confrontati come istanti, non come testo. Date locali, timestamp non validi e offset equivalenti
+devono essere rifiutati al confine; un adapter può normalizzarli prima della validazione del
+contratto pubblico. Il confronto DEVE conservare tutte le cifre dei secondi frazionari senza
+troncarle ai millisecondi; frazioni che differiscono soltanto per zeri finali rappresentano lo
+stesso istante.
 
 Ogni intervallo è semiaperto:
 

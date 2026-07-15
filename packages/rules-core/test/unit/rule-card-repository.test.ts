@@ -359,6 +359,53 @@ describe("InMemoryRuleCardRepository cards and revisions", () => {
     ).toEqual(revision);
   });
 
+  it("accepts source and Rule Card validity overlap below millisecond precision", () => {
+    const source = makeSourceReader();
+    source.setVersion(
+      makeVersion({
+        validity: {
+          validFrom: "2026-01-01T00:00:00.0001Z",
+          validTo: "2026-01-01T00:00:00.0003Z",
+        },
+      }),
+    );
+    const repository = new InMemoryRuleCardRepository(source.reader);
+    repository.addCard(makeRuleCard());
+    const revision = makeRuleCardRevision({
+      validity: {
+        validFrom: "2026-01-01T00:00:00.0002Z",
+        validTo: "2026-01-01T00:00:00.0004Z",
+      },
+    });
+
+    expect(
+      repository.appendRevision(
+        revision,
+        makeRuleCardTransition(revision),
+        RULE_CARD_ACTORS.author,
+        0,
+      ),
+    ).toEqual(revision);
+  });
+
+  it("rejects a creation event that predates its revision within one millisecond", () => {
+    const source = makeSourceReader();
+    const repository = new InMemoryRuleCardRepository(source.reader);
+    repository.addCard(makeRuleCard());
+    const revision = makeRuleCardRevision({
+      createdAt: "2026-02-01T00:00:00.0002Z",
+    });
+
+    expect(() =>
+      repository.appendRevision(
+        revision,
+        makeRuleCardTransition(revision, { at: "2026-02-01T00:00:00.0001Z" }),
+        RULE_CARD_ACTORS.author,
+        0,
+      ),
+    ).toThrow(expect.objectContaining({ code: "RULE_CARD_TRANSITION_NOT_AUTHORIZED" }));
+  });
+
   it.each([
     [RULE_CARD_ACTORS.reviewerAsAuthor, {}, "wrong author identity"],
     [RULE_CARD_ACTORS.author, { revisionContentHash: RULE_CARD_HASHES.otherRevision }, "hash"],
@@ -502,6 +549,27 @@ describe("InMemoryRuleCardRepository unified audit", () => {
         { sequence: 1 },
       ),
     ).toThrow(expect.objectContaining({ code: "DECISION_NOT_AUTHORIZED" }));
+  });
+
+  it("rejects audit time regression below millisecond precision", () => {
+    const source = makeSourceReader();
+    const repository = new InMemoryRuleCardRepository(source.reader);
+    repository.addCard(makeRuleCard());
+    const revision = makeRuleCardRevision();
+    repository.appendRevision(
+      revision,
+      makeRuleCardTransition(revision, { at: "2026-02-01T00:01:00.0002Z" }),
+      RULE_CARD_ACTORS.author,
+      0,
+    );
+
+    expect(() =>
+      repository.appendComment(
+        makeRuleCardComment(revision, { at: "2026-02-01T00:01:00.0001Z" }),
+        RULE_CARD_ACTORS.author,
+        { sequence: 1 },
+      ),
+    ).toThrow(expect.objectContaining({ code: "AUDIT_TIME_NOT_MONOTONIC" }));
   });
 });
 

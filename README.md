@@ -144,7 +144,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |      3 |    2 | Fonti di conformità             | `[x]` |
 |      4 |    3 | Rule Card                       | `[x]` |
 |      5 |    4 | Facts, evidenze ed estrattori   | `[x]` |
-|      6 |    5 | DSL dichiarativa                | `[ ]` |
+|      6 |    5 | DSL dichiarativa                | `[x]` |
 |      7 |    6 | Kernel deterministico           | `[ ]` |
 |      8 |    7 | Rule Pack e versionamento       | `[ ]` |
 |      9 |    8 | Test runner e version diff      | `[ ]` |
@@ -173,6 +173,7 @@ già sopra contratti stabili e tracciabili.
 
 - [Roadmap completa](docs/roadmap.md)
 - [Metodologia normativa](docs/methodology.md)
+- [DSL dichiarativa](docs/dsl.md)
 - Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza

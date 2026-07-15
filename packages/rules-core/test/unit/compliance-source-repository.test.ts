@@ -411,6 +411,30 @@ describe("InMemoryComplianceSourceRepository transitions", () => {
     }).toThrow(expect.objectContaining({ code: "TRANSITION_TIME_NOT_MONOTONIC" }));
   });
 
+  it("orders transition history exactly below millisecond precision", () => {
+    const repository = repositoryWithVersion();
+    repository.appendTransition(
+      makeEvent({ at: "2026-01-01T00:00:00.0001Z" }),
+      { actor: ACTORS.author },
+      { sequence: 0, state: null },
+    );
+    review(repository, "2026-01-01T00:00:00.0002Z");
+
+    expect(repository.getVersionStateAt(IDS.versionA1, "2026-01-01T00:00:00.00015Z")).toBe(
+      "UPLOADED",
+    );
+
+    const regressive = repositoryWithVersion();
+    regressive.appendTransition(
+      makeEvent({ at: "2026-01-01T00:00:00.0002Z" }),
+      { actor: ACTORS.author },
+      { sequence: 0, state: null },
+    );
+    expect(() => {
+      review(regressive, "2026-01-01T00:00:00.0001Z");
+    }).toThrow(expect.objectContaining({ code: "TRANSITION_TIME_NOT_MONOTONIC" }));
+  });
+
   it("orders equal event timestamps by sequence", () => {
     const repository = repositoryWithVersion();
     upload(repository);

@@ -16,6 +16,7 @@ import {
   FactObservationSchema,
   FactSchema,
   JsonExtractionInputSchema,
+  MAX_EVALUABLE_TEXT_CODE_UNITS,
   ManualExtractionInputSchema,
   NormalizedBoundingBoxSchema,
   OllamaEmbeddingExtractionInputSchema,
@@ -537,6 +538,15 @@ describe("ExtractionInputSchema", () => {
     ).toBe(false);
   });
 
+  it.each([-0, Number.MAX_SAFE_INTEGER + 1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects a non-canonical JSON number %s at the extraction boundary",
+    (value) => {
+      expect(JsonExtractionInputSchema.safeParse({ ...makeInput("JSON"), value }).success).toBe(
+        false,
+      );
+    },
+  );
+
   it("rejects deeply nested JSON without overflowing safeParse", () => {
     let value: unknown = "leaf";
     for (let depth = 0; depth < 10_000; depth += 1) value = { nested: value };
@@ -687,6 +697,17 @@ describe("FactSchema resolved facts", () => {
     );
   });
 
+  it("rejects resolved text that the deterministic evaluator cannot consume", () => {
+    expect(
+      FactSchema.safeParse(
+        makeResolvedFact({
+          valueType: "STRING",
+          normalizedValue: "x".repeat(MAX_EVALUABLE_TEXT_CODE_UNITS + 1),
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
   it.each([
     { originalValue: null },
     { evidenceIds: [] },
@@ -804,6 +825,25 @@ describe("ExtractorRunSchema", () => {
     expect(ExtractorRunSchema.safeParse(makeRun({ rawOutput: '{"synthetic":true}' })).success).toBe(
       true,
     );
+  });
+
+  it("orders run timestamps exactly below millisecond precision", () => {
+    expect(
+      ExtractorRunSchema.safeParse(
+        makeRun({
+          startedAt: "2026-04-01T00:00:00.0002Z",
+          completedAt: "2026-04-01T00:00:00.0001Z",
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      ExtractorRunSchema.safeParse(
+        makeRun({
+          startedAt: "2026-04-01T00:00:00.0001Z",
+          completedAt: "2026-04-01T00:00:00.0002Z",
+        }),
+      ).success,
+    ).toBe(true);
   });
 
   it.each([{ model: null }, { rawOutput: null }, { prompt: null }])(
