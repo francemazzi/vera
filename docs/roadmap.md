@@ -37,7 +37,7 @@ sicurezza a posteriori.
 |      9 |    8 | Test runner e version diff    | `[x]` |
 |     10 |    9 | Benchmark sintetico           | `[x]` |
 |     11 |   10 | Calibrazione e astensione     | `[x]` |
-|     12 |   13 | Provenienza e audit           | `[ ]` |
+|     12 |   13 | Provenienza e audit           | `[x]` |
 |     13 |   14 | API, persistenza e sicurezza  | `[ ]` |
 |     14 |   11 | RAG e ingestione              | `[ ]` |
 |     15 |   12 | UI di revisione               | `[ ]` |
@@ -317,24 +317,24 @@ grezze in garanzie.
 
 ---
 
-## [ ] Fase 13 — Provenienza e audit
+## [x] Fase 13 — Provenienza e audit
 
 **Obiettivo:** rendere ogni valutazione immutabile, esportabile e riproducibile prima di esporla
 tramite API o UI.
 
-- [ ] Implementare `EvaluationRun` immutabile secondo Entity–Activity–Agent.
-- [ ] Registrare hash di input, prompt, provider, facts, evidenze, snapshot, findings e trace.
-- [ ] Registrare decisioni umane e motivazioni come eventi append-only.
-- [ ] Collegare ogni attività a identità, ruolo e timestamp.
-- [ ] Canonicalizzare l’export JSON e calcolarne l’hash.
-- [ ] Implementare una catena verificabile per rilevare manomissioni.
-- [ ] Implementare replay storico senza accedere a versioni correnti mutate.
+- [x] Implementare `EvaluationRun` immutabile secondo Entity–Activity–Agent.
+- [x] Registrare hash di input, prompt, provider, facts, evidenze, snapshot, findings e trace.
+- [x] Registrare decisioni umane e motivazioni come eventi append-only.
+- [x] Collegare ogni attività a identità, ruolo e timestamp.
+- [x] Canonicalizzare l’export JSON e calcolarne l’hash.
+- [x] Implementare una catena verificabile per rilevare manomissioni.
+- [x] Implementare replay storico senza accedere a versioni correnti mutate.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono canonicalizzazione e catena hash.
-- [ ] Test d’integrazione coprono tampering, export/import, replay e tentativi di mutazione.
-- [ ] `docs/verification/phase-13.md` registra i risultati.
+- [x] Test unitari coprono canonicalizzazione e catena hash.
+- [x] Test d’integrazione coprono tampering, export/import, replay e tentativi di mutazione.
+- [x] `docs/verification/phase-13.md` registra i risultati.
 
 ---
 

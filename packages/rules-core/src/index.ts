@@ -117,4 +117,16 @@ export {
   evaluateRule,
 } from "./dsl-evaluator.js";
 export { evaluateResolvedRulePack, evaluateRulePackVersion } from "./rule-pack-evaluator.js";
+export {
+  EvaluationAuditLedgerError,
+  InMemoryEvaluationAuditLedger,
+  buildEvaluationRun,
+  buildReviewDecision,
+  replayEvaluationAuditExport,
+} from "./evaluation-audit-ledger.js";
+export type {
+  BuildEvaluationRunInput,
+  BuildReviewDecisionInput,
+  EvaluationReplayResult,
+} from "./evaluation-audit-ledger.js";
 export { resolveRuleFindings } from "./rule-resolution.js";
