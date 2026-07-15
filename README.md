@@ -51,8 +51,9 @@ flowchart LR
   K --> O --> H --> A
 ```
 
-Gli adapter producono soltanto facts ed evidenze. Il kernel riceve input JSON, seleziona un Rule
-Pack valido e produce findings senza dipendere da AI, storage o UI.
+Gli adapter producono soltanto facts ed evidenze. Il resolver seleziona il Rule Pack valido per
+ambito e data; il kernel riceve il relativo snapshot JSON e produce findings senza dipendere da AI,
+storage o UI.
 
 ### Semantica essenziale
 
@@ -146,7 +147,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |      5 |    4 | Facts, evidenze ed estrattori   | `[x]` |
 |      6 |    5 | DSL dichiarativa                | `[x]` |
 |      7 |    6 | Kernel deterministico           | `[x]` |
-|      8 |    7 | Rule Pack e versionamento       | `[ ]` |
+|      8 |    7 | Rule Pack e versionamento       | `[x]` |
 |      9 |    8 | Test runner e version diff      | `[ ]` |
 |     10 |    9 | Benchmark sintetico             | `[ ]` |
 |     11 |   10 | Calibrazione e astensione       | `[ ]` |
@@ -175,6 +176,7 @@ già sopra contratti stabili e tracciabili.
 - [Metodologia normativa](docs/methodology.md)
 - [DSL dichiarativa](docs/dsl.md)
 - [Kernel deterministico](docs/kernel.md)
+- [Rule Pack e risoluzione temporale](docs/rule-packs.md)
 - Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza

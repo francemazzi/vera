@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ActorIdSchema } from "./actor.js";
 import { ValidityIntervalSchema, UtcDateTimeSchema } from "./time.js";
 import {
   ActorRoleSchema,
@@ -49,7 +50,7 @@ export const ComplianceSourceVersionSchema = z
     contentHash: Sha256DigestSchema,
     validity: ValidityIntervalSchema,
     createdAt: UtcDateTimeSchema,
-    createdBy: z.uuid(),
+    createdBy: ActorIdSchema,
     replacesVersionId: z.uuid().nullable(),
     replacementReason: z.string().trim().min(1).max(1000).nullable(),
   })
@@ -92,7 +93,7 @@ export const ComplianceSourceTransitionEventSchema = z
     sequence: z.int().min(1),
     from: ComplianceSourceStateSchema.nullable(),
     to: ComplianceSourceStateSchema,
-    actorId: z.uuid(),
+    actorId: ActorIdSchema,
     exercisedRole: ActorRoleSchema,
     at: UtcDateTimeSchema,
     contentHash: Sha256DigestSchema,

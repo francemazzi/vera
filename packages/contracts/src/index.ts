@@ -1,4 +1,4 @@
-export { ActorSchema } from "./actor.js";
+export { ActorIdSchema, ActorSchema, parseActorSnapshot } from "./actor.js";
 export type { Actor } from "./actor.js";
 export {
   ComplianceSourceEligibilityRequestSchema,
@@ -110,6 +110,7 @@ export type {
   WhitespaceHandling,
 } from "./dsl.js";
 export {
+  EVALUATION_SNAPSHOT_LIMITS,
   EVALUATION_RESULT_JSON_SCHEMA_HASH,
   EvaluationResultJsonSchema,
   EvaluationResultSchema,
@@ -129,6 +130,47 @@ export type {
   RuleFindingResolution,
   RuleOverrideTrace,
 } from "./evaluation.js";
+export {
+  ACTIVATION_EVENT_SCHEMA_VERSION,
+  ActivationEventHashInputSchema,
+  ActivationEventSchema,
+  ActivationEventTypeSchema,
+  RULE_PACK_EVALUATION_SCHEMA_VERSION,
+  RULE_PACK_LIMITS,
+  RULE_PACK_SCHEMA_VERSION,
+  ResolvedRulePackSchema,
+  RulePackDraftHashInputSchema,
+  RulePackDraftSchema,
+  RulePackEvaluationHashInputSchema,
+  RulePackEvaluationSnapshotSchema,
+  RulePackResolutionRequestSchema,
+  RulePackVersionHashInputSchema,
+  RulePackVersionSchema,
+  SemVerSchema,
+  compareSemVer,
+  computeActivationEventHash,
+  computeRulePackDraftHash,
+  computeRulePackEvaluationHash,
+  computeRulePackVersionHash,
+  verifyActivationEventHash,
+  verifyRulePackDraftHash,
+  verifyRulePackEvaluationHash,
+  verifyRulePackVersionHash,
+} from "./rule-pack.js";
+export type {
+  ActivationEvent,
+  ActivationEventHashInput,
+  ActivationEventType,
+  ResolvedRulePack,
+  RulePackDraft,
+  RulePackDraftHashInput,
+  RulePackEvaluationHashInput,
+  RulePackEvaluationSnapshot,
+  RulePackResolutionRequest,
+  RulePackVersion,
+  RulePackVersionHashInput,
+  SemVer,
+} from "./rule-pack.js";
 export { canonicalizeJson, sha256Bytes, sha256CanonicalJson } from "./hash.js";
 export type { JsonPrimitive, JsonValue } from "./hash.js";
 export {
@@ -141,6 +183,7 @@ export {
 } from "./outcome.js";
 export {
   RuleCardApprovalDecisionSchema,
+  RuleCardActivationEligibilityRequestSchema,
   RuleCardApprovalDecisionTypeSchema,
   RuleCardCommentSchema,
   RuleCardEvidenceRequirementSchema,
@@ -159,6 +202,7 @@ export {
 } from "./rule-card.js";
 export type {
   RuleCard,
+  RuleCardActivationEligibilityRequest,
   RuleCardApprovalDecision,
   RuleCardApprovalDecisionType,
   RuleCardComment,

@@ -20,7 +20,11 @@ import {
   makeSourceReader,
 } from "../fixtures/rule-card.js";
 import { HASHES, IDS, TIMES, makeSource, makeVersion } from "../fixtures/compliance-source.js";
-import type { RuleCardRevisionHashInput, RuleGenerationEligibilityRequest } from "@vera/contracts";
+import type {
+  RuleCardActivationEligibilityRequest,
+  RuleCardRevisionHashInput,
+  RuleGenerationEligibilityRequest,
+} from "@vera/contracts";
 
 interface DraftSetup {
   readonly repository: InMemoryRuleCardRepository;
@@ -1127,5 +1131,103 @@ describe("InMemoryRuleCardRepository rule generation guard", () => {
     expect(() =>
       setup.repository.assertEligibleForRuleGeneration(makeRuleGenerationRequest(setup.revision)),
     ).toThrow(expect.objectContaining({ code: "RULE_CARD_REVISION_SUPERSEDED" }));
+  });
+
+  it("keeps an exact approved revision activation-eligible after a successor is appended", () => {
+    const setup = repositoryWithDraft();
+    approveLowRisk(setup);
+    const second = makeRuleCardRevision({
+      id: RULE_CARD_IDS.revision2,
+      revision: 2,
+      createdAt: RULE_CARD_TIMES.revision2Created,
+      replacesRevisionId: RULE_CARD_IDS.revision1,
+      revisionReason: "Successor used to verify historical activation",
+    });
+    setup.repository.appendRevision(
+      second,
+      makeRuleCardTransition(second, {
+        id: RULE_CARD_IDS.audit7,
+        at: RULE_CARD_TIMES.revision2Draft,
+      }),
+      RULE_CARD_ACTORS.author,
+      1,
+    );
+
+    expect(() =>
+      setup.repository.assertEligibleForRuleGeneration(makeRuleGenerationRequest(setup.revision)),
+    ).toThrow(expect.objectContaining({ code: "RULE_CARD_REVISION_SUPERSEDED" }));
+    expect(
+      setup.repository.assertRevisionEligibleForActivation({
+        revisionId: setup.revision.id,
+        activationAt: RULE_CARD_TIMES.evaluation,
+        evaluationDate: RULE_CARD_TIMES.evaluation,
+        expectedRevisionContentHash: setup.revision.contentHash,
+        expectedSourceContentHash: HASHES.a1,
+      }),
+    ).toEqual(setup.revision);
+    expect(() =>
+      setup.repository.assertRevisionEligibleForActivation({
+        revisionId: second.id,
+        activationAt: RULE_CARD_TIMES.evaluation,
+        evaluationDate: RULE_CARD_TIMES.evaluation,
+        expectedRevisionContentHash: second.contentHash,
+        expectedSourceContentHash: HASHES.a1,
+      }),
+    ).toThrow(expect.objectContaining({ code: "RULE_CARD_REVISION_NOT_APPROVED" }));
+  });
+
+  it("rejects malformed and executable exact-revision activation requests without side effects", () => {
+    const setup = repositoryWithDraft();
+    const validRequest: RuleCardActivationEligibilityRequest = {
+      revisionId: setup.revision.id,
+      activationAt: RULE_CARD_TIMES.evaluation,
+      evaluationDate: RULE_CARD_TIMES.evaluation,
+      expectedRevisionContentHash: setup.revision.contentHash,
+      expectedSourceContentHash: HASHES.a1,
+    };
+    expect(() =>
+      setup.repository.assertRevisionEligibleForActivation({
+        ...validRequest,
+        activationAt: "not-a-date",
+      }),
+    ).toThrow(expect.objectContaining({ code: "INVALID_RULE_CARD_ACTIVATION_REQUEST" }));
+
+    let traps = 0;
+    const proxy = new Proxy(validRequest, {
+      get() {
+        traps += 1;
+        return undefined;
+      },
+      getOwnPropertyDescriptor() {
+        traps += 1;
+        return undefined;
+      },
+      getPrototypeOf() {
+        traps += 1;
+        return null;
+      },
+      ownKeys() {
+        traps += 1;
+        return [];
+      },
+    });
+    expect(() => setup.repository.assertRevisionEligibleForActivation(proxy)).toThrow(
+      expect.objectContaining({ code: "INVALID_RULE_CARD_ACTIVATION_REQUEST" }),
+    );
+    expect(traps).toBe(0);
+
+    let getterCalls = 0;
+    const accessorRequest = { ...validRequest };
+    Object.defineProperty(accessorRequest, "activationAt", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return RULE_CARD_TIMES.evaluation;
+      },
+    });
+    expect(() => setup.repository.assertRevisionEligibleForActivation(accessorRequest)).toThrow(
+      expect.objectContaining({ code: "INVALID_RULE_CARD_ACTIVATION_REQUEST" }),
+    );
+    expect(getterCalls).toBe(0);
   });
 });

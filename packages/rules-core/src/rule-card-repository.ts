@@ -1,5 +1,5 @@
 import {
-  ActorSchema,
+  RuleCardActivationEligibilityRequestSchema,
   RuleCardApprovalDecisionSchema,
   RuleCardCommentSchema,
   RuleGenerationEligibilityRequestSchema,
@@ -10,14 +10,17 @@ import {
   compareUtcDateTimes,
   effectiveRisk,
   isWithinValidityInterval,
+  parseActorSnapshot,
   validityIntervalsOverlap,
 } from "@vera/contracts";
+import { types as nodeUtilTypes } from "node:util";
 import type {
   Actor,
   ComplianceSource,
   ComplianceSourceState,
   ComplianceSourceVersion,
   RuleCard,
+  RuleCardActivationEligibilityRequest as RuleCardActivationEligibilityRequestContract,
   RuleCardApprovalDecision,
   RuleCardComment,
   RuleDraftGenerationReference as RuleDraftGenerationReferenceContract,
@@ -60,6 +63,7 @@ interface RuleCardAuditLike {
 
 export type RuleGenerationEligibilityRequest = RuleGenerationEligibilityRequestContract;
 export type RuleDraftGenerationReference = RuleDraftGenerationReferenceContract;
+export type RuleCardActivationEligibilityRequest = RuleCardActivationEligibilityRequestContract;
 
 export type RuleCardAuditRecord =
   | { readonly kind: "TRANSITION"; readonly record: RuleCardTransitionEvent }
@@ -77,6 +81,48 @@ export interface RuleCardRevisionSnapshot {
 export interface RuleCardHistory {
   readonly card: RuleCard;
   readonly revisions: readonly RuleCardRevisionSnapshot[];
+}
+
+const RULE_CARD_ACTIVATION_REQUEST_KEYS = Object.freeze([
+  "revisionId",
+  "activationAt",
+  "evaluationDate",
+  "expectedRevisionContentHash",
+  "expectedSourceContentHash",
+] as const);
+const RULE_CARD_ACTIVATION_REQUEST_KEY_SET: ReadonlySet<PropertyKey> = new Set(
+  RULE_CARD_ACTIVATION_REQUEST_KEYS,
+);
+
+function snapshotRuleCardActivationRequest(
+  input: unknown,
+): Readonly<Record<string, string>> | null {
+  if (input === null || typeof input !== "object" || nodeUtilTypes.isProxy(input)) return null;
+  const prototype = Object.getPrototypeOf(input) as object | null;
+  if (prototype !== Object.prototype && prototype !== null) return null;
+  const ownKeys = Reflect.ownKeys(input);
+  if (
+    ownKeys.length !== RULE_CARD_ACTIVATION_REQUEST_KEYS.length ||
+    ownKeys.some((key) => !RULE_CARD_ACTIVATION_REQUEST_KEY_SET.has(key))
+  ) {
+    return null;
+  }
+
+  const snapshot: Record<string, string> = Object.create(null) as Record<string, string>;
+  for (const key of RULE_CARD_ACTIVATION_REQUEST_KEYS) {
+    const descriptor = Object.getOwnPropertyDescriptor(input, key);
+    if (
+      descriptor === undefined ||
+      !("value" in descriptor) ||
+      !descriptor.enumerable ||
+      typeof descriptor.value !== "string" ||
+      descriptor.value.length > 4_096
+    ) {
+      return null;
+    }
+    snapshot[key] = descriptor.value;
+  }
+  return Object.freeze(snapshot);
 }
 
 function clone<T>(value: T): T {
@@ -206,10 +252,14 @@ export class InMemoryRuleCardRepository {
     }
     if (predecessorId !== null) {
       const predecessorState = this.getRevisionState(predecessorId);
-      if (predecessorState !== "DRAFT" && predecessorState !== "CHANGES_REQUESTED") {
+      if (
+        predecessorState !== "DRAFT" &&
+        predecessorState !== "CHANGES_REQUESTED" &&
+        predecessorState !== "APPROVED"
+      ) {
         throw new RuleCardInvariantError(
           "DECISION_NOT_ALLOWED",
-          "Only a draft or changes-requested revision can be replaced",
+          "Only a draft, changes-requested, or approved revision can have a successor",
           { predecessorId, predecessorState },
         );
       }
@@ -514,12 +564,69 @@ export class InMemoryRuleCardRepository {
       );
     }
     const validRequest = parsed.data;
-    const revision = this.#requireRevision(validRequest.revisionId);
-    this.#assertLatestRevision(revision);
-    if (revision.contentHash !== validRequest.expectedRevisionContentHash) {
+    const revision = this.#assertApprovedRevisionEligibility({
+      revisionId: validRequest.revisionId,
+      eligibilityAt: validRequest.generationAt,
+      evaluationDate: validRequest.evaluationDate,
+      expectedRevisionContentHash: validRequest.expectedRevisionContentHash,
+      expectedSourceContentHash: validRequest.expectedSourceContentHash,
+      requireLatest: true,
+    });
+
+    return {
+      targetState: "DRAFT",
+      cardId: revision.cardId,
+      cardRevisionId: revision.id,
+      revisionContentHash: revision.contentHash,
+      sourceId: revision.sourceId,
+      sourceVersionId: revision.sourceVersionId,
+      sourceContentHash: revision.sourceContentHash,
+      generationAt: validRequest.generationAt,
+      evaluationDate: validRequest.evaluationDate,
+      validationScope: "TECHNICAL_DEMO",
+    };
+  }
+
+  /** Revalidates one immutable, hash-pinned revision without requiring it to remain latest. */
+  public assertRevisionEligibleForActivation(
+    request: RuleCardActivationEligibilityRequest,
+  ): RuleCardRevision {
+    const snapshot = snapshotRuleCardActivationRequest(request);
+    const parsed = RuleCardActivationEligibilityRequestSchema.safeParse(snapshot);
+    if (!parsed.success) {
+      throw new RuleCardValidationError(
+        "INVALID_RULE_CARD_ACTIVATION_REQUEST",
+        "Rule Pack activation requires a strict, hash-pinned Rule Card revision request",
+        { issueCount: parsed.error.issues.length },
+      );
+    }
+    const validRequest = parsed.data;
+    return clone(
+      this.#assertApprovedRevisionEligibility({
+        revisionId: validRequest.revisionId,
+        eligibilityAt: validRequest.activationAt,
+        evaluationDate: validRequest.evaluationDate,
+        expectedRevisionContentHash: validRequest.expectedRevisionContentHash,
+        expectedSourceContentHash: validRequest.expectedSourceContentHash,
+        requireLatest: false,
+      }),
+    );
+  }
+
+  #assertApprovedRevisionEligibility(request: {
+    readonly revisionId: string;
+    readonly eligibilityAt: UtcDateTime;
+    readonly evaluationDate: UtcDateTime;
+    readonly expectedRevisionContentHash: string;
+    readonly expectedSourceContentHash: string;
+    readonly requireLatest: boolean;
+  }): RuleCardRevision {
+    const revision = this.#requireRevision(request.revisionId);
+    if (request.requireLatest) this.#assertLatestRevision(revision);
+    if (revision.contentHash !== request.expectedRevisionContentHash) {
       throw new RuleCardEligibilityError(
         "RULE_CARD_CONTENT_HASH_MISMATCH",
-        "The Rule Card revision hash differs from the generation request",
+        "The Rule Card revision hash differs from the eligibility request",
         { revisionId: revision.id },
       );
     }
@@ -536,14 +643,14 @@ export class InMemoryRuleCardRepository {
       if (state === "CHANGES_REQUESTED") {
         throw new RuleCardEligibilityError(
           "BLOCKING_DECISION_PRESENT",
-          "A blocking review or approval decision prevents rule generation",
+          "A blocking review or approval decision prevents revision eligibility",
           { revisionId: revision.id },
         );
       }
       if (state === "IN_REVIEW" && !acceptedReview) {
         throw new RuleCardEligibilityError(
           "REVIEW_ACCEPTANCE_REQUIRED",
-          "An accepted independent review is required for rule generation",
+          "An accepted independent review is required for revision eligibility",
           { revisionId: revision.id },
         );
       }
@@ -560,7 +667,7 @@ export class InMemoryRuleCardRepository {
       }
       throw new RuleCardEligibilityError(
         "RULE_CARD_REVISION_NOT_APPROVED",
-        "Only an approved Rule Card revision can generate a rule draft",
+        "Only an approved Rule Card revision is eligible",
         { revisionId: revision.id },
       );
     }
@@ -569,29 +676,29 @@ export class InMemoryRuleCardRepository {
       .at(approvalRequirement(revision) - 1);
     if (
       approval?.kind !== "APPROVAL" ||
-      compareUtcDateTimes(validRequest.generationAt, approval.record.at) < 0
+      compareUtcDateTimes(request.eligibilityAt, approval.record.at) < 0
     ) {
       throw new RuleCardEligibilityError(
         "RULE_CARD_REVISION_NOT_APPROVED",
-        "The Rule Card was not approved at the declared generation instant",
-        { generationAt: validRequest.generationAt, revisionId: revision.id },
+        "The Rule Card was not approved at the declared eligibility instant",
+        { at: request.eligibilityAt, revisionId: revision.id },
       );
     }
     const { sourceVersion } = this.#assertRevisionBinding(
       this.#requireCard(revision.cardId),
       revision,
-      validRequest.generationAt,
+      request.eligibilityAt,
     );
-    if (sourceVersion.contentHash !== validRequest.expectedSourceContentHash) {
+    if (sourceVersion.contentHash !== request.expectedSourceContentHash) {
       throw new RuleCardEligibilityError(
         "SOURCE_VERSION_MISMATCH",
-        "The source hash differs from the generation request",
+        "The source hash differs from the eligibility request",
         { sourceVersionId: sourceVersion.id },
       );
     }
     if (
-      !isWithinValidityInterval(revision.validity, validRequest.evaluationDate) ||
-      !isWithinValidityInterval(sourceVersion.validity, validRequest.evaluationDate)
+      !isWithinValidityInterval(revision.validity, request.evaluationDate) ||
+      !isWithinValidityInterval(sourceVersion.validity, request.evaluationDate)
     ) {
       throw new RuleCardEligibilityError(
         "BLOCKING_DECISION_PRESENT",
@@ -599,31 +706,18 @@ export class InMemoryRuleCardRepository {
         { revisionId: revision.id },
       );
     }
-
-    return {
-      targetState: "DRAFT",
-      cardId: revision.cardId,
-      cardRevisionId: revision.id,
-      revisionContentHash: revision.contentHash,
-      sourceId: revision.sourceId,
-      sourceVersionId: revision.sourceVersionId,
-      sourceContentHash: revision.sourceContentHash,
-      generationAt: validRequest.generationAt,
-      evaluationDate: validRequest.evaluationDate,
-      validationScope: "TECHNICAL_DEMO",
-    };
+    return revision;
   }
 
   #parseActor(actor: Actor): Actor {
-    const parsed = ActorSchema.safeParse(actor);
-    if (!parsed.success) {
+    const parsed = parseActorSnapshot(actor);
+    if (parsed === null) {
       throw new RuleCardInvariantError(
         "DECISION_NOT_AUTHORIZED",
         "Workflow actor does not satisfy the public identity contract",
-        { issueCount: parsed.error.issues.length },
       );
     }
-    return parsed.data;
+    return parsed;
   }
 
   #prepareAudit(

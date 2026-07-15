@@ -304,6 +304,107 @@ describe("InMemoryComplianceSourceRepository transitions", () => {
     expect(repository.getTransitionHistory(IDS.versionA1).at(0)?.reason).toBeNull();
   });
 
+  it("blocks mixed-case UUID aliases from reviewing or approving their own source", () => {
+    const identity = "00000000-0000-4000-8000-00000000abcd";
+    const selfReview = new InMemoryComplianceSourceRepository();
+    selfReview.addSource(makeSource());
+    selfReview.appendVersion(makeVersion({ createdBy: identity }), 0);
+    selfReview.appendTransition(
+      makeEvent({ actorId: identity }),
+      { actor: { ...ACTORS.author, id: identity } },
+      { sequence: 0, state: null },
+    );
+
+    expect(() =>
+      selfReview.appendTransition(
+        makeEvent({
+          id: IDS.event2,
+          sequence: 2,
+          from: "UPLOADED",
+          to: "REVIEWED",
+          actorId: identity.toUpperCase(),
+          exercisedRole: "REVIEWER",
+          at: TIMES.reviewed,
+        }),
+        { actor: { ...ACTORS.reviewer, id: identity.toUpperCase() } },
+        { sequence: 1, state: "UPLOADED" },
+      ),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_NOT_AUTHORIZED" }));
+
+    const selfApproval = new InMemoryComplianceSourceRepository();
+    selfApproval.addSource(makeSource());
+    selfApproval.appendVersion(makeVersion({ createdBy: identity }), 0);
+    selfApproval.appendTransition(
+      makeEvent({ actorId: identity }),
+      { actor: { ...ACTORS.author, id: identity } },
+      { sequence: 0, state: null },
+    );
+    review(selfApproval);
+
+    expect(() =>
+      selfApproval.appendTransition(
+        makeEvent({
+          id: IDS.event3,
+          sequence: 3,
+          from: "REVIEWED",
+          to: "APPROVED",
+          actorId: identity.toUpperCase(),
+          exercisedRole: "APPROVER",
+          at: TIMES.approved,
+        }),
+        { actor: { ...ACTORS.approver, id: identity.toUpperCase() } },
+        { sequence: 2, state: "REVIEWED" },
+      ),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_NOT_AUTHORIZED" }));
+  });
+
+  it("rejects an authorization actor outside the public identity contract", () => {
+    const repository = repositoryWithVersion();
+
+    expect(() =>
+      repository.appendTransition(
+        makeEvent(),
+        { actor: { ...ACTORS.author, id: "not-an-actor-id" } },
+        { sequence: 0, state: null },
+      ),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_NOT_AUTHORIZED" }));
+  });
+
+  it("rejects Proxy and accessor authorizations without invoking user code", () => {
+    const repository = repositoryWithVersion();
+    let getterCalls = 0;
+    const accessorAuthorization = {} as ComplianceSourceTransitionAuthorization;
+    Object.defineProperty(accessorAuthorization, "actor", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return ACTORS.author;
+      },
+    });
+    expect(() =>
+      repository.appendTransition(makeEvent(), accessorAuthorization, {
+        sequence: 0,
+        state: null,
+      }),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_NOT_AUTHORIZED" }));
+    expect(getterCalls).toBe(0);
+
+    const proxyAuthorization = new Proxy(
+      { actor: ACTORS.author },
+      {
+        get() {
+          throw new Error("Authorization Proxy must not be inspected");
+        },
+      },
+    );
+    expect(() =>
+      repository.appendTransition(makeEvent(), proxyAuthorization, {
+        sequence: 0,
+        state: null,
+      }),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_NOT_AUTHORIZED" }));
+  });
+
   it("rejects missing versions and duplicate event IDs", () => {
     const repository = repositoryWithVersion();
 

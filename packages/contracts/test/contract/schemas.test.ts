@@ -13,6 +13,7 @@ import {
   UtcDateTimeSchema,
   ValidationScopeSchema,
   ValidityIntervalSchema,
+  parseActorSnapshot,
 } from "../../src/index.js";
 
 describe("methodology vocabulary contract", () => {
@@ -57,6 +58,36 @@ describe("actor serialization contract", () => {
 
   it("rejects unknown fields", () => {
     expect(ActorSchema.safeParse({ ...actor, professionalApproval: true }).success).toBe(false);
+  });
+
+  it("canonicalizes UUID identity before any authorization comparison", () => {
+    expect(
+      ActorSchema.parse({
+        ...actor,
+        id: "00000000-0000-4000-8000-00000000ABCD",
+      }).id,
+    ).toBe("00000000-0000-4000-8000-00000000abcd");
+  });
+
+  it("snapshots actor identities without invoking accessors or Proxy traps", () => {
+    let getterCalls = 0;
+    const accessorActor = { ...actor } as Record<string, unknown>;
+    Object.defineProperty(accessorActor, "id", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return actor.id;
+      },
+    });
+    expect(parseActorSnapshot(accessorActor)).toBeNull();
+    expect(getterCalls).toBe(0);
+
+    const proxy = new Proxy(actor, {
+      get() {
+        throw new Error("Proxy actor must not be inspected");
+      },
+    });
+    expect(parseActorSnapshot(proxy)).toBeNull();
   });
 
   it("has a JSON Schema generated from the same Zod contract", () => {

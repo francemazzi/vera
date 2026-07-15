@@ -322,7 +322,7 @@ describe("Rule Card retirement, revisions, and generation", () => {
     expect(setup.repository.getRevisionState(setup.revision.id)).toBe("RETIRED");
   });
 
-  it("blocks replacement while the predecessor is in review or approved", () => {
+  it("blocks replacement in review but permits an approved revision to have a successor", () => {
     const inReview = draft();
     submit(inReview.repository, inReview.revision);
     const next = makeRuleCardRevision({
@@ -346,7 +346,7 @@ describe("Rule Card retirement, revisions, and generation", () => {
 
     const approved = draft();
     approveLow(approved);
-    expect(() =>
+    expect(
       approved.repository.appendRevision(
         next,
         makeRuleCardTransition(next, {
@@ -356,7 +356,8 @@ describe("Rule Card retirement, revisions, and generation", () => {
         RULE_CARD_ACTORS.author,
         1,
       ),
-    ).toThrow(RuleCardInvariantError);
+    ).toEqual(next);
+    expect(approved.repository.getRevisionState(approved.revision.id)).toBe("APPROVED");
   });
 
   it("returns only a pinned DRAFT generation reference and blocks invalid requests", () => {

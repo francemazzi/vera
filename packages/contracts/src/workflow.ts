@@ -65,9 +65,10 @@ export function canTransitionRuleCard(from: RuleCardState | null, to: RuleCardSt
 }
 
 function isIndependentActor(context: WorkflowTransitionContext): boolean {
+  const actorId = context.actor.id.toLowerCase();
   return (
-    !context.contributorIds.includes(context.actor.id) &&
-    !context.excludedActorIds.includes(context.actor.id)
+    !context.contributorIds.some((candidate) => candidate.toLowerCase() === actorId) &&
+    !context.excludedActorIds.some((candidate) => candidate.toLowerCase() === actorId)
   );
 }
 

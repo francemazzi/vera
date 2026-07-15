@@ -24,9 +24,15 @@ import type {
   TruthValue,
 } from "@vera/contracts";
 import * as fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { evaluateExpression, evaluateRule } from "../../src/dsl-evaluator.js";
+import {
+  RULE_BATCH_EVALUATION_LIMITS,
+  RuleEvaluationResourceLimitError,
+  evaluateExpression,
+  evaluateRule,
+  evaluateRules,
+} from "../../src/dsl-evaluator.js";
 
 const OBSERVED_AT = "2026-07-15T10:00:00.0001Z";
 const PROVIDER_RUN_ID = "00000000-0000-4000-8000-000000009001";
@@ -247,6 +253,17 @@ function makeRule(options: RuleOptions = {}): RuleDefinition {
     evidenceBindings,
     unknownPolicy: "REVIEW",
     validationScope: "TECHNICAL_DEMO",
+  });
+  return RuleDefinitionSchema.parse({ ...input, contentHash: computeRuleDefinitionHash(input) });
+}
+
+function reidentifyRule(rule: RuleDefinition, identity: number): RuleDefinition {
+  const { contentHash, ...currentInput } = rule;
+  void contentHash;
+  const input = RuleDefinitionHashInputSchema.parse({
+    ...currentInput,
+    id: uuid(identity),
+    normativeKey: `synthetic.kernel.rule.${String(identity)}`,
   });
   return RuleDefinitionSchema.parse({ ...input, contentHash: computeRuleDefinitionHash(input) });
 }
@@ -1192,6 +1209,137 @@ describe("evaluateRule", () => {
 
     expect(first).toEqual(second);
     expect(rule).toEqual(before);
+  });
+});
+
+describe("evaluateRules", () => {
+  function makeSharedContextRules(): readonly RuleDefinition[] {
+    const base = makeRule({
+      appliesWhen: { op: "present", factKey: "sample.shared" },
+      satisfiedWhen: { op: "present", factKey: "sample.shared" },
+    });
+    return [reidentifyRule(base, 600), reidentifyRule(base, 601)];
+  }
+
+  function descriptorInspectionsFor(
+    rules: readonly RuleDefinition[],
+    facts: readonly ExtractionFact[],
+    evidence: readonly Evidence[],
+  ): number {
+    const descriptorSpy = vi.spyOn(Object, "getOwnPropertyDescriptor");
+    try {
+      evaluateRules(rules, facts, evidence, OBSERVED_AT);
+      return descriptorSpy.mock.calls.filter(([target]) => target === facts).length;
+    } finally {
+      descriptorSpy.mockRestore();
+    }
+  }
+
+  function maximumDepthTruthExpression(): DslExpression {
+    let expression: DslExpression = { op: "truth", value: "TRUE" };
+    for (let depth = 1; depth < 32; depth += 1) {
+      expression = {
+        op: "all",
+        operands: [
+          expression,
+          ...Array.from({ length: 63 }, () => ({
+            op: "truth" as const,
+            value: "TRUE" as const,
+          })),
+        ],
+      };
+    }
+    return expression;
+  }
+
+  it("matches the one-rule API exactly and is deterministic", () => {
+    const rules = makeSharedContextRules();
+    const facts = [makeResolvedFact("sample.shared", "BOOLEAN", true)];
+    const evidence = [makeEvidence()];
+
+    const expected = rules.map((rule) => evaluateRule(rule, facts, evidence, OBSERVED_AT));
+    const first = evaluateRules(rules, facts, evidence, OBSERVED_AT);
+    const replay = evaluateRules(rules, facts, evidence, OBSERVED_AT);
+
+    expect(first).toEqual(expected);
+    expect(replay).toEqual(first);
+    expect(Object.isFrozen(first)).toBe(true);
+  });
+
+  it("detaches the fact collection once regardless of the number of evaluated rules", () => {
+    const rules = makeSharedContextRules();
+    const facts = [makeResolvedFact("sample.shared", "BOOLEAN", true)];
+    const evidence = [makeEvidence()];
+
+    const oneRuleInspections = descriptorInspectionsFor(
+      [rules[0] as RuleDefinition],
+      facts,
+      evidence,
+    );
+    const twoRuleInspections = descriptorInspectionsFor(rules, facts, evidence);
+
+    expect(oneRuleInspections).toBeGreaterThan(0);
+    expect(twoRuleInspections).toBe(oneRuleInspections);
+  });
+
+  it("rejects an excessive aggregate AST before inspecting the evaluation context", () => {
+    const largeBase = makeRule({ appliesWhen: maximumDepthTruthExpression() });
+    const rules = Array.from({ length: 33 }, (_, index) => reidentifyRule(largeBase, 700 + index));
+    const facts = new Proxy([] as ExtractionFact[], {});
+
+    let thrown: unknown;
+    try {
+      evaluateRules(rules, facts, [], OBSERVED_AT);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(RuleEvaluationResourceLimitError);
+    expect(thrown).toHaveProperty("message", expect.stringMatching(/combined units exceeds/u));
+  }, 30_000);
+
+  it("rejects a result that would exceed the downstream JSON envelope before evaluation", () => {
+    const base = makeRule();
+    const rules = Array.from({ length: 3_000 }, (_, index) => reidentifyRule(base, 10_000 + index));
+
+    let thrown: unknown;
+    try {
+      evaluateRules(rules, [], [], OBSERVED_AT);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(RuleEvaluationResourceLimitError);
+    expect(thrown).toHaveProperty(
+      "message",
+      expect.stringMatching(/estimated result exceeds its preflight envelope/u),
+    );
+  }, 30_000);
+
+  it("includes repeated trace and finding evidence references in the output preflight", () => {
+    const evidenceIds = Array.from({ length: 100 }, (_, index) => uuid(20_000 + index));
+    const facts = [makeResolvedFact("sample.shared", "BOOLEAN", true, evidenceIds)];
+    const evidence = evidenceIds.map((id) => makeEvidence(id));
+    const base = makeRule({
+      appliesWhen: { op: "present", factKey: "sample.shared" },
+      satisfiedWhen: { op: "present", factKey: "sample.shared" },
+    });
+    const rules = Array.from({ length: 250 }, (_, index) => reidentifyRule(base, 30_000 + index));
+
+    expect(() => evaluateRules(rules, facts, evidence, OBSERVED_AT)).toThrow(
+      RuleEvaluationResourceLimitError,
+    );
+  }, 30_000);
+
+  it("retains the 10,000-rule authoring ceiling and rejects collections above it", () => {
+    const rule = makeRule();
+    const excessive = Array.from(
+      { length: RULE_BATCH_EVALUATION_LIMITS.maxFindings + 1 },
+      () => rule,
+    );
+
+    expect(RULE_BATCH_EVALUATION_LIMITS.maxFindings).toBe(10_000);
+    expect(() => evaluateRules(excessive, [], [], OBSERVED_AT)).toThrow(
+      RuleEvaluationResourceLimitError,
+    );
   });
 });
 

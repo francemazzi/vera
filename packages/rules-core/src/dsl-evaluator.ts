@@ -1,6 +1,9 @@
 import { types as nodeUtilTypes } from "node:util";
 
 import {
+  DSL_LIMITS,
+  EVALUATION_SNAPSHOT_LIMITS,
+  RULE_PACK_LIMITS,
   canonicalizeJson,
   DslExpressionSchema,
   EvidenceSchema,
@@ -50,10 +53,60 @@ const MAX_INLINE_TRACE_VALUE_BYTES = 512;
 const MAX_PROXY_PREFLIGHT_NODES = 50_000;
 const MAX_PROXY_PREFLIGHT_DEPTH = 64;
 
+/**
+ * Batch evaluation is intentionally bounded separately from the Rule Pack authoring envelope.
+ * The authoring contract may contain up to 10,000 rules, while evaluation applies stricter
+ * aggregate work and output budgets before traces or findings are allocated.
+ */
+export const RULE_BATCH_EVALUATION_LIMITS = Object.freeze({
+  maxFindings: RULE_PACK_LIMITS.maxRules,
+  findingUnitCost: 4,
+  maxCombinedUnits: 65_536,
+  maxEstimatedResultJsonNodes: EVALUATION_SNAPSHOT_LIMITS.maxJsonNodes - 10_000,
+  maxEstimatedResultCanonicalBytes: EVALUATION_SNAPSHOT_LIMITS.maxCanonicalBytes - 2_000_000,
+} as const);
+
+export class RuleEvaluationResourceLimitError extends RangeError {
+  public readonly code = "RULE_EVALUATION_RESOURCE_LIMIT" as const;
+
+  public constructor(message: string) {
+    super(message);
+    this.name = "RuleEvaluationResourceLimitError";
+  }
+}
+
 interface EvaluationContext {
   readonly factsByKey: ReadonlyMap<string, ExtractionFact>;
   readonly evidenceById: ReadonlyMap<string, Evidence>;
 }
+
+interface TraceOutputEstimate {
+  readonly jsonNodes: number;
+  readonly canonicalBytes: number;
+  readonly propagatedFactKeys: number;
+  readonly propagatedFactKeyBytes: number;
+  readonly propagatedEvidenceIds: number;
+}
+
+interface JsonOutputEstimate {
+  readonly jsonNodes: number;
+  readonly canonicalBytes: number;
+}
+
+interface RuleOutputEstimationContext {
+  readonly evaluation: EvaluationContext;
+  readonly factValueEstimates: Map<string, JsonOutputEstimate>;
+}
+
+const ESTIMATED_TRACE_BASE_NODES = 8;
+const ESTIMATED_TRACE_BASE_BYTES = 400;
+const ESTIMATED_FINDING_BASE_NODES = 16;
+const ESTIMATED_FINDING_BASE_BYTES = 768;
+const ESTIMATED_OVERRIDE_WRAPPER_NODES = 3;
+const ESTIMATED_OVERRIDE_WRAPPER_BYTES = 256;
+const ESTIMATED_UUID_REFERENCE_BYTES = 40;
+const ESTIMATED_RESULT_ROOT_NODES = 3;
+const ESTIMATED_RESULT_ROOT_BYTES = 128;
 
 interface FactAccessSuccess {
   readonly success: true;
@@ -208,6 +261,399 @@ function createContext(
     evidenceById.set(item.id, item);
   }
   return { factsByKey, evidenceById };
+}
+
+function parseRuleCollection(rulesInput: readonly RuleDefinition[]): readonly RuleDefinition[] {
+  if (nodeUtilTypes.isProxy(rulesInput)) {
+    throw new TypeError("Rule Definitions cannot be a Proxy");
+  }
+  if (!Array.isArray(rulesInput) || Object.getPrototypeOf(rulesInput) !== Array.prototype) {
+    throw new TypeError("Rule Definitions must be a standard array");
+  }
+
+  const ownKeys = Reflect.ownKeys(rulesInput);
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(rulesInput, "length");
+  if (
+    lengthDescriptor === undefined ||
+    !("value" in lengthDescriptor) ||
+    !Number.isSafeInteger(lengthDescriptor.value) ||
+    lengthDescriptor.value < 1
+  ) {
+    throw new TypeError("Rule Definitions must be a non-empty dense array");
+  }
+  const length = lengthDescriptor.value as number;
+  if (length > RULE_BATCH_EVALUATION_LIMITS.maxFindings) {
+    throw new RuleEvaluationResourceLimitError(
+      `Rule Definitions cannot exceed ${String(RULE_BATCH_EVALUATION_LIMITS.maxFindings)} entries`,
+    );
+  }
+  const stringKeys = ownKeys.filter((key): key is string => typeof key === "string");
+  if (
+    ownKeys.some((key) => typeof key === "symbol") ||
+    stringKeys.length !== length + 1 ||
+    !stringKeys.includes("length")
+  ) {
+    throw new TypeError("Rule Definitions must be a non-empty dense array without properties");
+  }
+
+  const rules: RuleDefinition[] = new Array<RuleDefinition>(length);
+  const ruleIds = new Set<string>();
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(rulesInput, String(index));
+    if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+      throw new TypeError("Rule Definitions must be a non-empty dense array");
+    }
+    assertProxyFreeGraph(descriptor.value, `Rule Definition ${String(index)}`);
+    const rule = RuleDefinitionSchema.parse(descriptor.value);
+    if (ruleIds.has(rule.id)) {
+      throw new TypeError(`Rule Definitions contain duplicate ID: ${rule.id}`);
+    }
+    ruleIds.add(rule.id);
+    rules[index] = rule;
+  }
+  return rules;
+}
+
+function expressionNodeCount(expression: DslExpression): number {
+  const stack = [expression];
+  let nodes = 0;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    /* v8 ignore next -- the loop condition guarantees a populated work list */
+    if (current === undefined) break;
+    nodes += 1;
+    if (current.op === "all" || current.op === "any") stack.push(...current.operands);
+    if (current.op === "not") stack.push(current.operand);
+  }
+  return nodes;
+}
+
+function ruleExpressionNodeCount(rule: RuleDefinition): number {
+  return [
+    rule.appliesWhen,
+    rule.satisfiedWhen,
+    ...rule.exceptions.map(({ when }) => when),
+    ...rule.overrides.map(({ when }) => when),
+  ].reduce((total, expression) => total + expressionNodeCount(expression), 0);
+}
+
+function assertRuleBatchBudget(rules: readonly RuleDefinition[]): void {
+  let expressionNodes = 0;
+  for (const rule of rules) {
+    const ruleNodes = ruleExpressionNodeCount(rule);
+    // The schema enforces this already; retaining the assertion makes the aggregate calculation
+    // fail closed if a future validated-rule representation changes.
+    if (ruleNodes > DSL_LIMITS.maxRuleExpressionNodes) {
+      throw new RuleEvaluationResourceLimitError("Rule expression node budget exceeded");
+    }
+    expressionNodes += ruleNodes;
+  }
+  const combinedUnits =
+    expressionNodes + rules.length * RULE_BATCH_EVALUATION_LIMITS.findingUnitCost;
+  if (combinedUnits > RULE_BATCH_EVALUATION_LIMITS.maxCombinedUnits) {
+    throw new RuleEvaluationResourceLimitError(
+      `Rule batch evaluation budget exceeded: ${String(combinedUnits)} combined units exceeds ${String(RULE_BATCH_EVALUATION_LIMITS.maxCombinedUnits)}`,
+    );
+  }
+}
+
+function jsonStringUpperBoundBytes(value: string): number {
+  // A JSON escape can expand one UTF-16 code unit to six ASCII bytes (for example, `\\u0000`).
+  return value.length * 6 + 3;
+}
+
+function jsonValueNodeCount(value: JsonValue | null): number {
+  const stack: (JsonValue | null)[] = [value];
+  let nodes = 0;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    /* v8 ignore next -- the loop condition guarantees a populated work list */
+    if (current === undefined) break;
+    nodes += 1;
+    if (Array.isArray(current)) {
+      for (const nested of current as readonly JsonValue[]) stack.push(nested);
+    } else if (current !== null && typeof current === "object") {
+      stack.push(...Object.values(current as Readonly<Record<string, JsonValue>>));
+    }
+  }
+  return nodes;
+}
+
+function traceJsonValueEstimate(value: JsonValue | null): JsonOutputEstimate {
+  const projected = boundedTraceValue(value);
+  return {
+    jsonNodes: jsonValueNodeCount(projected),
+    canonicalBytes: new TextEncoder().encode(canonicalizeJson(projected)).byteLength,
+  };
+}
+
+function maximumJsonOutputEstimate(estimates: readonly JsonOutputEstimate[]): JsonOutputEstimate {
+  return {
+    jsonNodes: Math.max(...estimates.map(({ jsonNodes }) => jsonNodes)),
+    canonicalBytes: Math.max(...estimates.map(({ canonicalBytes }) => canonicalBytes)),
+  };
+}
+
+function expectedTraceValue(expression: DslExpression): JsonValue | null {
+  switch (expression.op) {
+    case "truth":
+      return expression.value;
+    case "present":
+    case "all":
+    case "any":
+    case "not":
+      return null;
+    case "eq":
+    case "not_eq":
+      return expression.expected.value;
+    case "contains":
+      return expression.expected;
+    case "contains_any":
+      return [...expression.expected];
+    case "matches":
+      return {
+        pattern: expression.pattern,
+        mode: expression.mode,
+        normalization: expression.normalization,
+        whitespace: expression.whitespace,
+        caseSensitivity: expression.caseSensitivity,
+        dotAll: expression.dotAll,
+        multiline: expression.multiline,
+        maxInputCharacters: expression.maxInputCharacters,
+      };
+    case "greater_than":
+    case "less_than":
+    case "date_before":
+    case "date_after":
+      return expression.expectedExclusive;
+    case "between":
+    case "date_between":
+      return {
+        minimum: expression.minimum,
+        maximum: expression.maximum,
+        includeMinimum: expression.includeMinimum,
+        includeMaximum: expression.includeMaximum,
+      };
+    case "language_present":
+      return { language: expression.language, matchMode: expression.matchMode };
+    case "same_visual_area":
+      return {
+        maxNormalizedGap: expression.maxNormalizedGap,
+        quantifier: expression.quantifier,
+        requireSameDocument: expression.requireSameDocument,
+        requireSamePage: expression.requireSamePage,
+      };
+  }
+}
+
+function expressionFactKeys(expression: DslExpression): readonly string[] {
+  if (expression.op === "truth") return [];
+  if (expression.op === "same_visual_area") return expression.factKeys;
+  if (expression.op === "all" || expression.op === "any" || expression.op === "not") return [];
+  return [expression.factKey];
+}
+
+function factValueEstimate(
+  factKey: string,
+  context: RuleOutputEstimationContext,
+): JsonOutputEstimate {
+  const cached = context.factValueEstimates.get(factKey);
+  if (cached !== undefined) return cached;
+  const fact = context.evaluation.factsByKey.get(factKey);
+  const estimate = traceJsonValueEstimate(
+    fact?.status === "RESOLVED" ? fact.normalizedValue : null,
+  );
+  context.factValueEstimates.set(factKey, estimate);
+  return estimate;
+}
+
+function observedTraceValueEstimate(
+  expression: DslExpression,
+  context: RuleOutputEstimationContext,
+): JsonOutputEstimate {
+  const factKeys = expressionFactKeys(expression);
+  const candidates = factKeys.map((factKey) => factValueEstimate(factKey, context));
+  if (expression.op === "truth") candidates.push(traceJsonValueEstimate(expression.value));
+  if (expression.op === "matches") {
+    candidates.push(traceJsonValueEstimate({ inputCharacters: expression.maxInputCharacters + 1 }));
+  }
+  if (expression.op === "language_present") {
+    const fact = context.evaluation.factsByKey.get(expression.factKey);
+    const languages =
+      fact === undefined
+        ? []
+        : linkedEvidence(fact, context.evaluation.evidenceById).items.map(
+            ({ language }) => language,
+          );
+    candidates.push(traceJsonValueEstimate(languages));
+  }
+  if (expression.op === "same_visual_area") {
+    const candidateCounts = expression.factKeys.map((factKey) => {
+      const fact = context.evaluation.factsByKey.get(factKey);
+      return fact === undefined
+        ? 0
+        : linkedEvidence(fact, context.evaluation.evidenceById).items.length;
+    });
+    candidates.push(
+      traceJsonValueEstimate({ candidateCounts, comparisons: MAX_VISUAL_COMPARISONS }),
+    );
+  }
+  if (candidates.length === 0) candidates.push(traceJsonValueEstimate(null));
+  return maximumJsonOutputEstimate(candidates);
+}
+
+function estimateExpressionOutput(
+  expression: DslExpression,
+  context: RuleOutputEstimationContext,
+  path: string,
+): TraceOutputEstimate {
+  const nullValue = traceJsonValueEstimate(null);
+  if (expression.op === "all" || expression.op === "any") {
+    const children = expression.operands.map((operand, index) =>
+      estimateExpressionOutput(operand, context, `${path}/operands/${String(index)}`),
+    );
+    const propagatedFactKeys = children.reduce(
+      (total, child) => total + child.propagatedFactKeys,
+      0,
+    );
+    const propagatedFactKeyBytes = children.reduce(
+      (total, child) => total + child.propagatedFactKeyBytes,
+      0,
+    );
+    const propagatedEvidenceIds = children.reduce(
+      (total, child) => total + child.propagatedEvidenceIds,
+      0,
+    );
+    return {
+      jsonNodes:
+        children.reduce((total, child) => total + child.jsonNodes, 0) +
+        ESTIMATED_TRACE_BASE_NODES +
+        nullValue.jsonNodes * 2 +
+        propagatedFactKeys +
+        propagatedEvidenceIds,
+      canonicalBytes:
+        children.reduce((total, child) => total + child.canonicalBytes, 0) +
+        ESTIMATED_TRACE_BASE_BYTES +
+        jsonStringUpperBoundBytes(path) +
+        nullValue.canonicalBytes * 2 +
+        propagatedFactKeyBytes +
+        propagatedEvidenceIds * ESTIMATED_UUID_REFERENCE_BYTES,
+      propagatedFactKeys,
+      propagatedFactKeyBytes,
+      propagatedEvidenceIds,
+    };
+  }
+
+  if (expression.op === "not") {
+    const child = estimateExpressionOutput(expression.operand, context, `${path}/operand`);
+    return {
+      jsonNodes:
+        child.jsonNodes +
+        ESTIMATED_TRACE_BASE_NODES +
+        nullValue.jsonNodes * 2 +
+        child.propagatedFactKeys +
+        child.propagatedEvidenceIds,
+      canonicalBytes:
+        child.canonicalBytes +
+        ESTIMATED_TRACE_BASE_BYTES +
+        jsonStringUpperBoundBytes(path) +
+        nullValue.canonicalBytes * 2 +
+        child.propagatedFactKeyBytes +
+        child.propagatedEvidenceIds * ESTIMATED_UUID_REFERENCE_BYTES,
+      propagatedFactKeys: child.propagatedFactKeys,
+      propagatedFactKeyBytes: child.propagatedFactKeyBytes,
+      propagatedEvidenceIds: child.propagatedEvidenceIds,
+    };
+  }
+
+  const factKeys = expressionFactKeys(expression);
+  const propagatedFactKeyBytes = factKeys.reduce(
+    (total, factKey) => total + jsonStringUpperBoundBytes(factKey),
+    0,
+  );
+  const propagatedEvidenceIds = factKeys.reduce(
+    (total, factKey) =>
+      total + (context.evaluation.factsByKey.get(factKey)?.evidenceIds.length ?? 0),
+    0,
+  );
+  const expected = traceJsonValueEstimate(expectedTraceValue(expression));
+  const observed = observedTraceValueEstimate(expression, context);
+  return {
+    jsonNodes:
+      ESTIMATED_TRACE_BASE_NODES +
+      expected.jsonNodes +
+      observed.jsonNodes +
+      factKeys.length +
+      propagatedEvidenceIds,
+    canonicalBytes:
+      ESTIMATED_TRACE_BASE_BYTES +
+      jsonStringUpperBoundBytes(path) +
+      expected.canonicalBytes +
+      observed.canonicalBytes +
+      propagatedFactKeyBytes +
+      propagatedEvidenceIds * ESTIMATED_UUID_REFERENCE_BYTES,
+    propagatedFactKeys: factKeys.length,
+    propagatedFactKeyBytes,
+    propagatedEvidenceIds,
+  };
+}
+
+function assertEstimatedResultWithinBudget(jsonNodes: number, canonicalBytes: number): void {
+  if (
+    jsonNodes > RULE_BATCH_EVALUATION_LIMITS.maxEstimatedResultJsonNodes ||
+    canonicalBytes > RULE_BATCH_EVALUATION_LIMITS.maxEstimatedResultCanonicalBytes
+  ) {
+    throw new RuleEvaluationResourceLimitError(
+      `Rule batch estimated result exceeds its preflight envelope: ${String(jsonNodes)} JSON nodes and ${String(canonicalBytes)} canonical bytes`,
+    );
+  }
+}
+
+function assertRuleBatchOutputBudget(
+  rules: readonly RuleDefinition[],
+  context: EvaluationContext,
+): void {
+  const estimationContext: RuleOutputEstimationContext = {
+    evaluation: context,
+    factValueEstimates: new Map(),
+  };
+  let jsonNodes = ESTIMATED_RESULT_ROOT_NODES;
+  let canonicalBytes = ESTIMATED_RESULT_ROOT_BYTES;
+
+  for (const rule of rules) {
+    const expressions: readonly (readonly [DslExpression, string])[] = [
+      [rule.appliesWhen, "/appliesWhen"],
+      [rule.satisfiedWhen, "/satisfiedWhen"],
+      ...rule.exceptions.map(
+        ({ when }, index) => [when, `/exceptions/${String(index)}/when`] as const,
+      ),
+      ...rule.overrides.map(
+        ({ when }, index) => [when, `/overrides/${String(index)}/when`] as const,
+      ),
+    ];
+    const estimates = expressions.map(([expression, path]) =>
+      estimateExpressionOutput(expression, estimationContext, path),
+    );
+    const findingEvidenceReferences = estimates.reduce(
+      (total, estimate) => total + estimate.propagatedEvidenceIds,
+      0,
+    );
+    const relationReferences = 2 * (rule.overrides.length + rule.conflictsWith.length + 1);
+
+    jsonNodes +=
+      estimates.reduce((total, estimate) => total + estimate.jsonNodes, 0) +
+      ESTIMATED_FINDING_BASE_NODES +
+      findingEvidenceReferences +
+      rule.overrides.length * ESTIMATED_OVERRIDE_WRAPPER_NODES +
+      relationReferences;
+    canonicalBytes +=
+      estimates.reduce((total, estimate) => total + estimate.canonicalBytes, 0) +
+      ESTIMATED_FINDING_BASE_BYTES +
+      findingEvidenceReferences * ESTIMATED_UUID_REFERENCE_BYTES +
+      rule.overrides.length * ESTIMATED_OVERRIDE_WRAPPER_BYTES +
+      relationReferences * ESTIMATED_UUID_REFERENCE_BYTES;
+    assertEstimatedResultWithinBudget(jsonNodes, canonicalBytes);
+  }
 }
 
 interface LinkedEvidence {
@@ -886,20 +1332,11 @@ function findingEvidenceIds(
   ]);
 }
 
-/** Evaluates one valid Rule Definition; temporal selection remains an explicit precondition. */
-export function evaluateRule(
-  ruleInput: RuleDefinition,
-  factsInput: readonly ExtractionFact[],
-  evidenceInput: readonly Evidence[],
-  evaluationDateInput: string,
+function evaluateParsedRule(
+  rule: RuleDefinition,
+  context: EvaluationContext,
+  evaluationDate: string,
 ): RuleFinding {
-  assertProxyFreeGraph(ruleInput, "Rule Definition");
-  const rule = RuleDefinitionSchema.parse(ruleInput);
-  const evaluationDate = UtcDateTimeSchema.parse(evaluationDateInput);
-  if (!isWithinValidityInterval(rule.validity, evaluationDate)) {
-    throw new RangeError("Rule is not valid at the requested evaluation date");
-  }
-  const context = createContext(factsInput, evidenceInput);
   const appliesWhen = evaluateParsedExpression(rule.appliesWhen, context, "/appliesWhen");
 
   const exceptionTraces =
@@ -940,4 +1377,45 @@ export function evaluateRule(
     evidenceIds: findingEvidenceIds(appliesWhen, exceptionTraces, satisfiedWhen, overrideTraces),
     validationScope: rule.validationScope,
   });
+}
+
+/** Evaluates one valid Rule Definition; temporal selection remains an explicit precondition. */
+export function evaluateRule(
+  ruleInput: RuleDefinition,
+  factsInput: readonly ExtractionFact[],
+  evidenceInput: readonly Evidence[],
+  evaluationDateInput: string,
+): RuleFinding {
+  assertProxyFreeGraph(ruleInput, "Rule Definition");
+  const rule = RuleDefinitionSchema.parse(ruleInput);
+  const evaluationDate = UtcDateTimeSchema.parse(evaluationDateInput);
+  if (!isWithinValidityInterval(rule.validity, evaluationDate)) {
+    throw new RangeError("Rule is not valid at the requested evaluation date");
+  }
+  const context = createContext(factsInput, evidenceInput);
+  return evaluateParsedRule(rule, context, evaluationDate);
+}
+
+/**
+ * Evaluates a bounded collection of Rule Definitions against one detached fact/evidence context.
+ * Every rule and temporal precondition is validated before the context or any finding is created.
+ */
+export function evaluateRules(
+  rulesInput: readonly RuleDefinition[],
+  factsInput: readonly ExtractionFact[],
+  evidenceInput: readonly Evidence[],
+  evaluationDateInput: string,
+): readonly RuleFinding[] {
+  const evaluationDate = UtcDateTimeSchema.parse(evaluationDateInput);
+  const rules = parseRuleCollection(rulesInput);
+  assertRuleBatchBudget(rules);
+  for (const rule of rules) {
+    if (!isWithinValidityInterval(rule.validity, evaluationDate)) {
+      throw new RangeError(`Rule is not valid at the requested evaluation date: ${rule.id}`);
+    }
+  }
+
+  const context = createContext(factsInput, evidenceInput);
+  assertRuleBatchOutputBudget(rules, context);
+  return Object.freeze(rules.map((rule) => evaluateParsedRule(rule, context, evaluationDate)));
 }

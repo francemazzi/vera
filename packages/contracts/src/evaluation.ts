@@ -84,14 +84,20 @@ class InvalidEvaluationSnapshot {
   public constructor(public readonly issue: string) {}
 }
 
+export const EVALUATION_SNAPSHOT_LIMITS = Object.freeze({
+  maxJsonDepth: DSL_LIMITS.maxExpressionDepth * 2 + 16,
+  maxJsonNodes: 100_000,
+  maxCanonicalBytes: 10_000_000,
+} as const);
+
 const EvaluationSnapshotSchema = z
   .unknown()
   .overwrite((value) => {
     const result = snapshotJsonValue(value, {
       // Each logical trace level adds an object and a children array to the JSON shape.
-      maxDepth: DSL_LIMITS.maxExpressionDepth * 2 + 16,
-      maxNodes: 100_000,
-      maxCanonicalBytes: 10_000_000,
+      maxDepth: EVALUATION_SNAPSHOT_LIMITS.maxJsonDepth,
+      maxNodes: EVALUATION_SNAPSHOT_LIMITS.maxJsonNodes,
+      maxCanonicalBytes: EVALUATION_SNAPSHOT_LIMITS.maxCanonicalBytes,
       rejectNegativeZero: true,
       rejectUnsafeIntegers: true,
     });

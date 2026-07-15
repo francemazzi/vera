@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   snapshotJsonValue,
@@ -27,22 +27,14 @@ describe("descriptor-only JSON snapshots", () => {
     });
   });
 
-  it("detaches nested arrays and null-prototype objects without invoking getters", () => {
-    let getterCalls = 0;
+  it("detaches nested arrays and null-prototype objects", () => {
     const target = { safe: [1, { nested: "value" }] };
-    const input = new Proxy(target, {
-      get(object, key): unknown {
-        getterCalls += 1;
-        return key === "safe" ? object.safe : undefined;
-      },
-    });
-    const result = snapshot(input);
+    const result = snapshot(target);
 
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.canonical).toBe('{"safe":[1,{"nested":"value"}]}');
     expect(Object.getPrototypeOf(result.value)).toBeNull();
-    expect(getterCalls).toBe(0);
     target.safe[1] = { nested: "changed" };
     expect(result.canonical).toBe('{"safe":[1,{"nested":"value"}]}');
   });
@@ -112,21 +104,53 @@ describe("descriptor-only JSON snapshots", () => {
     expect(snapshot(arrayEntry).success).toBe(false);
   });
 
-  it("converts throwing proxy traps into a validation failure", () => {
-    const input = new Proxy(
-      {},
-      {
-        ownKeys() {
-          throw new Error("adversarial ownKeys trap");
+  it.each(["root", "nested"] as const)(
+    "rejects a %s Proxy before invoking any reflection trap",
+    (location) => {
+      let trapCalls = 0;
+      const proxy = new Proxy(
+        {},
+        {
+          get() {
+            trapCalls += 1;
+            throw new Error("adversarial get trap");
+          },
+          getOwnPropertyDescriptor() {
+            trapCalls += 1;
+            throw new Error("adversarial descriptor trap");
+          },
+          getPrototypeOf() {
+            trapCalls += 1;
+            throw new Error("adversarial prototype trap");
+          },
+          ownKeys() {
+            trapCalls += 1;
+            throw new Error("adversarial ownKeys trap");
+          },
         },
-      },
-    );
+      );
+      const input = location === "root" ? proxy : { safe: { proxy } };
 
-    expect(() => snapshot(input)).not.toThrow();
-    expect(snapshot(input)).toEqual({
-      success: false,
-      issue: "Value could not be inspected as JSON",
+      expect(snapshot(input)).toEqual({
+        success: false,
+        issue: "Proxy objects are forbidden",
+      });
+      expect(trapCalls).toBe(0);
+    },
+  );
+
+  it("fails closed if the host reflection boundary throws", () => {
+    const reflection = vi.spyOn(Reflect, "ownKeys").mockImplementationOnce(() => {
+      throw new Error("synthetic host reflection failure");
     });
+    try {
+      expect(snapshot({ safe: true })).toEqual({
+        success: false,
+        issue: "Value could not be inspected as JSON",
+      });
+    } finally {
+      reflection.mockRestore();
+    }
   });
 
   it("preserves prototype-like keys as inert own data", () => {

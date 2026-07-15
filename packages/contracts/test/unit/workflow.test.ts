@@ -98,6 +98,24 @@ describe("compliance source workflow", () => {
       ).toBe(false);
     });
 
+    it("treats mixed-case UUID spellings as the same source contributor", () => {
+      const mixedCaseId = "00000000-0000-4000-8000-00000000aBcD";
+      expect(
+        canPerformComplianceSourceTransition(
+          "UPLOADED",
+          "REVIEWED",
+          context("REVIEWER", { contributorIds: [mixedCaseId.toLowerCase()] }),
+        ),
+      ).toBe(true);
+
+      expect(
+        canPerformComplianceSourceTransition("UPLOADED", "REVIEWED", {
+          ...context("REVIEWER", { contributorIds: [mixedCaseId.toLowerCase()] }),
+          actor: { ...actor("REVIEWER"), id: mixedCaseId.toUpperCase() },
+        }),
+      ).toBe(false);
+    });
+
     it("rejects an approver excluded by separation of duties", () => {
       expect(
         canPerformComplianceSourceTransition(
@@ -176,6 +194,16 @@ describe("rule card revision workflow", () => {
           "APPROVED",
           context("APPROVER", { contributorIds: [ACTOR_IDS.approver] }),
         ),
+      ).toBe(false);
+    });
+
+    it("treats mixed-case UUID spellings as the same Rule Card decision maker", () => {
+      const mixedCaseId = "00000000-0000-4000-8000-00000000aBcD";
+      expect(
+        canPerformRuleCardTransition("IN_REVIEW", "CHANGES_REQUESTED", {
+          ...context("REVIEWER", { contributorIds: [mixedCaseId.toLowerCase()] }),
+          actor: { ...actor("REVIEWER"), id: mixedCaseId.toUpperCase() },
+        }),
       ).toBe(false);
     });
 

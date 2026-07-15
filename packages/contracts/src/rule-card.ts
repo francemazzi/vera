@@ -228,6 +228,20 @@ export type RuleGenerationEligibilityRequest = z.infer<
   typeof RuleGenerationEligibilityRequestSchema
 >;
 
+export const RuleCardActivationEligibilityRequestSchema = z
+  .object({
+    revisionId: z.uuid(),
+    activationAt: UtcDateTimeSchema,
+    evaluationDate: UtcDateTimeSchema,
+    expectedRevisionContentHash: Sha256DigestSchema,
+    expectedSourceContentHash: Sha256DigestSchema,
+  })
+  .strict();
+
+export type RuleCardActivationEligibilityRequest = z.infer<
+  typeof RuleCardActivationEligibilityRequestSchema
+>;
+
 export const RuleDraftGenerationReferenceSchema = z
   .object({
     targetState: z.literal("DRAFT"),

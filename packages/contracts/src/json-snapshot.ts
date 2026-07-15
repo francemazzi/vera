@@ -1,3 +1,5 @@
+import { types as nodeUtilTypes } from "node:util";
+
 import { canonicalizeJson, type JsonValue } from "./hash.js";
 
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u;
@@ -92,6 +94,9 @@ function snapshotJsonValueUnchecked(
     }
     if (typeof source !== "object") {
       return { success: false, issue: "Value is not JSON" };
+    }
+    if (nodeUtilTypes.isProxy(source)) {
+      return { success: false, issue: "Proxy objects are forbidden" };
     }
     if (seen.has(source)) {
       return { success: false, issue: "Cycles and shared object references are forbidden" };

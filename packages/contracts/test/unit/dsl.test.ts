@@ -536,10 +536,12 @@ describe("DSL adversarial preflight", () => {
   });
 
   it("turns throwing proxy traps into a safe preflight failure", () => {
+    let trapCalls = 0;
     const expression = new Proxy(
       {},
       {
         getPrototypeOf() {
+          trapCalls += 1;
           throw new Error("adversarial getPrototypeOf trap");
         },
       },
@@ -547,6 +549,7 @@ describe("DSL adversarial preflight", () => {
 
     expect(() => DslExpressionSchema.safeParse(expression)).not.toThrow();
     expect(DslExpressionSchema.safeParse(expression).success).toBe(false);
+    expect(trapCalls).toBe(0);
   });
 
   it("rejects sparse arrays, custom prototypes and non-enumerable properties", () => {
@@ -615,24 +618,20 @@ describe("DSL adversarial preflight", () => {
     expect(DslExpressionSchema.safeParse(oversized).success).toBe(false);
   });
 
-  it("validates a descriptor-only snapshot and never re-reads adversarial properties", () => {
-    let deep: DslExpression = { ...TRUTH };
-    for (let index = 0; index < DSL_LIMITS.maxExpressionDepth + 10; index += 1) {
-      deep = { op: "not", operand: deep };
-    }
+  it("rejects a changing Proxy without re-reading adversarial properties", () => {
     let getterCalls = 0;
     const target = { op: "not", operand: { ...TRUTH } };
     const changing = new Proxy(target, {
       get(object, key): unknown {
         if (key === "operand") {
           getterCalls += 1;
-          return getterCalls === 1 ? object.operand : deep;
+          return object.operand;
         }
         return key === "op" ? object.op : undefined;
       },
     });
 
-    expect(DslExpressionSchema.parse(changing)).toEqual(target);
+    expect(DslExpressionSchema.safeParse(changing).success).toBe(false);
     expect(getterCalls).toBe(0);
   });
 });

@@ -33,7 +33,7 @@ sicurezza a posteriori.
 |      5 |    4 | Facts, evidenze ed estrattori | `[x]` |
 |      6 |    5 | DSL dichiarativa              | `[x]` |
 |      7 |    6 | Kernel deterministico         | `[x]` |
-|      8 |    7 | Rule Pack e versionamento     | `[ ]` |
+|      8 |    7 | Rule Pack e versionamento     | `[x]` |
 |      9 |    8 | Test runner e version diff    | `[ ]` |
 |     10 |    9 | Benchmark sintetico           | `[ ]` |
 |     11 |   10 | Calibrazione e astensione     | `[ ]` |
@@ -225,24 +225,24 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 7 — Rule Pack e versionamento
+## [x] Fase 7 — Rule Pack e versionamento
 
 **Obiettivo:** selezionare una versione immutabile per dominio, giurisdizione e data.
 
-- [ ] Implementare `RulePackVersion` con SemVer, intervallo, snapshot e motivo della modifica.
-- [ ] Implementare clonazione controllata per creare una nuova bozza.
-- [ ] Separare la versione da `ActivationEvent` append-only.
-- [ ] Implementare resolver deterministico per dominio, giurisdizione e data.
-- [ ] Vietare sovrapposizioni non dichiarate.
-- [ ] Consentire rollback attraverso un nuovo evento, senza mutare lo storico.
-- [ ] Includere soltanto fonti e Rule Card approvate.
-- [ ] Salvare hash canonicale e snapshot esatto in ogni valutazione.
+- [x] Implementare `RulePackVersion` con SemVer, intervallo, snapshot e motivo della modifica.
+- [x] Implementare clonazione controllata per creare una nuova bozza.
+- [x] Separare la versione da `ActivationEvent` append-only.
+- [x] Implementare resolver deterministico per dominio, giurisdizione e data.
+- [x] Vietare sovrapposizioni non dichiarate.
+- [x] Consentire rollback attraverso un nuovo evento, senza mutare lo storico.
+- [x] Includere soltanto fonti e Rule Card approvate.
+- [x] Salvare hash canonicale e snapshot esatto in ogni valutazione.
 
 ### Gate di fase
 
-- [ ] Testano boundary temporali, SemVer, sovrapposizioni e risoluzione univoca.
-- [ ] Testano snapshot/replay, concorrenza e tentativi di mutazione.
-- [ ] `docs/verification/phase-7.md` registra i risultati.
+- [x] Testano boundary temporali, SemVer, sovrapposizioni e risoluzione univoca.
+- [x] Testano snapshot/replay, concorrenza e tentativi di mutazione.
+- [x] `docs/verification/phase-7.md` registra i risultati.
 
 ---
 

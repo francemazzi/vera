@@ -32,6 +32,7 @@ export type { RuleCardErrorCode, RuleCardErrorDetails } from "./rule-card-errors
 export { InMemoryRuleCardRepository } from "./rule-card-repository.js";
 export type {
   RuleCardAuditExpectation,
+  RuleCardActivationEligibilityRequest,
   RuleCardAuditRecord,
   RuleCardHistory,
   RuleCardRevisionSnapshot,
@@ -39,6 +40,39 @@ export type {
   RuleDraftGenerationReference,
   RuleGenerationEligibilityRequest,
 } from "./rule-card-repository.js";
+export {
+  RULE_PACK_ERROR_CODES,
+  RulePackActivationConflictError,
+  RulePackActivationInvariantError,
+  RulePackActivationNotFoundError,
+  RulePackActivationValidationError,
+  RulePackConflictError,
+  RulePackEligibilityError,
+  RulePackInvariantError,
+  RulePackNotFoundError,
+  RulePackRepositoryError,
+  RulePackValidationError,
+} from "./rule-pack-errors.js";
+export type { RulePackErrorCode, RulePackErrorDetails } from "./rule-pack-errors.js";
+export { InMemoryRulePackActivationLedger } from "./rule-pack-activation.js";
+export type {
+  ActivationAppendCommand,
+  ActivationAppendExpectation,
+  RulePackActivationVersionReader,
+} from "./rule-pack-activation.js";
+export {
+  InMemoryRulePackRepository,
+  RepositoryBackedRulePackEligibilityReader,
+} from "./rule-pack-repository.js";
+export type {
+  CloneRulePackVersionRequest,
+  PublishRulePackDraftRequest,
+  RulePackCardEligibilityReader,
+  RulePackEligibilityPurpose,
+  RulePackRuleEligibilityReader,
+  RulePackRuleEligibilitySnapshot,
+  RulePackSourceEligibilityReader,
+} from "./rule-pack-repository.js";
 export {
   DSL_SEMANTIC_ERROR_CODES,
   DslSemanticError,
@@ -74,5 +108,11 @@ export type {
   UnicodeComparisonOptions,
   VisualRegion,
 } from "./dsl-semantic-primitives.js";
-export { evaluateExpression, evaluateRule } from "./dsl-evaluator.js";
+export {
+  RULE_BATCH_EVALUATION_LIMITS,
+  RuleEvaluationResourceLimitError,
+  evaluateExpression,
+  evaluateRule,
+} from "./dsl-evaluator.js";
+export { evaluateResolvedRulePack, evaluateRulePackVersion } from "./rule-pack-evaluator.js";
 export { resolveRuleFindings } from "./rule-resolution.js";

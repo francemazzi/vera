@@ -7,7 +7,9 @@ import {
   canPerformComplianceSourceTransition,
   compareUtcDateTimes,
   isWithinValidityInterval,
+  parseActorSnapshot,
 } from "@vera/contracts";
+import { types as nodeUtilTypes } from "node:util";
 import type {
   ComplianceSource,
   ComplianceSourceEligibilityRequest,
@@ -53,6 +55,38 @@ export interface ComplianceSourceHistory {
 
 function clone<T>(value: T): T {
   return structuredClone(value);
+}
+
+function parseTransitionAuthorization(
+  input: unknown,
+): ComplianceSourceTransitionAuthorization | null {
+  if (input === null || typeof input !== "object" || nodeUtilTypes.isProxy(input)) return null;
+  const prototype = Object.getPrototypeOf(input) as object | null;
+  if (prototype !== Object.prototype && prototype !== null) return null;
+  const ownKeys = Reflect.ownKeys(input);
+  if (
+    ownKeys.some((key) => typeof key !== "string" || (key !== "actor" && key !== "reason")) ||
+    !ownKeys.includes("actor")
+  ) {
+    return null;
+  }
+  const actorDescriptor = Object.getOwnPropertyDescriptor(input, "actor");
+  if (
+    actorDescriptor === undefined ||
+    !("value" in actorDescriptor) ||
+    !actorDescriptor.enumerable
+  ) {
+    return null;
+  }
+  const actor = parseActorSnapshot(actorDescriptor.value);
+  if (actor === null) return null;
+
+  const reasonDescriptor = Object.getOwnPropertyDescriptor(input, "reason");
+  if (reasonDescriptor === undefined) return { actor };
+  if (!("value" in reasonDescriptor) || !reasonDescriptor.enumerable) return null;
+  const reason: unknown = reasonDescriptor.value;
+  if (reason !== undefined && typeof reason !== "string") return null;
+  return reason === undefined ? { actor } : { actor, reason };
 }
 
 export class InMemoryComplianceSourceRepository {
@@ -167,6 +201,13 @@ export class InMemoryComplianceSourceRepository {
       );
     }
     const validEvent = parsed.data;
+    const validAuthorization = parseTransitionAuthorization(authorization);
+    if (validAuthorization === null) {
+      throw new ComplianceSourceInvariantError(
+        "TRANSITION_NOT_AUTHORIZED",
+        "Workflow actor does not satisfy the canonical public identity contract",
+      );
+    }
 
     if (this.#eventIds.has(validEvent.id)) {
       throw new ComplianceSourceConflictError(
@@ -241,11 +282,11 @@ export class InMemoryComplianceSourceRepository {
       );
     }
 
-    const contextReason = authorization.reason ?? null;
-    const derivedContext = this.#deriveTransitionContext(version, history, authorization);
+    const contextReason = validAuthorization.reason ?? null;
+    const derivedContext = this.#deriveTransitionContext(version, history, validAuthorization);
     if (
-      validEvent.actorId !== authorization.actor.id ||
-      validEvent.exercisedRole !== authorization.actor.role ||
+      validEvent.actorId !== validAuthorization.actor.id ||
+      validEvent.exercisedRole !== validAuthorization.actor.role ||
       validEvent.reason !== contextReason ||
       !canPerformComplianceSourceTransition(currentState, validEvent.to, derivedContext)
     ) {
@@ -253,7 +294,7 @@ export class InMemoryComplianceSourceRepository {
         "TRANSITION_NOT_AUTHORIZED",
         "Actor, reason, role, independence, or workflow does not authorize the transition",
         {
-          actorId: authorization.actor.id,
+          actorId: validAuthorization.actor.id,
           eventActorId: validEvent.actorId,
           from: validEvent.from,
           to: validEvent.to,

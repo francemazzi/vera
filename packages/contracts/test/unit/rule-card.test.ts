@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeRuleCardRevisionHash,
+  RuleCardActivationEligibilityRequestSchema,
   RuleCardApprovalDecisionSchema,
   RuleCardCommentSchema,
   RuleDraftGenerationReferenceSchema,
@@ -171,6 +172,33 @@ describe("Rule generation boundary schemas", () => {
   ])("rejects a malformed generation request %#", (override) => {
     expect(
       RuleGenerationEligibilityRequestSchema.safeParse({ ...request, ...override }).success,
+    ).toBe(false);
+  });
+});
+
+describe("Rule Card activation boundary schema", () => {
+  const request = {
+    revisionId: IDS.revision,
+    activationAt: CREATED_AT,
+    evaluationDate: CREATED_AT,
+    expectedRevisionContentHash: REVISION_HASH,
+    expectedSourceContentHash: SOURCE_HASH,
+  } as const;
+
+  it("accepts an exact hash-pinned revision request", () => {
+    expect(RuleCardActivationEligibilityRequestSchema.parse(request)).toEqual(request);
+  });
+
+  it.each([
+    { revisionId: "not-a-uuid" },
+    { activationAt: "2026-03-01T01:00:00.000+01:00" },
+    { evaluationDate: "not-a-date" },
+    { expectedRevisionContentHash: "invalid" },
+    { expectedSourceContentHash: "invalid" },
+    { hidden: true },
+  ])("rejects a malformed exact-revision request %#", (override) => {
+    expect(
+      RuleCardActivationEligibilityRequestSchema.safeParse({ ...request, ...override }).success,
     ).toBe(false);
   });
 });
