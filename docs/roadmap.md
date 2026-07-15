@@ -42,7 +42,7 @@ sicurezza a posteriori.
 |     14 |   11 | RAG e ingestione              | `[x]` |
 |     15 |   12 | UI di revisione               | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico    | `[x]` |
-|     17 |   16 | Apertura e release            | `[ ]` |
+|     17 |   16 | Apertura e release            | `[~]` |
 
 ## Invarianti trasversali
 
@@ -432,7 +432,7 @@ riservati.
 
 ---
 
-## [ ] Fase 16 — Apertura e release
+## [~] Fase 16 — Apertura e release
 
 **Obiettivo:** produrre una release sperimentale autonoma e verificare il confine pubblico su tutti
 i ref.
