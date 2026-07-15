@@ -153,7 +153,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |     11 |   10 | Calibrazione e astensione       | `[x]` |
 |     12 |   13 | Provenienza e audit             | `[x]` |
 |     13 |   14 | API, persistenza e sicurezza    | `[x]` |
-|     14 |   11 | RAG e ingestione                | `[ ]` |
+|     14 |   11 | RAG e ingestione                | `[x]` |
 |     15 |   12 | UI di revisione                 | `[ ]` |
 |     16 |   15 | MVP dimostrativo sintetico      | `[ ]` |
 |     17 |   16 | Apertura e release sperimentale | `[ ]` |
@@ -182,6 +182,7 @@ già sopra contratti stabili e tracciabili.
 - [Calibrazione e astensione](docs/calibration.md)
 - [Provenienza e audit](docs/audit.md)
 - [API, persistenza e sicurezza locale](docs/api-storage.md)
+- [RAG e ingestione editoriale](docs/rag.md)
 - Le specifiche API e operative saranno aggiunte e versionate nelle rispettive fasi.
 
 ## Licenza

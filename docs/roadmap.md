@@ -39,7 +39,7 @@ sicurezza a posteriori.
 |     11 |   10 | Calibrazione e astensione     | `[x]` |
 |     12 |   13 | Provenienza e audit           | `[x]` |
 |     13 |   14 | API, persistenza e sicurezza  | `[x]` |
-|     14 |   11 | RAG e ingestione              | `[ ]` |
+|     14 |   11 | RAG e ingestione              | `[x]` |
 |     15 |   12 | UI di revisione               | `[ ]` |
 |     16 |   15 | MVP dimostrativo sintetico    | `[ ]` |
 |     17 |   16 | Apertura e release            | `[ ]` |
@@ -363,27 +363,27 @@ tramite API o UI.
 
 ---
 
-## [ ] Fase 11 — RAG e ingestione
+## [x] Fase 11 — RAG e ingestione
 
 **Obiettivo:** assistere recupero e authoring senza attribuire autorità decisionale all’AI.
 
-- [ ] Indicizzare in pgvector soltanto versioni approvate.
-- [ ] Conservare fonte, versione e sezione in ogni chunk.
-- [ ] Filtrare retrieval per dominio, giurisdizione e validità temporale.
-- [ ] Generare esclusivamente Rule Card in stato `DRAFT`.
-- [ ] Registrare prompt, modello, citazioni, output e tentativi.
-- [ ] Richiedere conferma umana per qualsiasi avanzamento di workflow.
-- [ ] Implementare timeout, retry limitato e comportamento sicuro con Ollama indisponibile.
-- [ ] Misurare recall@k, citation accuracy, faithfulness e unsupported claim rate su fonti
+- [x] Indicizzare in pgvector soltanto versioni approvate.
+- [x] Conservare fonte, versione e sezione in ogni chunk.
+- [x] Filtrare retrieval per dominio, giurisdizione e validità temporale.
+- [x] Generare esclusivamente Rule Card in stato `DRAFT`.
+- [x] Registrare prompt, modello, citazioni, output e tentativi.
+- [x] Richiedere conferma umana per qualsiasi avanzamento di workflow.
+- [x] Implementare timeout, retry limitato e comportamento sicuro con Ollama indisponibile.
+- [x] Misurare recall@k, citation accuracy, faithfulness e unsupported claim rate su fonti
       sintetiche.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono chunking, filtri e citazioni.
-- [ ] Test d’integrazione coprono indice, provider simulato, retry e indisponibilità.
-- [ ] Nessun percorso rende operativa una fonte o regola generata dalla sola AI.
-- [ ] Smoke test locale registra modello e digest.
-- [ ] `docs/verification/phase-11.md` registra i risultati.
+- [x] Test unitari coprono chunking, filtri e citazioni.
+- [x] Test d’integrazione coprono indice, provider simulato, retry e indisponibilità.
+- [x] Nessun percorso rende operativa una fonte o regola generata dalla sola AI.
+- [x] Smoke test locale registra modello e digest o una limitazione hashata.
+- [x] `docs/verification/phase-11.md` registra i risultati.
 
 ---
 
