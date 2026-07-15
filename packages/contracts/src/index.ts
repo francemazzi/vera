@@ -24,6 +24,40 @@ export {
   deriveRuleOutcome,
   negateTruth,
 } from "./outcome.js";
+export {
+  RuleCardApprovalDecisionSchema,
+  RuleCardApprovalDecisionTypeSchema,
+  RuleCardCommentSchema,
+  RuleCardEvidenceRequirementSchema,
+  RuleCardExceptionSchema,
+  RuleCardProvenanceSchema,
+  RuleDraftGenerationReferenceSchema,
+  RuleGenerationEligibilityRequestSchema,
+  RuleCardReviewDecisionSchema,
+  RuleCardReviewDecisionTypeSchema,
+  RuleCardRevisionHashInputSchema,
+  RuleCardRevisionSchema,
+  RuleCardSchema,
+  RuleCardTransitionEventSchema,
+  computeRuleCardRevisionHash,
+  verifyRuleCardRevisionHash,
+} from "./rule-card.js";
+export type {
+  RuleCard,
+  RuleCardApprovalDecision,
+  RuleCardApprovalDecisionType,
+  RuleCardComment,
+  RuleCardEvidenceRequirement,
+  RuleCardException,
+  RuleCardProvenance,
+  RuleDraftGenerationReference,
+  RuleGenerationEligibilityRequest,
+  RuleCardReviewDecision,
+  RuleCardReviewDecisionType,
+  RuleCardRevisionHashInput,
+  RuleCardRevision,
+  RuleCardTransitionEvent,
+} from "./rule-card.js";
 export { isWithinValidityInterval, UtcDateTimeSchema, ValidityIntervalSchema } from "./time.js";
 export type { UtcDateTime, ValidityInterval } from "./time.js";
 export {

@@ -72,6 +72,8 @@ DRAFT → IN_REVIEW → APPROVED → RETIRED
 - L'invio a `IN_REVIEW` congela la revisione e richiede una fonte `APPROVED`.
 - `CHANGES_REQUESTED` è terminale per quella revisione; la correzione è una nuova revisione.
 - L'approvazione è legata all'hash della revisione e applica il quorum della sezione 8.
+- `APPROVED` e `CHANGES_REQUESTED` sono proiezioni delle decisioni firmate, non transizioni
+  esplicite che un consumer può inserire direttamente.
 - Una card ritirata resta leggibile per replay, ma non genera nuove regole.
 - Una proposta generata da AI nasce sempre `DRAFT`, indica il provider ed esige gli stessi controlli
   di una proposta manuale.
@@ -79,7 +81,10 @@ DRAFT → IN_REVIEW → APPROVED → RETIRED
 ### 2.3 Rule, test, approval e activation
 
 1. Una regola `DRAFT` può essere creata soltanto da una revisione di Rule Card `APPROVED` e deve
-   conservarne identificatore e hash.
+   conservarne identificatore e hash. La richiesta registra separatamente `generationAt` ed
+   `evaluationDate`: il quorum della card deve esistere al primo istante e la fonte deve risultare
+   approvata sia allora sia al momento della richiesta; la validità del contenuto è verificata al
+   secondo. Il replay storico usa gli snapshot di audit e non riapre questo percorso di generazione.
 2. La regola esprime almeno `appliesWhen`, `satisfiedWhen`, eventuali `exceptions`, periodo,
    riferimenti alle evidenze richieste e `unknownPolicy=REVIEW`.
 3. Il test runner congela regola e fixture per hash. Ogni regola deve avere almeno un caso sintetico

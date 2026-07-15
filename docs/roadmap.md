@@ -29,7 +29,7 @@ sicurezza a posteriori.
 |      1 |    0 | Confini pubblici e fondazione | `[x]` |
 |      2 |    1 | Specifica metodologica        | `[x]` |
 |      3 |    2 | Fonti di conformità           | `[x]` |
-|      4 |    3 | Rule Card                     | `[ ]` |
+|      4 |    3 | Rule Card                     | `[x]` |
 |      5 |    4 | Facts, evidenze ed estrattori | `[ ]` |
 |      6 |    5 | DSL dichiarativa              | `[ ]` |
 |      7 |    6 | Kernel deterministico         | `[ ]` |
@@ -131,25 +131,25 @@ riproducibile e controlli automatici contro l’inclusione accidentale di materi
 
 ---
 
-## [ ] Fase 3 — Rule Card
+## [x] Fase 3 — Rule Card
 
 **Obiettivo:** introdurre un passaggio revisionabile tra fonte e regola eseguibile.
 
-- [ ] Implementare `RuleCard` con attore, oggetto, ambito e categoria deontica.
-- [ ] Registrare eccezioni, evidenze richieste, rischio e costi di falso positivo/negativo.
-- [ ] Collegare ogni card a fonte e sezione stabili.
-- [ ] Implementare commenti, revisioni, optimistic concurrency e audit delle modifiche.
-- [ ] Applicare ruoli `AUTHOR`, `REVIEWER`, `APPROVER`, `ADMIN`.
-- [ ] Vietare self-approval.
-- [ ] Richiedere due approvatori distinti per rischio `HIGH` o `CRITICAL`.
-- [ ] Impedire la generazione di una regola attiva da una card non approvata.
+- [x] Implementare `RuleCard` con attore, oggetto, ambito e categoria deontica.
+- [x] Registrare eccezioni, evidenze richieste, rischio e costi di falso positivo/negativo.
+- [x] Collegare ogni card a fonte e sezione stabili.
+- [x] Implementare commenti, revisioni, optimistic concurrency e audit delle modifiche.
+- [x] Applicare ruoli `AUTHOR`, `REVIEWER`, `APPROVER`, `ADMIN`.
+- [x] Vietare self-approval.
+- [x] Richiedere due approvatori distinti per rischio `HIGH` o `CRITICAL`.
+- [x] Impedire la generazione di una regola attiva da una card non approvata.
 
 ### Gate di fase
 
-- [ ] Test unitari coprono autorizzazioni, workflow e quorum.
-- [ ] Test d’integrazione coprono conflitti concorrenti e blocco dell’attivazione.
-- [ ] Le identità di test sono sintetiche e marcate `TECHNICAL_DEMO`.
-- [ ] `docs/verification/phase-3.md` registra i risultati.
+- [x] Test unitari coprono autorizzazioni, workflow e quorum.
+- [x] Test d’integrazione coprono conflitti concorrenti e blocco dell’attivazione.
+- [x] Le identità di test sono sintetiche e marcate `TECHNICAL_DEMO`.
+- [x] `docs/verification/phase-3.md` registra i risultati.
 
 ---
 
