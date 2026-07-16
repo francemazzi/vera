@@ -10,6 +10,7 @@ export {
   StorageNotFoundError,
   StorageValidationError,
   VeraStorageRepository,
+  type IdempotentMutationResult,
   type LocalAccountRecord,
   type SessionRecord,
 } from "./repository.js";

@@ -1,3 +1,4 @@
+import { sha256Bytes, sha256CanonicalJson } from "@vera/contracts";
 import type { ActorRole, EvaluationRun, JsonValue, ReviewDecision } from "@vera/contracts";
 import { StorageConflictError } from "@vera/storage";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,7 +10,10 @@ import { makeEvaluationRun, makeReviewDecision, uuid } from "../fixtures/evaluat
 class FakeRepository {
   readonly runs = new Map<string, EvaluationRun>();
   readonly decisions = new Map<string, ReviewDecision[]>();
-  readonly idempotency = new Map<string, JsonValue>();
+  readonly idempotency = new Map<
+    string,
+    { readonly requestHash: string; readonly response: JsonValue }
+  >();
 
   public saveEvaluationRun(run: EvaluationRun): Promise<EvaluationRun> {
     if (this.runs.has(run.id)) throw new StorageConflictError("EvaluationRun already exists");
@@ -38,16 +42,47 @@ class FakeRepository {
     return Promise.resolve(decision);
   }
 
-  public getOrCreateIdempotency(input: {
+  public saveEvaluationRunIdempotently(input: {
+    readonly run: EvaluationRun;
     readonly scope: string;
     readonly key: string;
-    readonly response: JsonValue;
   }): Promise<{ readonly response: JsonValue; readonly created: boolean }> {
-    const mapKey = `${input.scope}:${input.key}`;
+    const response = { evaluationRun: input.run } as unknown as JsonValue;
+    return this.#idempotentMutation(input.scope, input.key, input.run, response, () =>
+      this.saveEvaluationRun(input.run),
+    );
+  }
+
+  public appendReviewDecisionIdempotently(input: {
+    readonly decision: ReviewDecision;
+    readonly scope: string;
+    readonly key: string;
+  }): Promise<{ readonly response: JsonValue; readonly created: boolean }> {
+    const response = { reviewDecision: input.decision } as unknown as JsonValue;
+    return this.#idempotentMutation(input.scope, input.key, input.decision, response, () =>
+      this.appendReviewDecision(input.decision),
+    );
+  }
+
+  async #idempotentMutation(
+    scope: string,
+    key: string,
+    request: EvaluationRun | ReviewDecision,
+    response: JsonValue,
+    mutate: () => Promise<unknown>,
+  ): Promise<{ readonly response: JsonValue; readonly created: boolean }> {
+    const mapKey = `${scope}:${key}`;
+    const requestHash = sha256CanonicalJson({ scope, request });
     const existing = this.idempotency.get(mapKey);
-    if (existing !== undefined) return Promise.resolve({ response: existing, created: false });
-    this.idempotency.set(mapKey, input.response);
-    return Promise.resolve({ response: input.response, created: true });
+    if (existing !== undefined) {
+      if (existing.requestHash !== requestHash) {
+        throw new StorageConflictError("Idempotency key already exists for a different request");
+      }
+      return { response: existing.response, created: false };
+    }
+    await mutate();
+    this.idempotency.set(mapKey, { requestHash, response });
+    return { response, created: true };
   }
 
   public recordBlob(): Promise<void> {
@@ -65,6 +100,9 @@ function account(role: ActorRole): AuthenticatedAccount {
 }
 
 const fakeAuth: AuthService = {
+  bootstrapAdmin(input) {
+    return Promise.resolve(account(input.role));
+  },
   createAccount() {
     return Promise.resolve(account("ADMIN"));
   },
@@ -91,6 +129,7 @@ describe("VERA API", () => {
     server = await createApiServer({
       repository: repository as never,
       auth: fakeAuth,
+      bootstrapTokenHash: sha256Bytes(Buffer.from("bootstrap-secret", "utf8")),
       now: () => "2026-07-15T12:00:00.000Z",
     });
   });
@@ -106,6 +145,69 @@ describe("VERA API", () => {
     expect(health.statusCode).toBe(200);
     expect(openapi.statusCode).toBe(200);
     expect(openapi.json()).toMatchObject({ openapi: "3.0.3" });
+  });
+
+  it("permits one-time ADMIN bootstrap credentials and otherwise requires an ADMIN", async () => {
+    const payload = {
+      email: "new-account@example.test",
+      displayName: "New account",
+      password: "local-password-only",
+      role: "ADMIN",
+    } as const;
+
+    expect((await server.inject({ method: "POST", url: "/v1/accounts", payload })).statusCode).toBe(
+      401,
+    );
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/accounts",
+          headers: { authorization: "Bootstrap wrong-secret" },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/accounts",
+          headers: { authorization: "Bootstrap bootstrap-secret" },
+          payload: { ...payload, role: "AUTHOR" },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/accounts",
+          headers: { authorization: "Bootstrap bootstrap-secret" },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/accounts",
+          headers: { authorization: "Bearer reviewer" },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/accounts",
+          headers: { authorization: "Bearer admin" },
+          payload: { ...payload, email: "author-created-by-admin@example.test", role: "AUTHOR" },
+        })
+      ).statusCode,
+    ).toBe(201);
   });
 
   it("enforces auth, RBAC and idempotency for evaluation creation", async () => {
@@ -151,6 +253,25 @@ describe("VERA API", () => {
 
     expect(created.statusCode).toBe(201);
     expect(replay.statusCode).toBe(201);
+    expect(replay.json()).toEqual(created.json());
+
+    const collidingRun = makeEvaluationRun(uuid(31));
+    const collision = await server.inject({
+      method: "POST",
+      url: "/v1/evaluation-runs",
+      headers: { authorization: "Bearer author", "idempotency-key": "idem-api-1" },
+      payload: collidingRun,
+    });
+    expect(collision.statusCode).toBe(409);
+    expect(repository.runs.has(collidingRun.id)).toBe(false);
+
+    const independentlyScoped = await server.inject({
+      method: "POST",
+      url: "/v1/evaluation-runs",
+      headers: { authorization: "Bearer admin", "idempotency-key": "idem-api-1" },
+      payload: collidingRun,
+    });
+    expect(independentlyScoped.statusCode).toBe(201);
   });
 
   it("blocks mutation and restricts review decisions to reviewer roles", async () => {
@@ -160,6 +281,11 @@ describe("VERA API", () => {
       repository.decisions.set(run.id, []);
     }
     const decision = makeReviewDecision(run);
+    const wrongActor = makeReviewDecision(run, { actorId: uuid(72) });
+    const wrongRole = makeReviewDecision(run, {
+      actorId: account("REVIEWER").id,
+      exercisedRole: "APPROVER",
+    });
 
     expect(
       (
@@ -187,9 +313,46 @@ describe("VERA API", () => {
           method: "POST",
           url: `/v1/evaluation-runs/${run.id}/review-decisions`,
           headers: { authorization: "Bearer reviewer", "idempotency-key": "idem-review-1" },
-          payload: decision,
+          payload: wrongActor,
         })
       ).statusCode,
-    ).toBe(201);
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: `/v1/evaluation-runs/${run.id}/review-decisions`,
+          headers: { authorization: "Bearer reviewer", "idempotency-key": "idem-review-1" },
+          payload: wrongRole,
+        })
+      ).statusCode,
+    ).toBe(403);
+    const created = await server.inject({
+      method: "POST",
+      url: `/v1/evaluation-runs/${run.id}/review-decisions`,
+      headers: { authorization: "Bearer reviewer", "idempotency-key": "idem-review-1" },
+      payload: decision,
+    });
+    const replay = await server.inject({
+      method: "POST",
+      url: `/v1/evaluation-runs/${run.id}/review-decisions`,
+      headers: { authorization: "Bearer reviewer", "idempotency-key": "idem-review-1" },
+      payload: decision,
+    });
+    const collision = await server.inject({
+      method: "POST",
+      url: `/v1/evaluation-runs/${run.id}/review-decisions`,
+      headers: { authorization: "Bearer reviewer", "idempotency-key": "idem-review-1" },
+      payload: makeReviewDecision(run, {
+        id: uuid(43),
+        reason: "A different but valid review request must collide",
+      }),
+    });
+
+    expect(created.statusCode).toBe(201);
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json()).toEqual(created.json());
+    expect(collision.statusCode).toBe(409);
+    expect(repository.decisions.get(run.id)).toHaveLength(1);
   });
 });

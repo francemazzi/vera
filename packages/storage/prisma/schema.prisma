@@ -76,6 +76,7 @@ model BlobObject {
 model IdempotencyRecord {
   scope        String
   key          String
+  requestHash  String?
   responseHash String
   response     Json
   createdAt    DateTime @db.Timestamptz(6)
