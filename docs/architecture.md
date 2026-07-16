@@ -6,19 +6,20 @@ produce findings deterministici.
 
 ## Componenti
 
-| Area           | Package/app           | Responsabilità                                                        |
-| -------------- | --------------------- | --------------------------------------------------------------------- |
-| Contratti      | `@vera/contracts`     | Schemi Zod, tipi, JSON Schema, hash canonicali e invarianti pubbliche |
-| Kernel         | `@vera/rules-core`    | DSL evaluator, resolution, Rule Pack, ledger audit in memoria         |
-| Estrazione     | `@vera/extractors`    | Adapter manuale, JSON e Ollama senza esiti normativi                  |
-| Testing regole | `@vera/rules-testing` | Fixture gate, diff versioni e impact report                           |
-| Benchmark      | `@vera/benchmark`     | Corpus sintetico, runner simulato, metriche e smoke Ollama            |
-| Calibrazione   | `@vera/calibration`   | Profili, reliability diagram, risk-coverage e astensione              |
-| Persistenza    | `@vera/storage`       | Prisma/PostgreSQL, blob store, backup/restore                         |
-| RAG            | `@vera/rag`           | Chunking, pgvector, retrieval e bozze Rule Card `DRAFT`               |
-| MVP            | `@vera/demo-mvp`      | Orchestrazione end-to-end sintetica e report hashato                  |
-| API            | `@vera/api`           | Fastify `/v1`, OpenAPI, auth locale, RBAC e idempotenza               |
-| UI             | `@vera/web`           | Audit desk React/Vite, coda revisione, Playwright                     |
+| Area           | Package/app             | Responsabilità                                                        |
+| -------------- | ----------------------- | --------------------------------------------------------------------- |
+| Contratti      | `@vera/contracts`       | Schemi Zod, tipi, JSON Schema, hash canonicali e invarianti pubbliche |
+| Kernel         | `@vera/rules-core`      | DSL evaluator, resolution, Rule Pack, ledger audit in memoria         |
+| Estrazione     | `@vera/extractors`      | Adapter manuale, JSON e Ollama senza esiti normativi                  |
+| Testing regole | `@vera/rules-testing`   | Fixture gate, diff versioni e impact report                           |
+| Benchmark      | `@vera/benchmark`       | Corpus sintetico, runner simulato, metriche e smoke Ollama            |
+| Calibrazione   | `@vera/calibration`     | Profili, reliability diagram, risk-coverage e astensione              |
+| Persistenza    | `@vera/storage`         | PostgreSQL per run/review/auth, blob store ed export backup           |
+| RAG            | `@vera/rag`             | Chunking, pgvector, retrieval e bozze Rule Card `DRAFT`               |
+| MVP            | `@vera/demo-mvp`        | Orchestrazione end-to-end sintetica e report hashato                  |
+| API            | `@vera/api`             | Fastify `/v1`, OpenAPI, auth locale, RBAC e idempotenza               |
+| UI             | `@vera/web`             | Audit desk React/Vite, coda revisione, Playwright                     |
+| Audit locale   | `@vera/dataset-harness` | Controllo strutturale privato con astensione obbligatoria             |
 
 ## Flusso dati
 
@@ -41,6 +42,11 @@ mutate; attivazioni, rollback e review sono eventi append-only.
 Il repository pubblicabile contiene solo codice, documentazione e fixture sintetiche. Materiali
 locali restano sotto percorsi ignorati come `datasets/`, `reports/private/` e `.vera-private/`. Il
 public-boundary scanner viene eseguito su working tree, indice e cronologia raggiungibile.
+
+L'API, il database, RAG e la UI hanno test d'integrazione propri. Il percorso composto verificato
+collega l'MVP sintetico all'API e a PostgreSQL; la UI usa ancora uno store locale e RAG non è
+orchestrato dall'API. Fonti, Rule Card, Rule Pack, attivazioni e test-run non hanno ancora
+persistenza PostgreSQL, e lo storage espone export canonico ma non restore.
 
 ## Limiti della release sperimentale
 

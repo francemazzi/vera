@@ -3,6 +3,10 @@
 La prima release è una release sorgente sperimentale. Non pubblica pacchetti npm e non cambia la
 visibilità del repository senza conferma esplicita.
 
+Il tag `v0.1.0` è storico e immutabile. Una verifica correttiva successiva ha riaperto la Fase 14:
+la release non include persistenza di tutti gli aggregati dichiarati né restore storage. Vedere
+l'ADR 0006 e la roadmap corrente.
+
 ## Contenuto previsto
 
 - Monorepo TypeScript strict/ESM.

@@ -54,6 +54,18 @@ pnpm --silent --filter @vera/demo-mvp report > /tmp/vera-demo-mvp-report.json
 
 Il report è deterministicamente hashato e non usa materiali reali.
 
+## Audit locale opzionale
+
+Materiali locali ignorati, inclusi record normalizzati designati dal proprietario come riferimento
+locale, possono essere controllati senza trasformarli in fixture o gate pubblici:
+
+```bash
+pnpm datasets:audit
+pnpm verify:local-datasets
+```
+
+Vedere [Audit locale di dataset](local-dataset-audit.md) per confini, configurazione ed exit code.
+
 ## Smoke test Ollama
 
 Gli smoke test Ollama sono offline-safe: se il runtime locale non è configurato, registrano un
