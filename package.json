@@ -23,6 +23,8 @@
     "test:contract": "pnpm -r --if-present test:contract",
     "test:e2e": "pnpm -r --if-present test:e2e",
     "test:coverage": "vitest run --coverage",
+    "datasets:audit": "pnpm --filter @vera/dataset-harness build && node packages/dataset-harness/dist/cli.js --projection .vera-private/dataset-audit.json",
+    "verify:local-datasets": "pnpm verify && pnpm datasets:audit",
     "public-boundary:check": "pnpm --filter @vera/public-boundary scan",
     "security:check": "docker run --rm -v \"$PWD:/src:ro\" ghcr.io/google/osv-scanner:v2.4.0 scan source -L /src/pnpm-lock.yaml",
     "verify": "pnpm generate && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:contract && pnpm build && pnpm test:e2e && pnpm test:coverage && pnpm public-boundary:check"

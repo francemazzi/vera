@@ -1,0 +1,35 @@
+{
+  "name": "@vera/dataset-harness",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "vera-dataset-audit": "./dist/cli.js"
+  },
+  "scripts": {
+    "audit": "node dist/cli.js",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "pnpm build && vitest run test/integration"
+  },
+  "dependencies": {
+    "@vera/contracts": "workspace:*",
+    "@vera/extractors": "workspace:*",
+    "@vera/rules-core": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
