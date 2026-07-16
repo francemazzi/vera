@@ -19,7 +19,7 @@
     "clean": "rm -rf dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:unit": "vitest run test/unit",
-    "test:integration": "pnpm build && vitest run test/integration"
+    "test:integration": "pnpm -r --filter @vera/dataset-harness... build && vitest run test/integration"
   },
   "dependencies": {
     "@vera/contracts": "workspace:*",
