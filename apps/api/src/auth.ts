@@ -18,6 +18,12 @@ export interface AuthenticatedAccount {
 }
 
 export interface AuthService {
+  bootstrapAdmin(input: {
+    readonly email: string;
+    readonly displayName: string;
+    readonly password: string;
+    readonly role: ActorRole;
+  }): Promise<AuthenticatedAccount>;
   createAccount(input: {
     readonly email: string;
     readonly displayName: string;
@@ -49,20 +55,37 @@ function tokenHash(token: string): string {
   return sha256Bytes(Buffer.from(token, "utf8"));
 }
 
+async function passwordHash(password: string): Promise<string> {
+  return argonHash(password, {
+    algorithm: 2,
+    memoryCost: 19_456,
+    timeCost: 2,
+    parallelism: 1,
+  });
+}
+
 export function createAuthService(repository: VeraStorageRepository): AuthService {
   return {
-    async createAccount(input) {
-      const passwordHash = await argonHash(input.password, {
-        algorithm: 2,
-        memoryCost: 19_456,
-        timeCost: 2,
-        parallelism: 1,
+    async bootstrapAdmin(input) {
+      if (input.role !== "ADMIN") {
+        throw new ApiProblem(403, "Forbidden", "The initial account must have the ADMIN role");
+      }
+      const account = await repository.bootstrapAdminAccount({
+        id: randomUUID(),
+        email: input.email,
+        displayName: input.displayName,
+        passwordHash: await passwordHash(input.password),
+        role: input.role,
+        createdAt: new Date().toISOString(),
       });
+      return publicAccount(account);
+    },
+    async createAccount(input) {
       const account = await repository.createAccount({
         id: randomUUID(),
         email: input.email,
         displayName: input.displayName,
-        passwordHash,
+        passwordHash: await passwordHash(input.password),
         role: input.role,
         createdAt: new Date().toISOString(),
       });

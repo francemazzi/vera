@@ -38,11 +38,11 @@ sicurezza a posteriori.
 |     10 |    9 | Benchmark sintetico           | `[x]` |
 |     11 |   10 | Calibrazione e astensione     | `[x]` |
 |     12 |   13 | Provenienza e audit           | `[x]` |
-|     13 |   14 | API, persistenza e sicurezza  | `[x]` |
+|     13 |   14 | API, persistenza e sicurezza  | `[~]` |
 |     14 |   11 | RAG e ingestione              | `[x]` |
 |     15 |   12 | UI di revisione               | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico    | `[x]` |
-|     17 |   16 | Apertura e release            | `[ ]` |
+|     17 |   16 | Apertura e release            | `[~]` |
 
 ## Invarianti trasversali
 
@@ -338,28 +338,28 @@ tramite API o UI.
 
 ---
 
-## [x] Fase 14 — API, persistenza e sicurezza
+## [~] Fase 14 — API, persistenza e sicurezza
 
 **Obiettivo:** esporre i workflow senza consentire di aggirare invarianti, ruoli o immutabilità.
 
-- [x] Implementare persistenza PostgreSQL/Prisma per fonti, card, pack, attivazioni, test, run e
-      revisioni.
+- [~] Implementare persistenza PostgreSQL/Prisma per fonti, card, pack, attivazioni, test, run e
+  revisioni.
 - [x] Usare `jsonb` per AST e snapshot; usare un blob store locale content-addressed per gli asset.
-- [x] Implementare API REST `/v1` e OpenAPI dagli stessi schemi Zod.
+- [~] Implementare API REST `/v1` e OpenAPI dagli stessi schemi Zod.
 - [x] Restituire errori Problem Details e validare ogni payload.
 - [x] Implementare idempotency key per valutazioni e pubblicazioni.
-- [x] Implementare optimistic concurrency sulle risorse modificabili.
+- [~] Implementare optimistic concurrency sulle risorse modificabili.
 - [x] Implementare account locali, Argon2id, sessioni opache e RBAC.
 - [x] Applicare rate limit locale, redazione dei log e policy di egress esplicita.
-- [x] Implementare migrazioni, backup e restore verificabili.
+- [~] Implementare migrazioni, backup e restore verificabili.
 
 ### Gate di fase
 
 - [x] Test d’integrazione usano PostgreSQL reale tramite Testcontainers.
 - [x] Test negativi coprono auth, RBAC, idempotenza, concorrenza e immutabilità.
-- [x] Migrazione pulita e backup/restore superano un round trip completo.
+- [~] Migrazione pulita e backup/restore superano un round trip completo.
 - [x] Scansioni di sicurezza, dipendenze e licenze completano con successo.
-- [x] `docs/verification/phase-14.md` registra i risultati.
+- [~] `docs/verification/phase-14.md` registra i risultati e la rettifica dello scope incompleto.
 
 ---
 
@@ -432,29 +432,29 @@ riservati.
 
 ---
 
-## [ ] Fase 16 — Apertura e release
+## [~] Fase 16 — Apertura e release
 
 **Obiettivo:** produrre una release sperimentale autonoma e verificare il confine pubblico su tutti
 i ref.
 
-- [ ] Eseguire la verifica da clean clone.
-- [ ] Scansionare working tree, indice, cronologia, tag e ref remoti per segreti e contenuti
+- [x] Eseguire la verifica da clean clone.
+- [x] Scansionare working tree, indice, cronologia, tag e ref remoti per segreti e contenuti
       vietati.
-- [ ] Verificare assenza di materiali locali, identificatori riservati e metadati non pubblicabili.
-- [ ] Completare documentazione di architettura, API, sviluppo, sicurezza e limiti.
-- [ ] Includere esclusivamente esempi, fonti, Rule Pack e corpus sintetici.
-- [ ] Aggiungere licenza Apache-2.0 e generare SBOM.
-- [ ] Verificare attribuzioni e compatibilità delle licenze.
-- [ ] Creare la release sperimentale `v0.1.0` senza pubblicazione npm.
+- [x] Verificare assenza di materiali locali, identificatori riservati e metadati non pubblicabili.
+- [x] Completare documentazione di architettura, API, sviluppo, sicurezza e limiti.
+- [x] Includere esclusivamente esempi, fonti, Rule Pack e corpus sintetici.
+- [x] Aggiungere licenza Apache-2.0 e generare SBOM.
+- [x] Verificare attribuzioni e compatibilità delle licenze.
+- [x] Creare la release sperimentale `v0.1.0` senza pubblicazione npm.
 - [ ] Richiedere conferma esplicita immediatamente prima di modificare la visibilità del repository.
 
 ### Gate di fase
 
-- [ ] Tutti i gate locali e CI sono verdi da clean clone.
-- [ ] Scanner di confine, segreti, licenze e SBOM sono verdi su tutti i ref.
-- [ ] La release contiene soltanto asset sintetici e documentazione coerente.
+- [x] Tutti i gate locali e CI sono verdi da clean clone.
+- [x] Scanner di confine, segreti, licenze e SBOM sono verdi su tutti i ref.
+- [x] La release contiene soltanto asset sintetici e documentazione coerente.
 - [ ] `main` è pulita, sincronizzata e tutte le fasi risultano `[x]`.
-- [ ] `docs/verification/phase-16.md` registra la verifica finale.
+- [x] `docs/verification/phase-16.md` registra la verifica finale.
 
 ---
 
