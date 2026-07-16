@@ -11,6 +11,15 @@ const WORKSPACE = resolve(import.meta.dirname, "../../../..");
 const CLI = resolve(import.meta.dirname, "../../dist/cli.js");
 const roots: string[] = [];
 
+function cliFailureDetails(result: ReturnType<typeof spawnSync>): string {
+  return [
+    `status=${String(result.status)}`,
+    `signal=${String(result.signal)}`,
+    `spawnError=${result.error?.code ?? "none"}`,
+    `stderr=${String(result.stderr)}`,
+  ].join("; ");
+}
+
 beforeAll(() => {
   execFileSync("pnpm", ["--filter", "@vera/dataset-harness", "build"], {
     cwd: WORKSPACE,
@@ -34,7 +43,7 @@ describe("vera-dataset-audit CLI", () => {
       encoding: "utf8",
     });
 
-    expect(result.status).toBe(0);
+    expect(result.status, cliFailureDetails(result)).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toMatch(
       /^Dataset audit complete: files=1 warnings=0 errors=0 review=1 corpusHash=[0-9a-f]{64} reportHash=[0-9a-f]{64}\n$/u,
@@ -57,7 +66,8 @@ describe("vera-dataset-audit CLI", () => {
       encoding: "utf8",
     });
 
-    expect(result.status).toBe(1);
+    expect(result.status, cliFailureDetails(result)).toBe(1);
+    expect(result.stderr, cliFailureDetails(result)).toBe("");
     expect(result.stdout).toContain("errors=1");
     expect(result.stdout).not.toContain("PRIVATE_BROKEN_JSON");
     expect(
@@ -78,7 +88,7 @@ describe("vera-dataset-audit CLI", () => {
       encoding: "utf8",
     });
 
-    expect(result.status).toBe(2);
+    expect(result.status, cliFailureDetails(result)).toBe(2);
     expect(result.stdout).toBe("");
     expect(result.stderr).toBe("Dataset audit failed: CONFIG_INVALID\n");
     expect(result.stderr).not.toContain(privateValue);
@@ -90,7 +100,7 @@ describe("vera-dataset-audit CLI", () => {
       encoding: "utf8",
     });
 
-    expect(result.status).toBe(0);
+    expect(result.status, cliFailureDetails(result)).toBe(0);
     expect(result.stdout).toContain("default: datasets");
     expect(result.stdout).toContain("reports/private/dataset-audit/latest.json");
     expect(result.stdout).toContain("--projection <file>");
