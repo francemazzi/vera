@@ -11,11 +11,17 @@ const WORKSPACE = resolve(import.meta.dirname, "../../../..");
 const CLI = resolve(import.meta.dirname, "../../dist/cli.js");
 const roots: string[] = [];
 
+function spawnErrorCode(error: Error | undefined): string {
+  if (error === undefined) return "none";
+  const code = (error as NodeJS.ErrnoException).code;
+  return typeof code === "string" ? code : "unknown";
+}
+
 function cliFailureDetails(result: ReturnType<typeof spawnSync>): string {
   return [
     `status=${String(result.status)}`,
     `signal=${String(result.signal)}`,
-    `spawnError=${result.error?.code ?? "none"}`,
+    `spawnError=${spawnErrorCode(result.error)}`,
     `stderr=${String(result.stderr)}`,
   ].join("; ");
 }
