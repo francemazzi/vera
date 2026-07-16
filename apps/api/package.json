@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@vera/demo-mvp": "workspace:*",
     "@vera/rules-core": "workspace:*",
     "testcontainers": "catalog:",
     "typescript": "catalog:",

@@ -167,6 +167,9 @@ importers:
       "@types/node":
         specifier: "catalog:"
         version: 22.20.1
+      "@vera/demo-mvp":
+        specifier: workspace:*
+        version: link:../../packages/demo-mvp
       "@vera/rules-core":
         specifier: workspace:*
         version: link:../../packages/rules-core

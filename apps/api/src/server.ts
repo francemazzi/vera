@@ -1,9 +1,14 @@
+import { timingSafeEqual } from "node:crypto";
+
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
-import { EvaluationRunSchema, ReviewDecisionSchema, sha256CanonicalJson } from "@vera/contracts";
-import type { JsonValue } from "@vera/contracts";
+import {
+  EvaluationRunSchema,
+  ReviewDecisionSchema,
+  sha256Bytes,
+  sha256CanonicalJson,
+} from "@vera/contracts";
 import type { VeraStorageRepository } from "@vera/storage";
-import { StorageConflictError } from "@vera/storage";
 import Fastify from "fastify";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -14,6 +19,7 @@ import { assertLocalEgressAllowed } from "./egress.js";
 import { ApiProblem, installProblemHandler } from "./errors.js";
 
 const ActorRoleSchema = z.enum(["AUTHOR", "REVIEWER", "APPROVER", "ADMIN"]);
+const Sha256DigestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const AccountCreateSchema = z
   .object({
     email: z.email(),
@@ -33,6 +39,7 @@ const BlobUploadSchema = z
 export interface CreateApiServerOptions {
   readonly repository: VeraStorageRepository;
   readonly auth?: AuthService;
+  readonly bootstrapTokenHash?: string;
   readonly logger?: boolean;
   readonly now?: () => string;
   readonly persistBlob?: (
@@ -52,6 +59,10 @@ function problemJsonSchema(): Record<string, unknown> {
       detail: { type: "string" },
     },
   };
+}
+
+function openObjectJsonSchema(): Record<string, unknown> {
+  return { type: "object", additionalProperties: true };
 }
 
 function zodBody(schema: z.ZodType): Record<string, unknown> {
@@ -79,26 +90,27 @@ async function authenticated(
   return auth.authenticate(request.headers.authorization, now());
 }
 
-async function idempotentResponse(
-  repository: VeraStorageRepository,
-  scope: string,
-  key: string,
-  response: JsonValue,
-  now: string,
-): Promise<JsonValue> {
-  const result = await repository.getOrCreateIdempotency({
-    scope,
-    key,
-    response,
-    createdAt: now,
-    expiresAt: new Date(Date.parse(now) + 24 * 60 * 60 * 1000).toISOString(),
-  });
-  return result.response;
+function validBootstrapAuthorization(
+  authorization: string | undefined,
+  expectedHash: string | undefined,
+): boolean {
+  const match = /^Bootstrap (?<token>\S{1,512})$/u.exec(authorization ?? "");
+  const actualHash = sha256Bytes(Buffer.from(match?.groups?.["token"] ?? "", "utf8"));
+  const comparisonHash = expectedHash ?? "0".repeat(64);
+  const matches = timingSafeEqual(
+    Buffer.from(actualHash, "hex"),
+    Buffer.from(comparisonHash, "hex"),
+  );
+  return expectedHash !== undefined && match !== null && matches;
 }
 
 export async function createApiServer(options: CreateApiServerOptions): Promise<FastifyInstance> {
   const now = options.now ?? (() => new Date().toISOString());
   const auth = options.auth ?? createAuthService(options.repository);
+  const bootstrapTokenHash =
+    options.bootstrapTokenHash === undefined
+      ? undefined
+      : Sha256DigestSchema.parse(options.bootstrapTokenHash);
   const server = Fastify({
     logger:
       options.logger === true
@@ -127,19 +139,33 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
     {
       schema: {
         body: zodBody(AccountCreateSchema),
-        response: { 201: { type: "object" }, 409: problemJsonSchema() },
+        response: { 201: openObjectJsonSchema(), 409: problemJsonSchema() },
       },
     },
     async (request, reply) => {
       const body = AccountCreateSchema.parse(request.body);
-      const account = await auth.createAccount(body);
+      const authorization = request.headers.authorization;
+      let account: AuthenticatedAccount;
+      if ((authorization ?? "").startsWith("Bootstrap")) {
+        if (!validBootstrapAuthorization(authorization, bootstrapTokenHash)) {
+          throw new ApiProblem(401, "Unauthorized", "Invalid bootstrap credential");
+        }
+        if (body.role !== "ADMIN") {
+          throw new ApiProblem(403, "Forbidden", "Bootstrap can create only the initial ADMIN");
+        }
+        account = await auth.bootstrapAdmin(body);
+      } else {
+        const administrator = await authenticated(request, auth, now);
+        assertRole(administrator, ["ADMIN"]);
+        account = await auth.createAccount(body);
+      }
       return reply.code(201).send({ account });
     },
   );
 
   server.post(
     "/v1/sessions",
-    { schema: { body: zodBody(LoginSchema), response: { 201: { type: "object" } } } },
+    { schema: { body: zodBody(LoginSchema), response: { 201: openObjectJsonSchema() } } },
     async (request, reply) => {
       const body = LoginSchema.parse(request.body);
       return reply.code(201).send(await auth.login({ ...body, now: now() }));
@@ -148,31 +174,21 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
 
   server.post(
     "/v1/evaluation-runs",
-    { schema: { response: { 201: { type: "object" }, 409: problemJsonSchema() } } },
+    { schema: { response: { 201: openObjectJsonSchema(), 409: problemJsonSchema() } } },
     async (request, reply) => {
       const account = await authenticated(request, auth, now);
       assertRole(account, ["AUTHOR", "ADMIN"]);
       const key = idempotencyKey(request);
       const run = EvaluationRunSchema.parse(request.body);
-      let saved;
-      try {
-        saved = await options.repository.saveEvaluationRun(run);
-      } catch (error) {
-        if (error instanceof StorageConflictError) {
-          saved = await options.repository.getEvaluationRun(run.id);
-        } else {
-          throw error;
-        }
-      }
-      const response = { evaluationRun: saved } as unknown as JsonValue;
-      const replay = await idempotentResponse(
-        options.repository,
-        "evaluation-runs:create",
+      const writtenAt = now();
+      const result = await options.repository.saveEvaluationRunIdempotently({
+        run,
+        scope: `accounts:${account.id}:evaluation-runs`,
         key,
-        response,
-        now(),
-      );
-      return reply.code(201).send(replay);
+        createdAt: writtenAt,
+        expiresAt: new Date(Date.parse(writtenAt) + 24 * 60 * 60 * 1000).toISOString(),
+      });
+      return reply.code(201).send(result.response);
     },
   );
 
@@ -195,16 +211,22 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
     if (decision.runId !== id) {
       throw new ApiProblem(400, "Bad Request", "ReviewDecision runId must match the route");
     }
-    const saved = await options.repository.appendReviewDecision(decision);
-    const response = { reviewDecision: saved } as unknown as JsonValue;
-    const replay = await idempotentResponse(
-      options.repository,
-      `review-decisions:${id}`,
+    if (decision.actorId !== account.id || decision.exercisedRole !== account.role) {
+      throw new ApiProblem(
+        403,
+        "Forbidden",
+        "ReviewDecision actor and exercised role must match the authenticated account",
+      );
+    }
+    const writtenAt = now();
+    const result = await options.repository.appendReviewDecisionIdempotently({
+      decision,
+      scope: `accounts:${account.id}:evaluation-runs:${id}:review-decisions`,
       key,
-      response,
-      now(),
-    );
-    return reply.code(201).send(replay);
+      createdAt: writtenAt,
+      expiresAt: new Date(Date.parse(writtenAt) + 24 * 60 * 60 * 1000).toISOString(),
+    });
+    return reply.code(201).send(result.response);
   });
 
   server.post("/v1/blobs", async (request, reply) => {
