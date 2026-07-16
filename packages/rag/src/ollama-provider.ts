@@ -93,6 +93,12 @@ export class OllamaRuleDraftProvider implements RuleDraftProvider {
         rawOutput: result.value.content,
         attempts: result.attempts,
         provider: this.model,
+        generationId: null,
+        responseModel: null,
+        upstreamProvider: null,
+        systemFingerprint: null,
+        usage: null,
+        responseSchemaHash: null,
       };
     } catch (error) {
       throw mapOllamaError(error);

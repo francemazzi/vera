@@ -77,6 +77,7 @@ export const ExtractorKindSchema = z.enum([
   "OLLAMA_VISION",
   "OLLAMA_LLM",
   "OLLAMA_EMBEDDING",
+  "OPENROUTER_LLM",
 ]);
 
 export type ExtractorKind = z.infer<typeof ExtractorKindSchema>;
@@ -331,7 +332,7 @@ export type Fact<T extends JsonValue = JsonValue> =
   | (Omit<ResolvedFact, "normalizedValue"> & { readonly normalizedValue: T })
   | Exclude<ExtractionFact, ResolvedFact>;
 
-export const ExtractorModelSchema = z
+export const OllamaExtractorModelSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
     digest: Sha256DigestSchema,
@@ -339,6 +340,24 @@ export const ExtractorModelSchema = z
     runtimeVersion: z.string().trim().min(1).max(100),
   })
   .strict();
+
+export type OllamaExtractorModel = z.infer<typeof OllamaExtractorModelSchema>;
+
+export const OpenRouterExtractorModelSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    runtime: z.literal("OPENROUTER"),
+    apiVersion: z.literal("v1"),
+    routingConfigHash: Sha256DigestSchema,
+  })
+  .strict();
+
+export type OpenRouterExtractorModel = z.infer<typeof OpenRouterExtractorModelSchema>;
+
+export const ExtractorModelSchema = z.union([
+  OllamaExtractorModelSchema,
+  OpenRouterExtractorModelSchema,
+]);
 
 export type ExtractorModel = z.infer<typeof ExtractorModelSchema>;
 
@@ -364,22 +383,34 @@ export const ExtractorRunSchema = z
         path: ["completedAt"],
       });
     }
-    const isOllama = kind.startsWith("OLLAMA_");
-    if (isOllama !== (model !== null)) {
+    const expectedRuntime = kind.startsWith("OLLAMA_")
+      ? "OLLAMA"
+      : kind.startsWith("OPENROUTER_")
+        ? "OPENROUTER"
+        : null;
+    const isModelBacked = expectedRuntime !== null;
+    if (isModelBacked !== (model !== null)) {
       context.addIssue({
         code: "custom",
-        message: "Only Ollama runs require model metadata",
+        message: "Model-backed runs require model metadata",
         path: ["model"],
       });
     }
-    if (isOllama && (rawOutput === null || rawOutput.length === 0)) {
+    if (model !== null && expectedRuntime !== null && model.runtime !== expectedRuntime) {
       context.addIssue({
         code: "custom",
-        message: "Ollama raw output is required",
+        message: "Model runtime must match the extractor kind",
+        path: ["model", "runtime"],
+      });
+    }
+    if (isModelBacked && (rawOutput === null || rawOutput.length === 0)) {
+      context.addIssue({
+        code: "custom",
+        message: "Model-backed raw output is required",
         path: ["rawOutput"],
       });
     }
-    const needsPrompt = kind === "OLLAMA_OCR" || kind === "OLLAMA_VISION" || kind === "OLLAMA_LLM";
+    const needsPrompt = kind.endsWith("_OCR") || kind.endsWith("_VISION") || kind.endsWith("_LLM");
     if (needsPrompt !== (prompt !== null)) {
       context.addIssue({
         code: "custom",
@@ -644,6 +675,16 @@ export const OllamaLlmExtractionInputSchema = z
   })
   .strict();
 
+export const OpenRouterLlmExtractionInputSchema = z
+  .object({
+    kind: z.literal("OPENROUTER_LLM"),
+    ...DocumentInputShape,
+    text: z.string().min(1).max(2_000_000),
+  })
+  .strict();
+
+export type OpenRouterLlmExtractionInput = z.infer<typeof OpenRouterLlmExtractionInputSchema>;
+
 export const EmbeddingInputEntrySchema = z
   .object({
     key: StableKeySchema,
@@ -674,6 +715,7 @@ export const ExtractionInputSchema = z.union([
   OllamaVisionExtractionInputSchema,
   OllamaLlmExtractionInputSchema,
   OllamaEmbeddingExtractionInputSchema,
+  OpenRouterLlmExtractionInputSchema,
 ]);
 
 export type ExtractionInput = z.infer<typeof ExtractionInputSchema>;
@@ -822,7 +864,7 @@ export const ExtractionResultSchema = z
       }
     });
     if (
-      run.kind === "OLLAMA_EMBEDDING"
+      run.kind.endsWith("_EMBEDDING")
         ? facts.length > 0 || evidence.length > 0
         : embeddings.length > 0
     ) {

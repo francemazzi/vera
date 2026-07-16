@@ -22,6 +22,7 @@
     "test:integration": "pnpm -r --if-present test:integration",
     "test:contract": "pnpm -r --if-present test:contract",
     "test:e2e": "pnpm -r --if-present test:e2e",
+    "test:smoke:openrouter": "pnpm --filter @vera/extractors test:smoke:openrouter && pnpm --filter @vera/rag test:smoke:openrouter",
     "test:coverage": "vitest run --coverage",
     "datasets:audit": "pnpm --filter @vera/dataset-harness build && node packages/dataset-harness/dist/cli.js --projection .vera-private/dataset-audit.json",
     "verify:local-datasets": "pnpm verify && pnpm datasets:audit",

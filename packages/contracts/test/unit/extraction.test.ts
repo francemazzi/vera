@@ -20,9 +20,12 @@ import {
   ManualExtractionInputSchema,
   NormalizedBoundingBoxSchema,
   OllamaEmbeddingExtractionInputSchema,
+  OllamaExtractorModelSchema,
   OllamaLlmExtractionInputSchema,
   OllamaOcrExtractionInputSchema,
   OllamaVisionExtractionInputSchema,
+  OpenRouterExtractorModelSchema,
+  OpenRouterLlmExtractionInputSchema,
 } from "../../src/index.js";
 import type {
   Embedding,
@@ -103,6 +106,23 @@ function makeOllamaRun(
     },
     prompt: needsPrompt ? "Extract only the requested synthetic facts" : null,
     options: { temperature: 0, seed: 42 },
+    rawOutput: '{"synthetic":true}',
+    ...overrides,
+  });
+}
+
+function makeOpenRouterRun(overrides: Partial<ExtractorRun> = {}): ExtractorRun {
+  return makeRun({
+    adapterId: "synthetic.openrouter_llm",
+    kind: "OPENROUTER_LLM",
+    model: {
+      name: "meta-llama/llama-3.1-8b-instruct",
+      runtime: "OPENROUTER",
+      apiVersion: "v1",
+      routingConfigHash: MODEL_HASH,
+    },
+    prompt: "Extract only the requested synthetic facts",
+    options: { temperature: 0 },
     rawOutput: '{"synthetic":true}',
     ...overrides,
   });
@@ -299,6 +319,15 @@ function makeInput(kind: ExtractionInput["kind"]): ExtractionInput {
         imageBase64: PNG_1PX,
       });
     case "OLLAMA_LLM":
+      return ExtractionInputSchema.parse({
+        kind,
+        documentId: IDS.document,
+        documentHash: HASH,
+        page: 1,
+        language: "en",
+        text: "Synthetic document text",
+      });
+    case "OPENROUTER_LLM":
       return ExtractionInputSchema.parse({
         kind,
         documentId: IDS.document,
@@ -509,6 +538,7 @@ describe("ExtractionInputSchema", () => {
     ["OLLAMA_VISION", OllamaVisionExtractionInputSchema],
     ["OLLAMA_LLM", OllamaLlmExtractionInputSchema],
     ["OLLAMA_EMBEDDING", OllamaEmbeddingExtractionInputSchema],
+    ["OPENROUTER_LLM", OpenRouterLlmExtractionInputSchema],
   ] as const)("accepts a strict %s input through its branch and public union", (kind, schema) => {
     const input = makeInput(kind);
     expect(schema.safeParse(input).success).toBe(true);
@@ -573,16 +603,12 @@ describe("ExtractionInputSchema", () => {
     },
   );
 
-  it("requires non-empty strict LLM text", () => {
-    expect(
-      OllamaLlmExtractionInputSchema.safeParse({ ...makeInput("OLLAMA_LLM"), text: "" }).success,
-    ).toBe(false);
-    expect(
-      OllamaLlmExtractionInputSchema.safeParse({
-        ...makeInput("OLLAMA_LLM"),
-        outcome: "REVIEW",
-      }).success,
-    ).toBe(false);
+  it.each([
+    ["OLLAMA_LLM", OllamaLlmExtractionInputSchema],
+    ["OPENROUTER_LLM", OpenRouterLlmExtractionInputSchema],
+  ] as const)("requires non-empty strict %s text", (kind, schema) => {
+    expect(schema.safeParse({ ...makeInput(kind), text: "" }).success).toBe(false);
+    expect(schema.safeParse({ ...makeInput(kind), outcome: "REVIEW" }).success).toBe(false);
   });
 
   it("requires strict, non-empty embedding entries", () => {
@@ -812,6 +838,10 @@ describe("ExtractorRunSchema", () => {
     },
   );
 
+  it("accepts a pinned OpenRouter LLM run", () => {
+    expect(ExtractorRunSchema.safeParse(makeOpenRouterRun()).success).toBe(true);
+  });
+
   it.each([
     { completedAt: "2026-03-31T23:59:59.999Z" },
     { model: { name: "model", digest: MODEL_HASH, runtime: "OLLAMA", runtimeVersion: "1" } },
@@ -846,14 +876,16 @@ describe("ExtractorRunSchema", () => {
     ).toBe(true);
   });
 
-  it.each([{ model: null }, { rawOutput: null }, { prompt: null }])(
-    "rejects incomplete prompt-based Ollama metadata %#",
-    (override) => {
-      expect(
-        ExtractorRunSchema.safeParse({ ...makeOllamaRun("OLLAMA_LLM"), ...override }).success,
-      ).toBe(false);
-    },
-  );
+  it.each([
+    [makeOllamaRun("OLLAMA_LLM"), { model: null }],
+    [makeOllamaRun("OLLAMA_LLM"), { rawOutput: null }],
+    [makeOllamaRun("OLLAMA_LLM"), { prompt: null }],
+    [makeOpenRouterRun(), { model: null }],
+    [makeOpenRouterRun(), { rawOutput: null }],
+    [makeOpenRouterRun(), { prompt: null }],
+  ] as const)("rejects incomplete model-backed metadata %#", (run, override) => {
+    expect(ExtractorRunSchema.safeParse({ ...run, ...override }).success).toBe(false);
+  });
 
   it("rejects prompts for embedding runs and validates model digests strictly", () => {
     expect(
@@ -870,6 +902,37 @@ describe("ExtractorRunSchema", () => {
       ExtractorModelSchema.safeParse({
         ...makeOllamaRun("OLLAMA_LLM").model,
         extra: true,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps model identity exact and runtime coherent with the extractor kind", () => {
+    expect(OllamaExtractorModelSchema.safeParse(makeOllamaRun("OLLAMA_LLM").model).success).toBe(
+      true,
+    );
+    expect(OpenRouterExtractorModelSchema.safeParse(makeOpenRouterRun().model).success).toBe(true);
+    expect(
+      OpenRouterExtractorModelSchema.safeParse({
+        ...makeOpenRouterRun().model,
+        routingConfigHash: "B".repeat(64),
+      }).success,
+    ).toBe(false);
+    expect(
+      OpenRouterExtractorModelSchema.safeParse({
+        ...makeOpenRouterRun().model,
+        apiVersion: "v2",
+      }).success,
+    ).toBe(false);
+    expect(
+      ExtractorRunSchema.safeParse({
+        ...makeOpenRouterRun(),
+        model: makeOllamaRun("OLLAMA_LLM").model,
+      }).success,
+    ).toBe(false);
+    expect(
+      ExtractorRunSchema.safeParse({
+        ...makeOllamaRun("OLLAMA_LLM"),
+        model: makeOpenRouterRun().model,
       }).success,
     ).toBe(false);
   });
@@ -898,6 +961,7 @@ describe("EmbeddingSchema and ExtractionRequestSchema", () => {
     "OLLAMA_VISION",
     "OLLAMA_LLM",
     "OLLAMA_EMBEDDING",
+    "OPENROUTER_LLM",
   ] as const)("accepts a strict %s extraction request", (kind) => {
     expect(
       ExtractionRequestSchema.safeParse(makeRequest({ kind, input: makeInput(kind) })).success,

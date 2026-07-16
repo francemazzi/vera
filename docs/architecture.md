@@ -10,12 +10,12 @@ produce findings deterministici.
 | -------------- | ----------------------- | --------------------------------------------------------------------- |
 | Contratti      | `@vera/contracts`       | Schemi Zod, tipi, JSON Schema, hash canonicali e invarianti pubbliche |
 | Kernel         | `@vera/rules-core`      | DSL evaluator, resolution, Rule Pack, ledger audit in memoria         |
-| Estrazione     | `@vera/extractors`      | Adapter manuale, JSON e Ollama senza esiti normativi                  |
+| Estrazione     | `@vera/extractors`      | Adapter manuale, JSON, Ollama e OpenRouter senza esiti normativi      |
 | Testing regole | `@vera/rules-testing`   | Fixture gate, diff versioni e impact report                           |
 | Benchmark      | `@vera/benchmark`       | Corpus sintetico, runner simulato, metriche e smoke Ollama            |
 | Calibrazione   | `@vera/calibration`     | Profili, reliability diagram, risk-coverage e astensione              |
 | Persistenza    | `@vera/storage`         | PostgreSQL per run/review/auth, blob store ed export backup           |
-| RAG            | `@vera/rag`             | Chunking, pgvector, retrieval e bozze Rule Card `DRAFT`               |
+| RAG            | `@vera/rag`             | Chunking, pgvector, retrieval e bozze `DRAFT` via provider testuali   |
 | MVP            | `@vera/demo-mvp`        | Orchestrazione end-to-end sintetica e report hashato                  |
 | API            | `@vera/api`             | Fastify `/v1`, OpenAPI, auth locale, RBAC e idempotenza               |
 | UI             | `@vera/web`             | Audit desk React/Vite, coda revisione, Playwright                     |
@@ -36,6 +36,18 @@ documenti sintetici/manuali
 
 Ogni hash è calcolato sui byte originali o su JSON canonicalizzato. Le versioni pubblicate non sono
 mutate; attivazioni, rollback e review sono eventi append-only.
+
+## Provider AI ed egress
+
+Ollama è il provider predefinito e resta l’unico backend per OCR, vision ed embedding. OpenRouter è
+opt-in e limitato a estrazione LLM testuale e generazione di bozze RAG con il modello fissato
+`meta-llama/llama-3.1-8b-instruct`. Le richieste remote impongono Zero Data Retention,
+`data_collection=deny` e routing tra provider dello stesso modello; non esiste fallback automatico
+da Ollama a OpenRouter.
+
+OpenRouter è l’unico egress remoto esplicitamente supportato. Il controllo API generico
+`POST /v1/egress-check` continua ad accettare solo endpoint locali e non abilita destinazioni remote
+arbitrarie; gli adapter OpenRouter non sono orchestrati dall’API.
 
 ## Confine pubblico
 

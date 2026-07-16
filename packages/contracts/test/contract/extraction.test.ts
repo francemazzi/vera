@@ -22,9 +22,12 @@ import {
   ManualExtractionInputSchema,
   NormalizedBoundingBoxSchema,
   OllamaEmbeddingExtractionInputSchema,
+  OllamaExtractorModelSchema,
   OllamaLlmExtractionInputSchema,
   OllamaOcrExtractionInputSchema,
   OllamaVisionExtractionInputSchema,
+  OpenRouterExtractorModelSchema,
+  OpenRouterLlmExtractionInputSchema,
 } from "../../src/index.js";
 
 describe("extraction public vocabulary contract", () => {
@@ -44,6 +47,7 @@ describe("extraction public vocabulary contract", () => {
       "OLLAMA_VISION",
       "OLLAMA_LLM",
       "OLLAMA_EMBEDDING",
+      "OPENROUTER_LLM",
     ]);
   });
 });
@@ -89,6 +93,10 @@ describe("extraction JSON Schema contract", () => {
       OllamaLlmExtractionInputSchema,
       ["kind", "documentId", "documentHash", "page", "language", "text"],
     ],
+    [
+      OpenRouterLlmExtractionInputSchema,
+      ["kind", "documentId", "documentHash", "page", "language", "text"],
+    ],
     [EmbeddingInputEntrySchema, ["key", "text"]],
     [OllamaEmbeddingExtractionInputSchema, ["kind", "entries"]],
     [
@@ -110,7 +118,8 @@ describe("extraction JSON Schema contract", () => {
       FactCandidateSchema,
       ["id", "originalValue", "normalizedValue", "evidenceIds", "providerRunId", "rawConfidence"],
     ],
-    [ExtractorModelSchema, ["name", "digest", "runtime", "runtimeVersion"]],
+    [OllamaExtractorModelSchema, ["name", "digest", "runtime", "runtimeVersion"]],
+    [OpenRouterExtractorModelSchema, ["name", "runtime", "apiVersion", "routingConfigHash"]],
     [
       ExtractorRunSchema,
       [
@@ -169,7 +178,7 @@ describe("extraction JSON Schema contract", () => {
   it("publishes every extraction input as a strict discriminated union branch", () => {
     const schema = z.toJSONSchema(ExtractionInputSchema);
 
-    expect(schema.anyOf).toHaveLength(6);
+    expect(schema.anyOf).toHaveLength(7);
     const kinds = schema.anyOf?.map((branch) => {
       if (typeof branch === "boolean" || branch.properties === undefined) return undefined;
       const kind = branch.properties["kind"];
@@ -182,12 +191,32 @@ describe("extraction JSON Schema contract", () => {
       "OLLAMA_VISION",
       "OLLAMA_LLM",
       "OLLAMA_EMBEDDING",
+      "OPENROUTER_LLM",
     ]);
     for (const branch of schema.anyOf ?? []) {
       if (typeof branch !== "boolean") {
         expect(branch.additionalProperties).toBe(false);
         expect(branch.required).toContain("kind");
         expect(branch.properties).not.toHaveProperty("outcome");
+      }
+    }
+  });
+
+  it("publishes the backward-compatible Ollama and OpenRouter model identity branches", () => {
+    const schema = z.toJSONSchema(ExtractorModelSchema);
+
+    expect(schema.anyOf).toHaveLength(2);
+    const runtimes = schema.anyOf?.map((branch) => {
+      if (typeof branch === "boolean" || branch.properties === undefined) return undefined;
+      const runtime = branch.properties["runtime"];
+      return typeof runtime === "boolean" || runtime === undefined ? undefined : runtime.const;
+    });
+    expect(runtimes).toEqual(["OLLAMA", "OPENROUTER"]);
+    for (const branch of schema.anyOf ?? []) {
+      if (typeof branch !== "boolean") {
+        expect(branch.additionalProperties).toBe(false);
+        expect(branch.required).toContain("name");
+        expect(branch.required).toContain("runtime");
       }
     }
   });

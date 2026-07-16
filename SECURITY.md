@@ -31,7 +31,15 @@ Please include:
 - `datasets/`, `.env*`, local reports and private bundles are ignored and must not be committed.
 - AI adapters may extract facts or draft Rule Cards, but cannot approve, activate or certify rules.
 - Demo identities and approvals are synthetic and carry `validationScope=TECHNICAL_DEMO`.
-- Local egress must be explicitly configured; Ollama smoke tests are loopback/local only.
+- Ollama remains the default provider and the only backend for OCR, vision and embeddings; its smoke
+  tests are loopback/local only.
+- OpenRouter is the sole explicitly supported remote egress and is opt-in for text extraction and
+  RAG drafts using the pinned `meta-llama/llama-3.1-8b-instruct` model.
+- OpenRouter requests require an explicit server-side API key, Zero Data Retention and
+  `data_collection=deny`; credentials and authorization headers must never be logged or exposed via
+  `VITE_*` variables.
+- There is no automatic Ollama-to-OpenRouter fallback. The generic API egress check remains
+  local-only and does not authorize arbitrary remote endpoints.
 
 ## Release checks
 

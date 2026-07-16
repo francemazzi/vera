@@ -46,7 +46,7 @@ const FORBIDDEN_NORMATIVE_KEYS = new Set([
   "verdict",
 ]);
 
-const FACT_OUTPUT_PROTOCOL = `Return only one JSON object with the key "facts".
+export const MODEL_FACT_OUTPUT_PROTOCOL = `Return only one JSON object with the key "facts".
 Each fact must contain exactly: key, valueType, status, originalValue, normalizedValue,
 rawConfidence, evidence, candidates. valueType is STRING, NUMBER, BOOLEAN, DATE or JSON.
 status is RESOLVED, NULL, NOT_FOUND, NOT_READABLE or CONFLICT. Evidence entries contain exactly
@@ -59,7 +59,7 @@ const DEFAULT_OCR_PROMPT = `Extract literal, observable facts from the attached 
 image. Preserve the source wording in originalValue and normalize only when the value type permits it.`;
 const DEFAULT_VISION_PROMPT = `Extract only directly observable facts from the attached synthetic
 document image. Do not infer obligations, permissions, prohibitions or compliance.`;
-const DEFAULT_LLM_PROMPT = `Extract factual observations from the supplied synthetic text. Do not
+export const DEFAULT_MODEL_LLM_PROMPT = `Extract factual observations from the supplied synthetic text. Do not
 interpret the text as a normative decision and abstain with an unresolved status when evidence is
 insufficient.`;
 
@@ -144,8 +144,10 @@ function createFactOutputJsonSchema(): Readonly<Record<string, unknown>> {
   });
 }
 
-const FACT_OUTPUT_JSON_SCHEMA = createFactOutputJsonSchema();
-const FACT_OUTPUT_JSON_SCHEMA_HASH = sha256CanonicalJson(FACT_OUTPUT_JSON_SCHEMA);
+export const MODEL_FACT_OUTPUT_JSON_SCHEMA = createFactOutputJsonSchema();
+export const MODEL_FACT_OUTPUT_JSON_SCHEMA_HASH = sha256CanonicalJson(
+  MODEL_FACT_OUTPUT_JSON_SCHEMA,
+);
 
 function normalizeNormativeKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/gu, "");
@@ -158,7 +160,7 @@ function invalidOutput(
   throw new ExtractorValidationError("INVALID_EXTRACTION_OUTPUT", message, details);
 }
 
-function assertNoNormativeOutput(value: unknown): void {
+function assertNoNormativeOutput(value: unknown, providerName: "Ollama" | "OpenRouter"): void {
   const stack: Array<{ readonly value: unknown; readonly depth: number }> = [{ value, depth: 0 }];
   let visited = 0;
 
@@ -167,7 +169,7 @@ function assertNoNormativeOutput(value: unknown): void {
     if (current === undefined) break;
     visited += 1;
     if (visited > MAX_MODEL_OUTPUT_NODES || current.depth > MAX_MODEL_OUTPUT_DEPTH) {
-      invalidOutput("Ollama output exceeds structural limits");
+      invalidOutput(`${providerName} output exceeds structural limits`);
     }
 
     if (Array.isArray(current.value)) {
@@ -200,26 +202,29 @@ function assertNoNormativeOutput(value: unknown): void {
   }
 }
 
-function parseObservationOutput(content: string): readonly FactObservation[] {
+export function parseModelFactObservationOutput(
+  content: string,
+  providerName: "Ollama" | "OpenRouter",
+): readonly FactObservation[] {
   let decoded: unknown;
   try {
     decoded = JSON.parse(content) as unknown;
   } catch (cause) {
     throw new ExtractorValidationError(
       "INVALID_EXTRACTION_OUTPUT",
-      "Ollama fact extraction output is not valid JSON",
+      `${providerName} fact extraction output is not valid JSON`,
       { cause: cause instanceof Error ? cause.name : "unknown" },
     );
   }
 
-  assertNoNormativeOutput(decoded);
+  assertNoNormativeOutput(decoded, providerName);
   if (
     !isRecord(decoded) ||
     Object.keys(decoded).length !== 1 ||
     !Array.isArray(decoded["facts"]) ||
     decoded["facts"].length > 10_000
   ) {
-    invalidOutput("Ollama fact extraction output must be a strict facts envelope");
+    invalidOutput(`${providerName} fact extraction output must be a strict facts envelope`);
   }
 
   const decodedFacts = decoded["facts"] as readonly unknown[];
@@ -240,7 +245,7 @@ function parseObservationOutput(content: string): readonly FactObservation[] {
             : null,
         })
       : "unavailable";
-    invalidOutput("Ollama returned invalid fact observations", {
+    invalidOutput(`${providerName} returned invalid fact observations`, {
       issueCount: parsed.error.issues.length,
       firstFactShape,
       ...(firstIssue === undefined
@@ -278,7 +283,7 @@ function normalizeAdapterId(id: string): string {
 }
 
 function normalizePrompt(prompt: string): string {
-  const normalized = `${prompt.trim()}\n\n${FACT_OUTPUT_PROTOCOL}`;
+  const normalized = `${prompt.trim()}\n\n${MODEL_FACT_OUTPUT_PROTOCOL}`;
   if (normalized.length === 0 || normalized.length > 100_000) {
     throw new OllamaClientError(
       "INVALID_CONFIGURATION",
@@ -338,7 +343,7 @@ function defaultPrompt(kind: OllamaFactKind): string {
     case "OLLAMA_VISION":
       return DEFAULT_VISION_PROMPT;
     case "OLLAMA_LLM":
-      return DEFAULT_LLM_PROMPT;
+      return DEFAULT_MODEL_LLM_PROMPT;
   }
 }
 
@@ -382,12 +387,12 @@ abstract class OllamaFactAdapter<TKind extends OllamaFactKind> implements Extrac
         { role: "system", content: this.#prompt },
         { role: "user", ...userMessage },
       ],
-      format: FACT_OUTPUT_JSON_SCHEMA,
+      format: MODEL_FACT_OUTPUT_JSON_SCHEMA,
       options: this.#options,
       think: false,
     });
     assertReturnedModel(response.value.model, verifiedModel.name);
-    const observations = parseObservationOutput(response.value.content);
+    const observations = parseModelFactObservationOutput(response.value.content, "Ollama");
     const runContext = {
       id: runId,
       adapterId: this.id,
@@ -404,7 +409,7 @@ abstract class OllamaFactAdapter<TKind extends OllamaFactKind> implements Extrac
       options: {
         ...this.#options,
         format: "json-schema",
-        formatSchemaHash: FACT_OUTPUT_JSON_SCHEMA_HASH,
+        formatSchemaHash: MODEL_FACT_OUTPUT_JSON_SCHEMA_HASH,
         think: false,
         transportAttempts: response.attempts,
       },

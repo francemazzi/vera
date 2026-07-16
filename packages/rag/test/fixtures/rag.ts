@@ -101,7 +101,11 @@ export class StaticDraftProvider implements RuleDraftProvider {
         }),
       );
     }
-    return Promise.resolve({ rawOutput: this.#rawOutput, attempts: 1, provider: this.model });
+    return Promise.resolve({
+      rawOutput: this.#rawOutput,
+      attempts: 1,
+      provider: this.model,
+    });
   }
 }
 

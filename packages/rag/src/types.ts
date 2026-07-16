@@ -24,7 +24,7 @@ const StableKeySchema = z
 const NonEmptyTextSchema = z.string().trim().min(1).max(4000);
 const SourceReferenceSchema = z.string().trim().min(1).max(500);
 
-export const RagProviderModelSchema = z
+export const OllamaRagProviderModelSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
     digest: Sha256DigestSchema,
@@ -32,7 +32,38 @@ export const RagProviderModelSchema = z
   })
   .strict();
 
+export const OpenRouterRagProviderModelSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    runtime: z.literal("OPENROUTER"),
+    apiVersion: z.literal("v1"),
+    routingConfigHash: Sha256DigestSchema,
+  })
+  .strict();
+
+export const RagProviderModelSchema = z.union([
+  OllamaRagProviderModelSchema,
+  OpenRouterRagProviderModelSchema,
+]);
+
 export type RagProviderModel = z.infer<typeof RagProviderModelSchema>;
+export type OllamaRagProviderModel = z.infer<typeof OllamaRagProviderModelSchema>;
+export type OpenRouterRagProviderModel = z.infer<typeof OpenRouterRagProviderModelSchema>;
+
+export const RagProviderUsageSchema = z
+  .object({
+    promptTokens: z.int().min(0),
+    completionTokens: z.int().min(0),
+    totalTokens: z.int().min(0),
+    cost: z.number().min(0).nullable(),
+  })
+  .strict()
+  .refine((value) => value.totalTokens === value.promptTokens + value.completionTokens, {
+    message: "totalTokens must equal promptTokens plus completionTokens",
+    path: ["totalTokens"],
+  });
+
+export type RagProviderUsage = z.infer<typeof RagProviderUsageSchema>;
 
 export const RagSourceSectionSchema = z
   .object({
@@ -206,6 +237,12 @@ export const RuleCardDraftGenerationLogSchema = z
     attempts: z.int().min(1).max(10),
     generatedAt: UtcDateTimeSchema,
     provider: RagProviderModelSchema,
+    generationId: z.string().trim().min(1).max(500).nullable().default(null),
+    responseModel: z.string().trim().min(1).max(200).nullable().default(null),
+    upstreamProvider: z.string().trim().min(1).max(200).nullable().default(null),
+    systemFingerprint: z.string().trim().min(1).max(500).nullable().default(null),
+    usage: RagProviderUsageSchema.nullable().default(null),
+    responseSchemaHash: Sha256DigestSchema.nullable().default(null),
     citations: z.array(RagCitationSchema).min(1).max(20),
   })
   .strict();

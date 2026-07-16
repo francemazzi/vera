@@ -1,5 +1,5 @@
 import { RagError } from "./errors.js";
-import type { RagProviderModel } from "./types.js";
+import type { RagProviderModel, RagProviderUsage } from "./types.js";
 
 export interface EmbeddingProvider {
   readonly model: RagProviderModel;
@@ -10,6 +10,12 @@ export interface RuleDraftProviderResult {
   readonly rawOutput: string;
   readonly attempts: number;
   readonly provider: RagProviderModel;
+  readonly generationId?: string | null;
+  readonly responseModel?: string | null;
+  readonly upstreamProvider?: string | null;
+  readonly systemFingerprint?: string | null;
+  readonly usage?: RagProviderUsage | null;
+  readonly responseSchemaHash?: string | null;
 }
 
 export interface RuleDraftProvider {
