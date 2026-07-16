@@ -74,9 +74,17 @@ storage o UI.
 - API REST `/v1` con Fastify, OpenAPI, Problem Details, idempotenza e optimistic concurrency.
 - PostgreSQL con Prisma, `jsonb` e `pgvector`; blob store locale content-addressed.
 - React e Vite per l’interfaccia di revisione.
-- Adapter locali per OCR, vision, LLM ed embedding tramite Ollama.
+- Adapter Ollama predefiniti per OCR, vision, LLM ed embedding; OpenRouter opt-in per il solo LLM
+  testuale e le bozze RAG.
 - Vitest, fast-check, Testcontainers e Playwright per test unitari, property-based, integrazione ed
   end-to-end.
+
+### Provider AI
+
+Ollama resta il provider predefinito. OpenRouter usa esclusivamente il modello fissato
+`meta-llama/llama-3.1-8b-instruct` per estrazione testuale e bozze Rule Card, con Zero Data
+Retention e `data_collection=deny`. L’attivazione remota è esplicita e non esiste fallback
+automatico da Ollama a OpenRouter; OCR, vision ed embedding restano locali tramite Ollama.
 
 ## Struttura del repository
 
@@ -136,7 +144,8 @@ Ogni fase deve superare i gate pertinenti prima di essere chiusa:
 - soglie di copertura definite nella roadmap;
 - scansioni di sicurezza, licenze, segreti e confine pubblico;
 - Playwright dalla fase UI;
-- smoke test locali Ollama nelle fasi che esercitano adapter o benchmark.
+- smoke test locali Ollama nelle fasi che esercitano adapter o benchmark;
+- smoke test OpenRouter separato, sintetico e opt-in, escluso dai gate normali.
 
 Al termine di una fase vengono salvate le evidenze in `docs/verification/phase-N.md`, aggiornata la
 roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase seguente.

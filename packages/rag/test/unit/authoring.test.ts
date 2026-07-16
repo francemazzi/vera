@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   RetryingRuleDraftProvider,
+  RuleCardDraftGenerationLogSchema,
   buildRuleCardDraftPrompt,
   createRuleCardWorkflowAdvancementRequest,
   generateRuleCardDraft,
@@ -24,6 +25,32 @@ describe("Rule Card draft authoring", () => {
     expect(result.requiresHumanConfirmation).toBe(true);
     expect(result.log.promptHash).toMatch(/^[0-9a-f]{64}$/u);
     expect(result.log.citations).toHaveLength(1);
+    expect(result.log).toMatchObject({
+      generationId: null,
+      responseModel: null,
+      upstreamProvider: null,
+      systemFingerprint: null,
+      usage: null,
+      responseSchemaHash: null,
+    });
+    expect(
+      RuleCardDraftGenerationLogSchema.parse({
+        prompt: result.log.prompt,
+        promptHash: result.log.promptHash,
+        rawOutput: result.log.rawOutput,
+        attempts: result.log.attempts,
+        generatedAt: result.log.generatedAt,
+        provider: result.log.provider,
+        citations: result.log.citations,
+      }),
+    ).toMatchObject({
+      generationId: null,
+      responseModel: null,
+      upstreamProvider: null,
+      systemFingerprint: null,
+      usage: null,
+      responseSchemaHash: null,
+    });
   });
 
   it("rejects provider output that tries to make a rule operational", async () => {

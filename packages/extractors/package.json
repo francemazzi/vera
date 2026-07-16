@@ -16,7 +16,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "test:smoke:ollama": "VERA_OLLAMA_LIVE=1 vitest run test/smoke/ollama-live.test.ts --reporter=verbose"
+    "test:smoke:ollama": "VERA_OLLAMA_LIVE=1 vitest run test/smoke/ollama-live.test.ts --reporter=verbose",
+    "test:smoke:openrouter": "VERA_OPENROUTER_LIVE=1 node --env-file=../../.env ../../node_modules/vitest/vitest.mjs run test/smoke/openrouter-live.test.ts --reporter=verbose"
   },
   "dependencies": {
     "@vera/contracts": "workspace:*"

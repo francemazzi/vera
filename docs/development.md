@@ -72,6 +72,20 @@ Gli smoke test Ollama sono offline-safe: se il runtime locale non è configurato
 limite esplicito invece di fallire la CI. Per eseguire gli smoke live, configurare i modelli locali
 richiesti dalla singola suite e lanciare gli script `test:smoke` dei package interessati.
 
+## Smoke test OpenRouter
+
+Lo smoke OpenRouter è remoto, separato dai gate normali e usa solo dati sintetici. Configurare in
+`.env` `OPENROUTER_API_KEY` e `VERA_OPENROUTER_LIVE=1`, quindi eseguire:
+
+```bash
+pnpm test:smoke:openrouter
+```
+
+Lo script carica `.env` tramite Node `--env-file`, usa il modello fissato
+`meta-llama/llama-3.1-8b-instruct` con Zero Data Retention e `data_collection=deny`, e fallisce con
+un errore esplicito se lo smoke è abilitato senza chiave. La chiave resta server-side: non usare mai
+variabili `VITE_*` per credenziali OpenRouter. Non esiste fallback automatico da Ollama.
+
 ## Release locale
 
 La release `v0.1.0` richiede:

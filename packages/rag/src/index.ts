@@ -14,6 +14,11 @@ export type {
 export { OllamaEmbeddingProvider, OllamaRuleDraftProvider } from "./ollama-provider.js";
 export type { OllamaRagProviderOptions } from "./ollama-provider.js";
 export {
+  OPENROUTER_RULE_CARD_DRAFT_SCHEMA_HASH,
+  OpenRouterRuleDraftProvider,
+} from "./openrouter-provider.js";
+export type { OpenRouterRagProviderOptions } from "./openrouter-provider.js";
+export {
   buildRuleCardDraftPrompt,
   createRuleCardWorkflowAdvancementRequest,
   generateRuleCardDraft,
@@ -29,10 +34,13 @@ export {
   DraftCitationReferenceSchema,
   DraftRuleCardEvidenceRequirementSchema,
   DraftRuleCardExceptionSchema,
+  OllamaRagProviderModelSchema,
+  OpenRouterRagProviderModelSchema,
   RagAvailableResultSchema,
   RagCitationSchema,
   RagChunkSchema,
   RagProviderModelSchema,
+  RagProviderUsageSchema,
   RagRetrievalQuerySchema,
   RagRetrievedChunkSchema,
   RagSourceSectionSchema,
@@ -46,11 +54,14 @@ export type {
   DraftCitationReference,
   DraftRuleCardEvidenceRequirement,
   DraftRuleCardException,
+  OllamaRagProviderModel,
+  OpenRouterRagProviderModel,
   ParsedRagRetrievalQuery,
   RagAvailableResult,
   RagCitation,
   RagChunk,
   RagProviderModel,
+  RagProviderUsage,
   RagRetrievalQuery,
   RagRetrievedChunk,
   RagSafeRetrievalResult,

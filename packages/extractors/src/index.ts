@@ -36,6 +36,8 @@ export type {
   OllamaFactAdapterOptions,
   OllamaModelConfig,
 } from "./ollama-adapters.js";
+export { OpenRouterLlmAdapter } from "./openrouter-adapter.js";
+export type { OpenRouterLlmAdapterOptions } from "./openrouter-adapter.js";
 export { OllamaClient, OllamaClientError } from "./ollama-client.js";
 export type {
   OllamaChatMessage,
@@ -49,3 +51,22 @@ export type {
   OllamaTransportResult,
   OllamaVerifiedModel,
 } from "./ollama-client.js";
+export {
+  OPENROUTER_API_VERSION,
+  OPENROUTER_CHAT_MODEL,
+  OPENROUTER_PROVIDER_POLICY,
+  OPENROUTER_ROUTING_CONFIG_HASH,
+  OpenRouterClient,
+  OpenRouterClientError,
+} from "./openrouter-client.js";
+export type {
+  OpenRouterChatMessage,
+  OpenRouterChatRequest,
+  OpenRouterChatResponse,
+  OpenRouterClientErrorCode,
+  OpenRouterClientOptions,
+  OpenRouterModelIdentity,
+  OpenRouterResponseFormat,
+  OpenRouterTransportResult,
+  OpenRouterUsage,
+} from "./openrouter-client.js";

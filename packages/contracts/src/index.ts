@@ -42,9 +42,12 @@ export {
   ManualExtractionInputSchema,
   JsonExtractionInputSchema,
   OllamaEmbeddingExtractionInputSchema,
+  OllamaExtractorModelSchema,
   OllamaLlmExtractionInputSchema,
   OllamaOcrExtractionInputSchema,
   OllamaVisionExtractionInputSchema,
+  OpenRouterExtractorModelSchema,
+  OpenRouterLlmExtractionInputSchema,
   ResolvedFactSchema,
 } from "./extraction.js";
 export type {
@@ -65,6 +68,9 @@ export type {
   FactStatus,
   FactValueType,
   NormalizedBoundingBox,
+  OllamaExtractorModel,
+  OpenRouterExtractorModel,
+  OpenRouterLlmExtractionInput,
   ResolvedFact,
 } from "./extraction.js";
 export {
