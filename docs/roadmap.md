@@ -38,7 +38,7 @@ sicurezza a posteriori.
 |     10 |    9 | Benchmark sintetico           | `[x]` |
 |     11 |   10 | Calibrazione e astensione     | `[x]` |
 |     12 |   13 | Provenienza e audit           | `[x]` |
-|     13 |   14 | API, persistenza e sicurezza  | `[x]` |
+|     13 |   14 | API, persistenza e sicurezza  | `[~]` |
 |     14 |   11 | RAG e ingestione              | `[x]` |
 |     15 |   12 | UI di revisione               | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico    | `[x]` |
@@ -338,28 +338,28 @@ tramite API o UI.
 
 ---
 
-## [x] Fase 14 — API, persistenza e sicurezza
+## [~] Fase 14 — API, persistenza e sicurezza
 
 **Obiettivo:** esporre i workflow senza consentire di aggirare invarianti, ruoli o immutabilità.
 
-- [x] Implementare persistenza PostgreSQL/Prisma per fonti, card, pack, attivazioni, test, run e
-      revisioni.
+- [~] Implementare persistenza PostgreSQL/Prisma per fonti, card, pack, attivazioni, test, run e
+  revisioni.
 - [x] Usare `jsonb` per AST e snapshot; usare un blob store locale content-addressed per gli asset.
-- [x] Implementare API REST `/v1` e OpenAPI dagli stessi schemi Zod.
+- [~] Implementare API REST `/v1` e OpenAPI dagli stessi schemi Zod.
 - [x] Restituire errori Problem Details e validare ogni payload.
 - [x] Implementare idempotency key per valutazioni e pubblicazioni.
-- [x] Implementare optimistic concurrency sulle risorse modificabili.
+- [~] Implementare optimistic concurrency sulle risorse modificabili.
 - [x] Implementare account locali, Argon2id, sessioni opache e RBAC.
 - [x] Applicare rate limit locale, redazione dei log e policy di egress esplicita.
-- [x] Implementare migrazioni, backup e restore verificabili.
+- [~] Implementare migrazioni, backup e restore verificabili.
 
 ### Gate di fase
 
 - [x] Test d’integrazione usano PostgreSQL reale tramite Testcontainers.
 - [x] Test negativi coprono auth, RBAC, idempotenza, concorrenza e immutabilità.
-- [x] Migrazione pulita e backup/restore superano un round trip completo.
+- [~] Migrazione pulita e backup/restore superano un round trip completo.
 - [x] Scansioni di sicurezza, dipendenze e licenze completano con successo.
-- [x] `docs/verification/phase-14.md` registra i risultati.
+- [~] `docs/verification/phase-14.md` registra i risultati e la rettifica dello scope incompleto.
 
 ---
 

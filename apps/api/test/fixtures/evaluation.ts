@@ -86,9 +86,9 @@ const AGENT: AuditAgent = {
   validationScope: "TECHNICAL_DEMO",
 };
 
-export function makeEvaluationRun(): EvaluationRun {
+export function makeEvaluationRun(id: string = uuid(30)): EvaluationRun {
   return buildEvaluationRun({
-    id: uuid(30),
+    id,
     caseId: "case001",
     recordedAt: "2026-07-15T12:00:01.0001Z",
     evaluationSnapshot: evaluateRulePackVersion(makeVersion(), [], [], EVALUATION_DATE),
@@ -101,16 +101,24 @@ export function makeEvaluationRun(): EvaluationRun {
   });
 }
 
-export function makeReviewDecision(run: EvaluationRun): ReviewDecision {
+export function makeReviewDecision(
+  run: EvaluationRun,
+  options: {
+    readonly id?: string;
+    readonly actorId?: string;
+    readonly exercisedRole?: "REVIEWER" | "APPROVER" | "ADMIN";
+    readonly reason?: string;
+  } = {},
+): ReviewDecision {
   return buildReviewDecision({
-    id: uuid(40),
+    id: options.id ?? uuid(40),
     run,
     decision: "CONFIRM",
     findingRuleId: run.evaluationSnapshot.rulePackVersion.rules[0]?.id ?? null,
     targetOutcome: "PASS",
-    reason: "Synthetic reviewer confirms the technical demo result",
+    reason: options.reason ?? "Synthetic reviewer confirms the technical demo result",
     decidedAt: "2026-07-15T12:05:00.0001Z",
-    actorId: uuid(41),
-    exercisedRole: "REVIEWER",
+    actorId: options.actorId ?? uuid(71),
+    exercisedRole: options.exercisedRole ?? "REVIEWER",
   });
 }

@@ -92,6 +92,7 @@ vera/
 │   ├── contracts/
 │   ├── benchmark/
 │   ├── calibration/
+│   ├── dataset-harness/
 │   ├── demo-mvp/
 │   ├── extractors/
 │   ├── public-boundary/
@@ -156,7 +157,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |     10 |    9 | Benchmark sintetico             | `[x]` |
 |     11 |   10 | Calibrazione e astensione       | `[x]` |
 |     12 |   13 | Provenienza e audit             | `[x]` |
-|     13 |   14 | API, persistenza e sicurezza    | `[x]` |
+|     13 |   14 | API, persistenza e sicurezza    | `[~]` |
 |     14 |   11 | RAG e ingestione                | `[x]` |
 |     15 |   12 | UI di revisione                 | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico      | `[x]` |
@@ -188,6 +189,7 @@ già sopra contratti stabili e tracciabili.
 - [Calibrazione e astensione](docs/calibration.md)
 - [Provenienza e audit](docs/audit.md)
 - [API, persistenza e sicurezza locale](docs/api-storage.md)
+- [Audit locale di dataset](docs/local-dataset-audit.md)
 - [RAG e ingestione editoriale](docs/rag.md)
 - [UI di revisione](docs/ui-review.md)
 - [MVP dimostrativo sintetico](docs/demo-mvp.md)

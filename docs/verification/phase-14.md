@@ -1,5 +1,11 @@
 # Verifica Fase 14 — API, persistenza e sicurezza
 
+> **Rettifica del 2026-07-16:** l'esito storico seguente verificava soltanto account, sessioni,
+> `EvaluationRun`, decisioni, blob metadata, idempotenza ed export backup. Non erano implementati la
+> persistenza di fonti, Rule Card, Rule Pack, attivazioni e test-run, né il restore. La Fase 14 è
+> pertanto tornata `[~]`; vedere ADR 0006. I risultati originali sono preservati come evidenza dei
+> gate effettivamente eseguiti, non come prova dello scope mancante.
+
 Data: 2026-07-15T17:57:24+02:00
 
 ## Esito
