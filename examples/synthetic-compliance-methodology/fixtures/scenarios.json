@@ -1,0 +1,122 @@
+{
+  "validationScope": "TECHNICAL_DEMO",
+  "scenarios": [
+    {
+      "id": "SYN-METHOD-001",
+      "description": "Applicable requirement is satisfied",
+      "applies": "TRUE",
+      "satisfied": "TRUE",
+      "expected": "PASS",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-002",
+      "description": "Applicable requirement is not satisfied",
+      "applies": "TRUE",
+      "satisfied": "FALSE",
+      "expected": "FAIL",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-003",
+      "description": "Applicable requirement has unknown satisfaction",
+      "applies": "TRUE",
+      "satisfied": "UNKNOWN",
+      "expected": "REVIEW",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-004",
+      "description": "Requirement does not apply",
+      "applies": "FALSE",
+      "satisfied": "TRUE",
+      "expected": "NOT_APPLICABLE",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-005",
+      "description": "Non-applicable requirement ignores false satisfaction",
+      "applies": "FALSE",
+      "satisfied": "FALSE",
+      "expected": "NOT_APPLICABLE",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-006",
+      "description": "Non-applicable requirement ignores unknown satisfaction",
+      "applies": "FALSE",
+      "satisfied": "UNKNOWN",
+      "expected": "NOT_APPLICABLE",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-007",
+      "description": "Unknown applicability requires review",
+      "applies": "UNKNOWN",
+      "satisfied": "TRUE",
+      "expected": "REVIEW",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-008",
+      "description": "Unknown applicability remains review for false satisfaction",
+      "applies": "UNKNOWN",
+      "satisfied": "FALSE",
+      "expected": "REVIEW",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-009",
+      "description": "Unknown applicability and satisfaction require review",
+      "applies": "UNKNOWN",
+      "satisfied": "UNKNOWN",
+      "expected": "REVIEW",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1461 @@
+{
+  "dslVersion": "vera.dsl/v1",
+  "validationScope": "TECHNICAL_DEMO",
+  "operators": [
+    {
+      "operator": "truth",
+      "cases": [
+        {
+          "caseId": "truth.true",
+          "expression": { "op": "truth", "value": "TRUE" },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "truth.false",
+          "expression": { "op": "truth", "value": "FALSE" },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "truth.unknown",
+          "expression": { "op": "truth", "value": "UNKNOWN" },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "truth", "value": "YES" },
+      "abuseExpression": { "op": "truth", "value": "TRUE", "eval": "true" }
+    },
+    {
+      "operator": "present",
+      "cases": [
+        {
+          "caseId": "present.true",
+          "expression": { "op": "present", "factKey": "sample.name" },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Synthetic name",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "present.false",
+          "expression": { "op": "present", "factKey": "sample.name" },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "NOT_FOUND",
+              "valueType": "STRING",
+              "normalizedValue": null,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "present.unknown",
+          "expression": { "op": "present", "factKey": "sample.name" },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "NOT_READABLE",
+              "valueType": "STRING",
+              "normalizedValue": null,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "present" },
+      "abuseExpression": { "op": "present", "factKey": "../sample" }
+    },
+    {
+      "operator": "eq",
+      "cases": [
+        {
+          "caseId": "eq.true",
+          "expression": {
+            "op": "eq",
+            "factKey": "sample.label",
+            "expected": {
+              "type": "STRING",
+              "value": "Synthetic Label",
+              "comparison": {
+                "normalization": "NFKC",
+                "whitespace": "COLLAPSE",
+                "caseSensitivity": "INSENSITIVE"
+              }
+            }
+          },
+          "facts": [
+            {
+              "key": "sample.label",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "synthetic   label",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "eq.false",
+          "expression": {
+            "op": "eq",
+            "factKey": "sample.label",
+            "expected": {
+              "type": "STRING",
+              "value": "Synthetic Label",
+              "comparison": {
+                "normalization": "NFKC",
+                "whitespace": "COLLAPSE",
+                "caseSensitivity": "INSENSITIVE"
+              }
+            }
+          },
+          "facts": [
+            {
+              "key": "sample.label",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Different label",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "eq.unknown",
+          "expression": {
+            "op": "eq",
+            "factKey": "sample.label",
+            "expected": {
+              "type": "STRING",
+              "value": "Synthetic Label",
+              "comparison": {
+                "normalization": "NFKC",
+                "whitespace": "COLLAPSE",
+                "caseSensitivity": "INSENSITIVE"
+              }
+            }
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "eq", "factKey": "sample.label" },
+      "abuseExpression": {
+        "op": "eq",
+        "factKey": "sample.label",
+        "expected": { "type": "NUMBER", "value": 9007199254740992 }
+      }
+    },
+    {
+      "operator": "not_eq",
+      "cases": [
+        {
+          "caseId": "not_eq.true",
+          "expression": {
+            "op": "not_eq",
+            "factKey": "sample.enabled",
+            "expected": { "type": "BOOLEAN", "value": true }
+          },
+          "facts": [
+            {
+              "key": "sample.enabled",
+              "status": "RESOLVED",
+              "valueType": "BOOLEAN",
+              "normalizedValue": false,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "not_eq.false",
+          "expression": {
+            "op": "not_eq",
+            "factKey": "sample.enabled",
+            "expected": { "type": "BOOLEAN", "value": true }
+          },
+          "facts": [
+            {
+              "key": "sample.enabled",
+              "status": "RESOLVED",
+              "valueType": "BOOLEAN",
+              "normalizedValue": true,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "not_eq.unknown",
+          "expression": {
+            "op": "not_eq",
+            "factKey": "sample.enabled",
+            "expected": { "type": "BOOLEAN", "value": true }
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "not_eq", "factKey": "sample.enabled", "expected": null },
+      "abuseExpression": {
+        "op": "not_eq",
+        "factKey": "sample.enabled",
+        "expected": { "type": "BOOLEAN", "value": true },
+        "sql": "select"
+      }
+    },
+    {
+      "operator": "contains",
+      "cases": [
+        {
+          "caseId": "contains.true",
+          "expression": {
+            "op": "contains",
+            "factKey": "sample.text",
+            "expected": "neutral marker",
+            "comparison": {
+              "normalization": "NFC",
+              "whitespace": "COLLAPSE",
+              "caseSensitivity": "INSENSITIVE"
+            }
+          },
+          "facts": [
+            {
+              "key": "sample.text",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "A Neutral   Marker is visible",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "contains.false",
+          "expression": {
+            "op": "contains",
+            "factKey": "sample.text",
+            "expected": "neutral marker",
+            "comparison": {
+              "normalization": "NFC",
+              "whitespace": "COLLAPSE",
+              "caseSensitivity": "INSENSITIVE"
+            }
+          },
+          "facts": [
+            {
+              "key": "sample.text",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "A plain example is visible",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "contains.unknown",
+          "expression": {
+            "op": "contains",
+            "factKey": "sample.text",
+            "expected": "neutral marker",
+            "comparison": {
+              "normalization": "NFC",
+              "whitespace": "COLLAPSE",
+              "caseSensitivity": "INSENSITIVE"
+            }
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "contains", "factKey": "sample.text" },
+      "abuseExpression": {
+        "op": "contains",
+        "factKey": "sample.text",
+        "expected": " ",
+        "comparison": {
+          "normalization": "NFC",
+          "whitespace": "COLLAPSE",
+          "caseSensitivity": "SENSITIVE"
+        }
+      }
+    },
+    {
+      "operator": "contains_any",
+      "cases": [
+        {
+          "caseId": "contains_any.true",
+          "expression": {
+            "op": "contains_any",
+            "factKey": "sample.text",
+            "expected": ["alpha", "beta"],
+            "comparison": {
+              "normalization": "NFKC",
+              "whitespace": "COLLAPSE",
+              "caseSensitivity": "INSENSITIVE"
+            }
+          },
+          "facts": [
+            {
+              "key": "sample.text",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "A BETA sample",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "contains_any.false",
+          "expression": {
+            "op": "contains_any",
+            "factKey": "sample.text",
+            "expected": ["alpha", "beta"],
+            "comparison": {
+              "normalization": "NFKC",
+              "whitespace": "COLLAPSE",
+              "caseSensitivity": "INSENSITIVE"
+            }
+          },
+          "facts": [
+            {
+              "key": "sample.text",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "A gamma sample",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "contains_any.unknown",
+          "expression": {
+            "op": "contains_any",
+            "factKey": "sample.text",
+            "expected": ["alpha", "beta"],
+            "comparison": {
+              "normalization": "NFKC",
+              "whitespace": "COLLAPSE",
+              "caseSensitivity": "INSENSITIVE"
+            }
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": {
+        "op": "contains_any",
+        "factKey": "sample.text",
+        "expected": []
+      },
+      "abuseExpression": {
+        "op": "contains_any",
+        "factKey": "sample.text",
+        "expected": ["Ａ", "a"],
+        "comparison": {
+          "normalization": "NFKC",
+          "whitespace": "COLLAPSE",
+          "caseSensitivity": "INSENSITIVE"
+        }
+      }
+    },
+    {
+      "operator": "matches",
+      "cases": [
+        {
+          "caseId": "matches.true",
+          "expression": {
+            "op": "matches",
+            "factKey": "sample.code",
+            "pattern": "SYN-[0-9]+",
+            "mode": "FULL",
+            "normalization": "NFC",
+            "whitespace": "PRESERVE",
+            "caseSensitivity": "SENSITIVE",
+            "dotAll": false,
+            "multiline": false,
+            "maxInputCharacters": 1000
+          },
+          "facts": [
+            {
+              "key": "sample.code",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "SYN-42",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "matches.false",
+          "expression": {
+            "op": "matches",
+            "factKey": "sample.code",
+            "pattern": "SYN-[0-9]+",
+            "mode": "FULL",
+            "normalization": "NFC",
+            "whitespace": "PRESERVE",
+            "caseSensitivity": "SENSITIVE",
+            "dotAll": false,
+            "multiline": false,
+            "maxInputCharacters": 1000
+          },
+          "facts": [
+            {
+              "key": "sample.code",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "ALT-42",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "matches.unknown",
+          "expression": {
+            "op": "matches",
+            "factKey": "sample.code",
+            "pattern": "SYN-[0-9]+",
+            "mode": "FULL",
+            "normalization": "NFC",
+            "whitespace": "PRESERVE",
+            "caseSensitivity": "SENSITIVE",
+            "dotAll": false,
+            "multiline": false,
+            "maxInputCharacters": 1000
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "matches", "factKey": "sample.code", "pattern": "[" },
+      "abuseExpression": {
+        "op": "matches",
+        "factKey": "sample.code",
+        "pattern": "(a)\\1",
+        "mode": "SEARCH",
+        "normalization": "NFC",
+        "whitespace": "PRESERVE",
+        "caseSensitivity": "SENSITIVE",
+        "dotAll": false,
+        "multiline": false,
+        "maxInputCharacters": 1000
+      }
+    },
+    {
+      "operator": "greater_than",
+      "cases": [
+        {
+          "caseId": "greater_than.true",
+          "expression": {
+            "op": "greater_than",
+            "factKey": "sample.score",
+            "expectedExclusive": 3
+          },
+          "facts": [
+            {
+              "key": "sample.score",
+              "status": "RESOLVED",
+              "valueType": "NUMBER",
+              "normalizedValue": 4,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "greater_than.false",
+          "expression": {
+            "op": "greater_than",
+            "factKey": "sample.score",
+            "expectedExclusive": 3
+          },
+          "facts": [
+            {
+              "key": "sample.score",
+              "status": "RESOLVED",
+              "valueType": "NUMBER",
+              "normalizedValue": 3,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "greater_than.unknown",
+          "expression": {
+            "op": "greater_than",
+            "factKey": "sample.score",
+            "expectedExclusive": 3
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": {
+        "op": "greater_than",
+        "factKey": "sample.score",
+        "expectedExclusive": "3"
+      },
+      "abuseExpression": {
+        "op": "greater_than",
+        "factKey": "sample.score",
+        "expectedExclusive": 9007199254740992
+      }
+    },
+    {
+      "operator": "less_than",
+      "cases": [
+        {
+          "caseId": "less_than.true",
+          "expression": {
+            "op": "less_than",
+            "factKey": "sample.score",
+            "expectedExclusive": 10
+          },
+          "facts": [
+            {
+              "key": "sample.score",
+              "status": "RESOLVED",
+              "valueType": "NUMBER",
+              "normalizedValue": 9,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "less_than.false",
+          "expression": {
+            "op": "less_than",
+            "factKey": "sample.score",
+            "expectedExclusive": 10
+          },
+          "facts": [
+            {
+              "key": "sample.score",
+              "status": "RESOLVED",
+              "valueType": "NUMBER",
+              "normalizedValue": 10,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "less_than.unknown",
+          "expression": {
+            "op": "less_than",
+            "factKey": "sample.score",
+            "expectedExclusive": 10
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "less_than", "factKey": "sample.score" },
+      "abuseExpression": {
+        "op": "less_than",
+        "factKey": "sample.score",
+        "expectedExclusive": -0
+      }
+    },
+    {
+      "operator": "between",
+      "cases": [
+        {
+          "caseId": "between.true",
+          "expression": {
+            "op": "between",
+            "factKey": "sample.score",
+            "minimum": 1,
+            "maximum": 10,
+            "includeMinimum": true,
+            "includeMaximum": false
+          },
+          "facts": [
+            {
+              "key": "sample.score",
+              "status": "RESOLVED",
+              "valueType": "NUMBER",
+              "normalizedValue": 5,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "between.false",
+          "expression": {
+            "op": "between",
+            "factKey": "sample.score",
+            "minimum": 1,
+            "maximum": 10,
+            "includeMinimum": true,
+            "includeMaximum": false
+          },
+          "facts": [
+            {
+              "key": "sample.score",
+              "status": "RESOLVED",
+              "valueType": "NUMBER",
+              "normalizedValue": 10,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "between.unknown",
+          "expression": {
+            "op": "between",
+            "factKey": "sample.score",
+            "minimum": 1,
+            "maximum": 10,
+            "includeMinimum": true,
+            "includeMaximum": false
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": {
+        "op": "between",
+        "factKey": "sample.score",
+        "minimum": 1,
+        "maximum": 10
+      },
+      "abuseExpression": {
+        "op": "between",
+        "factKey": "sample.score",
+        "minimum": 10,
+        "maximum": 1,
+        "includeMinimum": true,
+        "includeMaximum": true
+      }
+    },
+    {
+      "operator": "date_before",
+      "cases": [
+        {
+          "caseId": "date_before.true",
+          "expression": {
+            "op": "date_before",
+            "factKey": "sample.date",
+            "expectedExclusive": "2027-01-01"
+          },
+          "facts": [
+            {
+              "key": "sample.date",
+              "status": "RESOLVED",
+              "valueType": "DATE",
+              "normalizedValue": "2026-01-01",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "date_before.false",
+          "expression": {
+            "op": "date_before",
+            "factKey": "sample.date",
+            "expectedExclusive": "2027-01-01"
+          },
+          "facts": [
+            {
+              "key": "sample.date",
+              "status": "RESOLVED",
+              "valueType": "DATE",
+              "normalizedValue": "2027-01-01",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "date_before.unknown",
+          "expression": {
+            "op": "date_before",
+            "factKey": "sample.date",
+            "expectedExclusive": "2027-01-01"
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "date_before", "factKey": "sample.date" },
+      "abuseExpression": {
+        "op": "date_before",
+        "factKey": "sample.date",
+        "expectedExclusive": "2026-02-30"
+      }
+    },
+    {
+      "operator": "date_after",
+      "cases": [
+        {
+          "caseId": "date_after.true",
+          "expression": {
+            "op": "date_after",
+            "factKey": "sample.date",
+            "expectedExclusive": "2025-01-01"
+          },
+          "facts": [
+            {
+              "key": "sample.date",
+              "status": "RESOLVED",
+              "valueType": "DATE",
+              "normalizedValue": "2026-01-01",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "date_after.false",
+          "expression": {
+            "op": "date_after",
+            "factKey": "sample.date",
+            "expectedExclusive": "2025-01-01"
+          },
+          "facts": [
+            {
+              "key": "sample.date",
+              "status": "RESOLVED",
+              "valueType": "DATE",
+              "normalizedValue": "2025-01-01",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "date_after.unknown",
+          "expression": {
+            "op": "date_after",
+            "factKey": "sample.date",
+            "expectedExclusive": "2025-01-01"
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": {
+        "op": "date_after",
+        "factKey": "sample.date",
+        "expectedExclusive": 20250101
+      },
+      "abuseExpression": {
+        "op": "date_after",
+        "factKey": "sample.date",
+        "expectedExclusive": "2025-01-01T00:00:00Z"
+      }
+    },
+    {
+      "operator": "date_between",
+      "cases": [
+        {
+          "caseId": "date_between.true",
+          "expression": {
+            "op": "date_between",
+            "factKey": "sample.date",
+            "minimum": "2025-01-01",
+            "maximum": "2027-01-01",
+            "includeMinimum": true,
+            "includeMaximum": false
+          },
+          "facts": [
+            {
+              "key": "sample.date",
+              "status": "RESOLVED",
+              "valueType": "DATE",
+              "normalizedValue": "2026-01-01",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "date_between.false",
+          "expression": {
+            "op": "date_between",
+            "factKey": "sample.date",
+            "minimum": "2025-01-01",
+            "maximum": "2027-01-01",
+            "includeMinimum": true,
+            "includeMaximum": false
+          },
+          "facts": [
+            {
+              "key": "sample.date",
+              "status": "RESOLVED",
+              "valueType": "DATE",
+              "normalizedValue": "2027-01-01",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "date_between.unknown",
+          "expression": {
+            "op": "date_between",
+            "factKey": "sample.date",
+            "minimum": "2025-01-01",
+            "maximum": "2027-01-01",
+            "includeMinimum": true,
+            "includeMaximum": false
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": {
+        "op": "date_between",
+        "factKey": "sample.date",
+        "minimum": "2025-01-01",
+        "maximum": "2027-01-01"
+      },
+      "abuseExpression": {
+        "op": "date_between",
+        "factKey": "sample.date",
+        "minimum": "2027-01-01",
+        "maximum": "2025-01-01",
+        "includeMinimum": true,
+        "includeMaximum": true
+      }
+    },
+    {
+      "operator": "all",
+      "cases": [
+        {
+          "caseId": "all.true",
+          "expression": { "op": "all", "operands": [{ "op": "truth", "value": "TRUE" }] },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "all.false",
+          "expression": { "op": "all", "operands": [{ "op": "truth", "value": "FALSE" }] },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "all.unknown",
+          "expression": {
+            "op": "all",
+            "operands": [
+              { "op": "truth", "value": "TRUE" },
+              { "op": "truth", "value": "UNKNOWN" }
+            ]
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "all", "operands": [] },
+      "abuseExpression": {
+        "op": "all",
+        "operands": [{ "op": "truth", "value": "TRUE" }],
+        "network": true
+      }
+    },
+    {
+      "operator": "any",
+      "cases": [
+        {
+          "caseId": "any.true",
+          "expression": { "op": "any", "operands": [{ "op": "truth", "value": "TRUE" }] },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "any.false",
+          "expression": { "op": "any", "operands": [{ "op": "truth", "value": "FALSE" }] },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "any.unknown",
+          "expression": {
+            "op": "any",
+            "operands": [
+              { "op": "truth", "value": "FALSE" },
+              { "op": "truth", "value": "UNKNOWN" }
+            ]
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "any", "operands": [] },
+      "abuseExpression": {
+        "op": "any",
+        "operands": [{ "op": "truth", "value": "TRUE" }],
+        "eval": true
+      }
+    },
+    {
+      "operator": "not",
+      "cases": [
+        {
+          "caseId": "not.true",
+          "expression": { "op": "not", "operand": { "op": "truth", "value": "FALSE" } },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "not.false",
+          "expression": { "op": "not", "operand": { "op": "truth", "value": "TRUE" } },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "not.unknown",
+          "expression": {
+            "op": "not",
+            "operand": { "op": "truth", "value": "UNKNOWN" }
+          },
+          "facts": [],
+          "evidence": [],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "not" },
+      "abuseExpression": {
+        "op": "not",
+        "operand": { "op": "truth", "value": "TRUE" },
+        "code": "true"
+      }
+    },
+    {
+      "operator": "language_present",
+      "cases": [
+        {
+          "caseId": "language_present.true",
+          "expression": {
+            "op": "language_present",
+            "factKey": "sample.name",
+            "language": "en-GB",
+            "matchMode": "PRIMARY"
+          },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Synthetic name",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-US",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "language_present.false",
+          "expression": {
+            "op": "language_present",
+            "factKey": "sample.name",
+            "language": "en-GB",
+            "matchMode": "PRIMARY"
+          },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Synthetic name",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "fr-FR",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "language_present.unknown",
+          "expression": {
+            "op": "language_present",
+            "factKey": "sample.name",
+            "language": "en-GB",
+            "matchMode": "PRIMARY"
+          },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "NOT_READABLE",
+              "valueType": "STRING",
+              "normalizedValue": null,
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": {
+        "op": "language_present",
+        "factKey": "sample.name",
+        "language": "en-GB"
+      },
+      "abuseExpression": {
+        "op": "language_present",
+        "factKey": "sample.name",
+        "language": "not_a_tag",
+        "matchMode": "EXACT"
+      }
+    },
+    {
+      "operator": "same_visual_area",
+      "cases": [
+        {
+          "caseId": "same_visual_area.true",
+          "expression": {
+            "op": "same_visual_area",
+            "factKeys": ["sample.name", "sample.code"],
+            "maxNormalizedGap": 0.02,
+            "quantifier": "ALL_FACTS",
+            "requireSameDocument": true,
+            "requireSamePage": true
+          },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Synthetic name",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            },
+            {
+              "key": "sample.code",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "SYN-42",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005002"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000005002",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.31, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "TRUE"
+        },
+        {
+          "caseId": "same_visual_area.false",
+          "expression": {
+            "op": "same_visual_area",
+            "factKeys": ["sample.name", "sample.code"],
+            "maxNormalizedGap": 0.02,
+            "quantifier": "ALL_FACTS",
+            "requireSameDocument": true,
+            "requireSamePage": true
+          },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Synthetic name",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            },
+            {
+              "key": "sample.code",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "SYN-42",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005002"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.1, "height": 0.1 }
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000005002",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.5, "y": 0.5, "width": 0.1, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "FALSE"
+        },
+        {
+          "caseId": "same_visual_area.unknown",
+          "expression": {
+            "op": "same_visual_area",
+            "factKeys": ["sample.name", "sample.code"],
+            "maxNormalizedGap": 0.02,
+            "quantifier": "ALL_FACTS",
+            "requireSameDocument": true,
+            "requireSamePage": true
+          },
+          "facts": [
+            {
+              "key": "sample.name",
+              "status": "RESOLVED",
+              "valueType": "STRING",
+              "normalizedValue": "Synthetic name",
+              "evidenceIds": ["00000000-0000-4000-8000-000000005001"]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "00000000-0000-4000-8000-000000005001",
+              "documentId": "00000000-0000-4000-8000-000000005101",
+              "documentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "page": 1,
+              "language": "en-GB",
+              "boundingBox": { "x": 0.1, "y": 0.1, "width": 0.2, "height": 0.1 }
+            }
+          ],
+          "expectedTruth": "UNKNOWN"
+        }
+      ],
+      "invalidExpression": { "op": "same_visual_area", "factKeys": ["sample.name"] },
+      "abuseExpression": {
+        "op": "same_visual_area",
+        "factKeys": ["sample.name", "sample.name"],
+        "maxNormalizedGap": 1,
+        "quantifier": "ALL_FACTS",
+        "requireSameDocument": true,
+        "requireSamePage": true
+      }
+    }
+  ]
+}

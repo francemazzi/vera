@@ -1,0 +1,36 @@
+{
+  "name": "@vera/demo-mvp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "report": "node dist/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:smoke": "vitest run test/smoke"
+  },
+  "dependencies": {
+    "@vera/benchmark": "workspace:*",
+    "@vera/calibration": "workspace:*",
+    "@vera/contracts": "workspace:*",
+    "@vera/extractors": "workspace:*",
+    "@vera/rules-core": "workspace:*",
+    "@vera/rules-testing": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

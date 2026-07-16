@@ -3,6 +3,8 @@ datasets/
 node_modules/
 dist/
 coverage/
+generated/
+**/generated/
 .turbo/
 
 .env

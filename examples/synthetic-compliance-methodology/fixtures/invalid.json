@@ -1,0 +1,35 @@
+{
+  "validationScope": "TECHNICAL_DEMO",
+  "scenarios": [
+    {
+      "id": "invalid-id",
+      "description": "Invalid truth vocabulary",
+      "applies": "MAYBE",
+      "satisfied": "TRUE",
+      "expected": "PASS",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      }
+    },
+    {
+      "id": "SYN-METHOD-999",
+      "description": "Invalid validation scope",
+      "applies": "TRUE",
+      "satisfied": "TRUE",
+      "expected": "PASS",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "PROFESSIONAL"
+      }
+    }
+  ],
+  "intervals": [
+    { "validFrom": "2026-01-01T00:00:00.000Z", "validTo": "2026-01-01T00:00:00.000Z" },
+    { "validFrom": "2026-01-01T01:00:00+01:00", "validTo": null }
+  ]
+}

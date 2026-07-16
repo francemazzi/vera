@@ -1,0 +1,87 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model LocalAccount {
+  id           String    @id @db.Uuid
+  email        String    @unique
+  displayName  String
+  passwordHash String
+  role         String
+  disabled     Boolean   @default(false)
+  createdAt    DateTime  @db.Timestamptz(6)
+  sessions     Session[]
+
+  @@map("local_accounts")
+}
+
+model Session {
+  id        String    @id @db.Uuid
+  tokenHash String    @unique
+  accountId String    @db.Uuid
+  account   LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @db.Timestamptz(6)
+  expiresAt DateTime  @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+
+  @@index([accountId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model EvaluationRunRecord {
+  id               String                 @id @db.Uuid
+  contentHash      String                 @unique
+  aggregateOutcome String
+  validationScope  String
+  payload          Json
+  createdAt        DateTime               @db.Timestamptz(6)
+  reviewDecisions  ReviewDecisionRecord[]
+
+  @@map("evaluation_runs")
+}
+
+model ReviewDecisionRecord {
+  id                String              @id @db.Uuid
+  runId             String              @db.Uuid
+  run               EvaluationRunRecord @relation(fields: [runId], references: [id], onDelete: Cascade)
+  sequence          Int
+  contentHash       String              @unique
+  previousEventHash String?
+  actorId           String              @db.Uuid
+  payload           Json
+  createdAt         DateTime            @db.Timestamptz(6)
+
+  @@unique([runId, sequence])
+  @@index([runId])
+  @@map("review_decisions")
+}
+
+model BlobObject {
+  sha256     String   @id
+  byteLength Int
+  mediaType  String
+  path        String
+  createdAt   DateTime @db.Timestamptz(6)
+
+  @@map("blob_objects")
+}
+
+model IdempotencyRecord {
+  scope        String
+  key          String
+  responseHash String
+  response     Json
+  createdAt    DateTime @db.Timestamptz(6)
+  expiresAt    DateTime @db.Timestamptz(6)
+
+  @@id([scope, key])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}

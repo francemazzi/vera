@@ -1,0 +1,230 @@
+{
+  "validationScope": "TECHNICAL_DEMO",
+  "sources": [
+    { "from": null, "to": "UPLOADED", "valid": true },
+    { "from": "UPLOADED", "to": "REVIEWED", "valid": true },
+    { "from": "REVIEWED", "to": "APPROVED", "valid": true },
+    { "from": "APPROVED", "to": "RETIRED", "valid": true },
+    { "from": null, "to": "APPROVED", "valid": false },
+    { "from": "UPLOADED", "to": "UPLOADED", "valid": false },
+    { "from": "UPLOADED", "to": "APPROVED", "valid": false },
+    { "from": "REVIEWED", "to": "REVIEWED", "valid": false },
+    { "from": "APPROVED", "to": "APPROVED", "valid": false },
+    { "from": "RETIRED", "to": "APPROVED", "valid": false }
+  ],
+  "ruleCards": [
+    { "from": null, "to": "DRAFT", "valid": true },
+    { "from": "DRAFT", "to": "IN_REVIEW", "valid": true },
+    { "from": "IN_REVIEW", "to": "APPROVED", "valid": true },
+    { "from": "IN_REVIEW", "to": "CHANGES_REQUESTED", "valid": true },
+    { "from": "APPROVED", "to": "RETIRED", "valid": true },
+    { "from": null, "to": "APPROVED", "valid": false },
+    { "from": "DRAFT", "to": "DRAFT", "valid": false },
+    { "from": "DRAFT", "to": "APPROVED", "valid": false },
+    { "from": "IN_REVIEW", "to": "IN_REVIEW", "valid": false },
+    { "from": "APPROVED", "to": "APPROVED", "valid": false },
+    { "from": "CHANGES_REQUESTED", "to": "DRAFT", "valid": false },
+    { "from": "RETIRED", "to": "RETIRED", "valid": false }
+  ],
+  "sourceAuthorizations": [
+    {
+      "from": null,
+      "to": "UPLOADED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Author",
+        "role": "AUTHOR",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "valid": true
+    },
+    {
+      "from": "UPLOADED",
+      "to": "REVIEWED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000001"],
+      "excludedActorIds": [],
+      "valid": true
+    },
+    {
+      "from": "UPLOADED",
+      "to": "REVIEWED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000002"],
+      "excludedActorIds": [],
+      "valid": false
+    },
+    {
+      "from": "REVIEWED",
+      "to": "APPROVED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000001"],
+      "excludedActorIds": ["00000000-0000-4000-8000-000000000002"],
+      "valid": true
+    },
+    {
+      "from": "REVIEWED",
+      "to": "APPROVED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "valid": false
+    },
+    {
+      "from": "APPROVED",
+      "to": "RETIRED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "reason": "Superseded synthetic source",
+      "valid": true
+    },
+    {
+      "from": "APPROVED",
+      "to": "RETIRED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "valid": false
+    }
+  ],
+  "ruleCardAuthorizations": [
+    {
+      "from": null,
+      "to": "DRAFT",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Author",
+        "role": "AUTHOR",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "valid": true
+    },
+    {
+      "from": "DRAFT",
+      "to": "IN_REVIEW",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "displayName": "Synthetic Author",
+        "role": "AUTHOR",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000001"],
+      "excludedActorIds": [],
+      "valid": true
+    },
+    {
+      "from": "IN_REVIEW",
+      "to": "CHANGES_REQUESTED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000001"],
+      "excludedActorIds": [],
+      "valid": true
+    },
+    {
+      "from": "IN_REVIEW",
+      "to": "CHANGES_REQUESTED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "displayName": "Synthetic Reviewer",
+        "role": "REVIEWER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000002"],
+      "excludedActorIds": [],
+      "valid": false
+    },
+    {
+      "from": "IN_REVIEW",
+      "to": "APPROVED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000001"],
+      "excludedActorIds": ["00000000-0000-4000-8000-000000000002"],
+      "valid": true
+    },
+    {
+      "from": "IN_REVIEW",
+      "to": "APPROVED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": ["00000000-0000-4000-8000-000000000003"],
+      "excludedActorIds": [],
+      "valid": false
+    },
+    {
+      "from": "APPROVED",
+      "to": "RETIRED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "reason": "Superseded synthetic card",
+      "valid": true
+    },
+    {
+      "from": "APPROVED",
+      "to": "RETIRED",
+      "actor": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "displayName": "Synthetic Approver",
+        "role": "APPROVER",
+        "validationScope": "TECHNICAL_DEMO"
+      },
+      "contributorIds": [],
+      "excludedActorIds": [],
+      "valid": false
+    }
+  ]
+}

@@ -51,8 +51,9 @@ flowchart LR
   K --> O --> H --> A
 ```
 
-Gli adapter producono soltanto facts ed evidenze. Il kernel riceve input JSON, seleziona un Rule
-Pack valido e produce findings senza dipendere da AI, storage o UI.
+Gli adapter producono soltanto facts ed evidenze. Il resolver seleziona il Rule Pack valido per
+ambito e data; il kernel riceve il relativo snapshot JSON e produce findings senza dipendere da AI,
+storage o UI.
 
 ### Semantica essenziale
 
@@ -89,7 +90,11 @@ vera/
 │   └── web/
 ├── packages/
 │   ├── contracts/
+│   ├── benchmark/
+│   ├── calibration/
+│   ├── demo-mvp/
 │   ├── extractors/
+│   ├── public-boundary/
 │   ├── rag/
 │   ├── rules-core/
 │   ├── rules-testing/
@@ -139,23 +144,23 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 
 | Ordine | Fase | Risultato                       | Stato |
 | -----: | ---: | ------------------------------- | :---: |
-|      1 |    0 | Confini pubblici e fondazione   | `[~]` |
-|      2 |    1 | Specifica metodologica          | `[ ]` |
-|      3 |    2 | Fonti di conformità             | `[ ]` |
-|      4 |    3 | Rule Card                       | `[ ]` |
-|      5 |    4 | Facts, evidenze ed estrattori   | `[ ]` |
-|      6 |    5 | DSL dichiarativa                | `[ ]` |
-|      7 |    6 | Kernel deterministico           | `[ ]` |
-|      8 |    7 | Rule Pack e versionamento       | `[ ]` |
-|      9 |    8 | Test runner e version diff      | `[ ]` |
-|     10 |    9 | Benchmark sintetico             | `[ ]` |
-|     11 |   10 | Calibrazione e astensione       | `[ ]` |
-|     12 |   13 | Provenienza e audit             | `[ ]` |
-|     13 |   14 | API, persistenza e sicurezza    | `[ ]` |
-|     14 |   11 | RAG e ingestione                | `[ ]` |
-|     15 |   12 | UI di revisione                 | `[ ]` |
-|     16 |   15 | MVP dimostrativo sintetico      | `[ ]` |
-|     17 |   16 | Apertura e release sperimentale | `[ ]` |
+|      1 |    0 | Confini pubblici e fondazione   | `[x]` |
+|      2 |    1 | Specifica metodologica          | `[x]` |
+|      3 |    2 | Fonti di conformità             | `[x]` |
+|      4 |    3 | Rule Card                       | `[x]` |
+|      5 |    4 | Facts, evidenze ed estrattori   | `[x]` |
+|      6 |    5 | DSL dichiarativa                | `[x]` |
+|      7 |    6 | Kernel deterministico           | `[x]` |
+|      8 |    7 | Rule Pack e versionamento       | `[x]` |
+|      9 |    8 | Test runner e version diff      | `[x]` |
+|     10 |    9 | Benchmark sintetico             | `[x]` |
+|     11 |   10 | Calibrazione e astensione       | `[x]` |
+|     12 |   13 | Provenienza e audit             | `[x]` |
+|     13 |   14 | API, persistenza e sicurezza    | `[x]` |
+|     14 |   11 | RAG e ingestione                | `[x]` |
+|     15 |   12 | UI di revisione                 | `[x]` |
+|     16 |   15 | MVP dimostrativo sintetico      | `[x]` |
+|     17 |   16 | Apertura e release sperimentale | `[~]` |
 
 L’ordine intenzionale porta audit e persistenza prima di RAG e UI, così queste funzionalità nascono
 già sopra contratti stabili e tracciabili.
@@ -172,10 +177,24 @@ già sopra contratti stabili e tracciabili.
 ## Documentazione
 
 - [Roadmap completa](docs/roadmap.md)
-- Le specifiche metodologiche, API e operative saranno aggiunte e versionate nelle rispettive fasi.
+- [Architettura](docs/architecture.md)
+- [Sviluppo locale](docs/development.md)
+- [Metodologia normativa](docs/methodology.md)
+- [DSL dichiarativa](docs/dsl.md)
+- [Kernel deterministico](docs/kernel.md)
+- [Rule Pack e risoluzione temporale](docs/rule-packs.md)
+- [Rule testing e version diff](docs/rule-testing.md)
+- [Benchmark sintetico](docs/benchmark.md)
+- [Calibrazione e astensione](docs/calibration.md)
+- [Provenienza e audit](docs/audit.md)
+- [API, persistenza e sicurezza locale](docs/api-storage.md)
+- [RAG e ingestione editoriale](docs/rag.md)
+- [UI di revisione](docs/ui-review.md)
+- [MVP dimostrativo sintetico](docs/demo-mvp.md)
+- [Release sperimentale](docs/release.md)
+- [Security policy](SECURITY.md)
 
 ## Licenza
 
-La release pubblica è pianificata con licenza Apache-2.0 nella Fase 16. Fino al completamento di
-quella fase, la presenza di questo file non implica che il progetto sia già pronto per una
-distribuzione pubblica.
+VERA è distribuito con licenza [Apache-2.0](LICENSE). La release `v0.1.0` è sperimentale e non
+include pubblicazione npm.
