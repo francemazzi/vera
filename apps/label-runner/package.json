@@ -1,0 +1,25 @@
+{
+  "name": "@vera/label-runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:smoke:openrouter": "vitest run test/smoke/openrouter-live.test.ts"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "7.19.0",
+    "fastify": "catalog:",
+    "google-auth-library": "9.15.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

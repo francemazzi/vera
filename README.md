@@ -86,6 +86,14 @@ Ollama resta il provider predefinito. OpenRouter usa esclusivamente il modello f
 Retention e `data_collection=deny`. L’attivazione remota è esplicita e non esiste fallback
 automatico da Ollama a OpenRouter; OCR, vision ed embedding restano locali tramite Ollama.
 
+### SILTO-LABEL professionale
+
+Il runner privato SILTO-LABEL è separato dai demo tecnici: per quel flusso OpenRouter è l'unico
+provider generativo consentito e non è previsto alcun fallback a Ollama o a un modello locale. Il
+runner riceve soltanto identificativi via Cloud Tasks/OIDC, legge la pagina normalizzata da GCS
+privato e registra provider, modello, prompt, snapshot fonti e rule pack per ogni run. Vedi
+[runner privato SILTO-LABEL](docs/label-runner.md).
+
 ## Struttura del repository
 
 VERA usa un solo repository. I confini sono applicati tramite struttura, `.gitignore`, controlli
@@ -202,6 +210,7 @@ già sopra contratti stabili e tracciabili.
 - [RAG e ingestione editoriale](docs/rag.md)
 - [UI di revisione](docs/ui-review.md)
 - [MVP dimostrativo sintetico](docs/demo-mvp.md)
+- [Runner privato SILTO-LABEL](docs/label-runner.md)
 - [Release sperimentale](docs/release.md)
 - [Security policy](SECURITY.md)
 
