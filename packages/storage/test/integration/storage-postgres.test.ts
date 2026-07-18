@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  PrivateLabelGovernanceRepository,
   VeraStorageRepository,
   canonicalizeStorageBackup,
   createPrismaClient,
@@ -24,6 +25,7 @@ describe("PostgreSQL storage integration", () => {
   let container: StartedTestContainer;
   let prisma: VeraPrismaClient;
   let repository: VeraStorageRepository;
+  let privateGovernance: PrivateLabelGovernanceRepository;
 
   beforeAll(async () => {
     container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
@@ -43,6 +45,7 @@ describe("PostgreSQL storage integration", () => {
     });
     prisma = createPrismaClient({ connectionString });
     repository = new VeraStorageRepository(prisma);
+    privateGovernance = new PrivateLabelGovernanceRepository(prisma);
   }, 120_000);
 
   afterAll(async () => {
@@ -112,6 +115,100 @@ describe("PostgreSQL storage integration", () => {
       decision.contentHash,
     );
     expect(idempotent.created).toBe(true);
+  });
+
+  it("persists a private source, append-only activation and reproducible OpenRouter run", async () => {
+    const source = await privateGovernance.createSourceVersion({
+      source: {
+        id: uuid(301),
+        stableReference: "eu-label-private-source-001",
+        title: "Private regulatory source",
+        jurisdiction: "EU",
+      },
+      version: {
+        id: uuid(302),
+        revision: 1,
+        contentHash: "1".repeat(64),
+        contentObjectRef: "gs://private-governance/sources/001.pdf",
+      },
+      actorId: uuid(303),
+      actorRole: "SYNC_AGENT",
+      createdAt: "2026-07-18T10:00:00.000Z",
+    });
+    expect(source.state).toBe("UNVERIFIED");
+    expect(await prisma.privateLabelSourceTransition.count()).toBe(1);
+
+    const sourceSnapshotHash = "2".repeat(64);
+    const rulePack = await privateGovernance.saveRulePackSnapshot({
+      id: uuid(304),
+      version: "eu-private-v1",
+      sourceSnapshotHash,
+      snapshot: { sourceVersionIds: [uuid(302)], controlCount: 24 },
+      createdByActorId: uuid(305),
+      createdAt: "2026-07-18T10:01:00.000Z",
+    });
+    const activated = await privateGovernance.appendRulePackActivation({
+      rulePackVersionId: rulePack.id,
+      action: "ACTIVATED",
+      countryCodes: ["IT", "FR"],
+      actorId: uuid(306),
+      reason: "Synthetic private integration verification",
+      createdAt: "2026-07-18T10:02:00.000Z",
+    });
+    const deactivated = await privateGovernance.appendRulePackActivation({
+      rulePackVersionId: rulePack.id,
+      action: "DEACTIVATED",
+      countryCodes: ["IT", "FR"],
+      actorId: uuid(306),
+      reason: "Synthetic rollback verification",
+      createdAt: "2026-07-18T10:03:00.000Z",
+    });
+    expect(activated.sequence).toBe(1);
+    expect(deactivated.sequence).toBe(2);
+
+    const run = await privateGovernance.saveEvaluationRun({
+      id: uuid(307),
+      externalAnalysisId: uuid(308),
+      inputSha256: "3".repeat(64),
+      provider: "openrouter",
+      model: "provider/private-vision-model",
+      promptVersion: "label-v1",
+      rulePackVersionId: rulePack.id,
+      sourceSnapshotHash,
+      controls: [{ fieldCode: "elenco_ingredienti", outcome: "REVIEW" }],
+      evidenceRefs: [{ kind: "NORMALIZED_PAGE_1", sha256: "4".repeat(64) }],
+      createdAt: "2026-07-18T10:04:00.000Z",
+    });
+    expect(run.contentHash).toMatch(/^[0-9a-f]{64}$/u);
+    const persistedRun = await prisma.privateLabelEvaluationRun.findUniqueOrThrow({
+      where: { id: run.id },
+    });
+    expect(persistedRun).toMatchObject({
+      inputSha256: "3".repeat(64),
+      provider: "openrouter",
+      model: "provider/private-vision-model",
+      promptVersion: "label-v1",
+      rulePackVersionId: rulePack.id,
+      sourceSnapshotHash,
+    });
+    expect(persistedRun.controls).toEqual([
+      { fieldCode: "elenco_ingredienti", outcome: "REVIEW" },
+    ]);
+    await expect(
+      privateGovernance.saveEvaluationRun({
+        id: uuid(309),
+        externalAnalysisId: uuid(308),
+        inputSha256: "3".repeat(64),
+        provider: "openrouter",
+        model: "provider/private-vision-model",
+        promptVersion: "label-v1",
+        rulePackVersionId: rulePack.id,
+        sourceSnapshotHash: "5".repeat(64),
+        controls: [],
+        evidenceRefs: [],
+        createdAt: "2026-07-18T10:04:00.000Z",
+      }),
+    ).rejects.toThrow("does not match");
   });
 
   it("atomically replays run writes and rejects key collisions before mutation", async () => {

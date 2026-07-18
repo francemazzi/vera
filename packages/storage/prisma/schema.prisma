@@ -86,3 +86,103 @@ model IdempotencyRecord {
   @@index([expiresAt])
   @@map("idempotency_records")
 }
+
+/// Private SILTO-LABEL governance records. They deliberately live beside, but
+/// do not widen, the public TECHNICAL_DEMO contract surface.
+model PrivateLabelSource {
+  id               String                      @id @db.Uuid
+  stableReference  String                      @unique
+  title            String
+  jurisdiction     String
+  createdAt        DateTime                    @db.Timestamptz(6)
+  createdByActorId String                      @db.Uuid
+  versions         PrivateLabelSourceVersion[]
+
+  @@map("private_label_sources")
+}
+
+model PrivateLabelSourceVersion {
+  id               String                         @id @db.Uuid
+  sourceId         String                         @db.Uuid
+  source           PrivateLabelSource             @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  revision         Int
+  contentHash      String                         @unique
+  contentObjectRef String
+  createdAt        DateTime                       @db.Timestamptz(6)
+  createdByActorId String                         @db.Uuid
+  transitions      PrivateLabelSourceTransition[]
+
+  @@unique([sourceId, revision])
+  @@index([sourceId])
+  @@map("private_label_source_versions")
+}
+
+model PrivateLabelSourceTransition {
+  id              String                    @id @db.Uuid
+  sourceVersionId String                    @db.Uuid
+  sourceVersion   PrivateLabelSourceVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  sequence        Int
+  fromState       String?
+  toState         String
+  actorId         String                    @db.Uuid
+  actorRole       String
+  reason          String?
+  contentHash     String                    @unique
+  createdAt       DateTime                  @db.Timestamptz(6)
+
+  @@unique([sourceVersionId, sequence])
+  @@index([sourceVersionId])
+  @@map("private_label_source_transitions")
+}
+
+model PrivateLabelRulePackVersion {
+  id                 String                       @id @db.Uuid
+  version            String                       @unique
+  contentHash        String                       @unique
+  sourceSnapshotHash String
+  snapshot           Json
+  createdAt          DateTime                     @db.Timestamptz(6)
+  createdByActorId   String                       @db.Uuid
+  activations        PrivateLabelRulePackActivation[]
+  evaluationRuns     PrivateLabelEvaluationRun[]
+
+  @@map("private_label_rule_pack_versions")
+}
+
+model PrivateLabelRulePackActivation {
+  id                String                      @id @db.Uuid
+  rulePackVersionId String                      @db.Uuid
+  rulePackVersion   PrivateLabelRulePackVersion @relation(fields: [rulePackVersionId], references: [id], onDelete: Restrict)
+  sequence          Int
+  action            String
+  countryCodes      String[]
+  actorId           String                      @db.Uuid
+  reason            String?
+  previousEventHash String?
+  contentHash       String                      @unique
+  createdAt         DateTime                    @db.Timestamptz(6)
+
+  @@unique([rulePackVersionId, sequence])
+  @@index([rulePackVersionId])
+  @@map("private_label_rule_pack_activations")
+}
+
+model PrivateLabelEvaluationRun {
+  id                 String                      @id @db.Uuid
+  externalAnalysisId String                      @db.Uuid
+  inputSha256        String
+  provider           String
+  model              String
+  promptVersion      String
+  rulePackVersionId  String                      @db.Uuid
+  rulePackVersion    PrivateLabelRulePackVersion @relation(fields: [rulePackVersionId], references: [id], onDelete: Restrict)
+  sourceSnapshotHash String
+  controls           Json
+  evidenceRefs       Json
+  contentHash        String                      @unique
+  createdAt          DateTime                    @db.Timestamptz(6)
+
+  @@index([externalAnalysisId])
+  @@index([rulePackVersionId])
+  @@map("private_label_evaluation_runs")
+}

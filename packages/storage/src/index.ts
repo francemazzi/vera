@@ -14,3 +14,12 @@ export {
   type LocalAccountRecord,
   type SessionRecord,
 } from "./repository.js";
+export {
+  PrivateLabelGovernanceRepository,
+  type PrivateLabelActivationInput,
+  type PrivateLabelActorRole,
+  type PrivateLabelEvaluationRunInput,
+  type PrivateLabelRulePackSnapshotInput,
+  type PrivateLabelSourceState,
+  type PrivateLabelSourceVersionInput,
+} from "./private-label-governance-repository.js";
