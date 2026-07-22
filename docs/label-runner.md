@@ -51,4 +51,4 @@ finito di tentativi e i failure terminali sono conservati nel run/audit.
 
 I test normali usano fixture PNG sintetiche e un transport OpenRouter simulato. Lo smoke live
 richiede una chiave ruotata già presente in Secret Manager e una variabile di abilitazione
-esplicita; non usa dataset o etichette riservati.
+esplicita; non usa dataset o materiali riservati.

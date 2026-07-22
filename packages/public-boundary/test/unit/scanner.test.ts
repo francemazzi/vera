@@ -37,6 +37,21 @@ describe("scanContents", () => {
     expect(findings[0]?.kind).toBe("PRIVATE_PATH");
   });
 
+  it("skips forbidden-token findings on exact allow paths", () => {
+    const findings = scanContents(
+      [
+        { path: "allowed/private-area.md", content: "documents RestrictedWord for operators" },
+        { path: "notes.md", content: "RestrictedWord remains blocked" },
+      ],
+      config,
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      kind: "FORBIDDEN_TOKEN",
+      path: "notes.md",
+    });
+  });
+
   it("reports secret patterns without returning the value", () => {
     const value = `AKIA${"A".repeat(16)}`;
     const findings = scanContents([{ path: "config.txt", content: value }], config);
