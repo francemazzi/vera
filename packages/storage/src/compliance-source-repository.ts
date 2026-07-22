@@ -224,9 +224,7 @@ export class DurableComplianceSourceRepository {
     return memory.assertVersionEligibleForActivation(request);
   }
 
-  async #hydrateForVersionOrEmpty(
-    versionId: string,
-  ): Promise<InMemoryComplianceSourceRepository> {
+  async #hydrateForVersionOrEmpty(versionId: string): Promise<InMemoryComplianceSourceRepository> {
     const versionRow = await this.#prisma.complianceSourceVersionRecord.findUnique({
       where: { id: versionId },
       select: { sourceId: true },

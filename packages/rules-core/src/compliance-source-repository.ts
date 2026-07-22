@@ -102,12 +102,6 @@ export class InMemoryComplianceSourceRepository {
    */
   public static fromHistory(history: ComplianceSourceHistory): InMemoryComplianceSourceRepository {
     const repository = new InMemoryComplianceSourceRepository();
-    if (history === null || typeof history !== "object" || !Array.isArray(history.versions)) {
-      throw new ComplianceSourceValidationError(
-        "INVALID_SOURCE_PAYLOAD",
-        "Compliance source history does not satisfy the trusted replay shape",
-      );
-    }
 
     const parsedSource = ComplianceSourceSchema.safeParse(history.source);
     if (!parsedSource.success) {
@@ -123,13 +117,6 @@ export class InMemoryComplianceSourceRepository {
     repository.#versionIdsBySource.set(source.id, versionIds);
 
     for (const snapshot of history.versions) {
-      if (snapshot === null || typeof snapshot !== "object" || !Array.isArray(snapshot.transitions)) {
-        throw new ComplianceSourceValidationError(
-          "INVALID_VERSION_PAYLOAD",
-          "Compliance source version snapshot does not satisfy the trusted replay shape",
-        );
-      }
-
       const parsedVersion = ComplianceSourceVersionSchema.safeParse(snapshot.version);
       if (!parsedVersion.success) {
         throw new ComplianceSourceValidationError(

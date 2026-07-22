@@ -62,8 +62,9 @@ class FakeRepository {
     const stream = this.decisions.get(input.decision.runId);
     if (stream === undefined) throw new StorageConflictError("missing run");
     stream.push(input.decision);
+    const response = { reviewDecision: input.decision } satisfies JsonValue;
     return Promise.resolve({
-      response: { reviewDecision: input.decision } as unknown as JsonValue,
+      response,
       created: true,
     });
   }

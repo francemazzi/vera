@@ -1040,9 +1040,9 @@ describe("InMemoryRulePackActivationLedger.fromHistory", () => {
     const ledger = InMemoryRulePackActivationLedger.fromHistory([firstEvent], reader);
 
     expect(ledger.getHistory(RULE_PACK_IDS.pack)).toHaveLength(1);
-    expect(
-      ledger.resolve(resolutionRequest(TIMES.activation1Effective)).rulePackVersion.id,
-    ).toBe(first.id);
+    expect(ledger.resolve(resolutionRequest(TIMES.activation1Effective)).rulePackVersion.id).toBe(
+      first.id,
+    );
 
     const next = secondEvent(firstEvent);
     ledger.appendEvent(next, expectation(1, firstEvent.contentHash, RULE_PACK_IDS.version1));
@@ -1084,9 +1084,9 @@ describe("InMemoryRulePackActivationLedger.fromHistory", () => {
     expect(fromRecord.getHistory(RULE_PACK_IDS.pack)).toHaveLength(1);
 
     const malformedEvent = { ...firstEvent, unexpected: true };
-    expect(() =>
-      InMemoryRulePackActivationLedger.fromHistory([malformedEvent], reader),
-    ).toThrow(expect.objectContaining({ code: "INVALID_ACTIVATION_EVENT" }));
+    expect(() => InMemoryRulePackActivationLedger.fromHistory([malformedEvent], reader)).toThrow(
+      expect.objectContaining({ code: "INVALID_ACTIVATION_EVENT" }),
+    );
 
     expect(() =>
       InMemoryRulePackActivationLedger.fromHistory(

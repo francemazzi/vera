@@ -1,9 +1,5 @@
 import { ActivationEventSchema } from "@vera/contracts";
-import type {
-  ActivationEvent,
-  ResolvedRulePack,
-  RulePackResolutionRequest,
-} from "@vera/contracts";
+import type { ActivationEvent, ResolvedRulePack, RulePackResolutionRequest } from "@vera/contracts";
 import {
   InMemoryRulePackActivationLedger,
   type ActivationAppendCommand,

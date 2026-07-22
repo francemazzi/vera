@@ -326,10 +326,7 @@ interface RulePackContentSnapshot {
   readonly validity: ValidityInterval;
 }
 
-function parseActorIdList(
-  value: unknown,
-  label: string,
-): Set<string> {
+function parseActorIdList(value: unknown, label: string): Set<string> {
   if (!Array.isArray(value)) {
     throw new RulePackValidationError(
       "INVALID_RULE_PACK_DRAFT_PAYLOAD",
@@ -379,21 +376,6 @@ export class InMemoryRulePackRepository {
     readinessGate: RulePackReadinessGate | null = null,
   ): InMemoryRulePackRepository {
     const repository = new InMemoryRulePackRepository(eligibility, readinessGate);
-    if (
-      snapshot === null ||
-      typeof snapshot !== "object" ||
-      !Array.isArray(snapshot.drafts) ||
-      !Array.isArray(snapshot.versions) ||
-      snapshot.contributorIdsByDraftId === null ||
-      typeof snapshot.contributorIdsByDraftId !== "object" ||
-      snapshot.excludedActivatorIdsByVersionId === null ||
-      typeof snapshot.excludedActivatorIdsByVersionId !== "object"
-    ) {
-      throw new RulePackValidationError(
-        "INVALID_RULE_PACK_DRAFT_PAYLOAD",
-        "Rule Pack repository snapshot does not satisfy the trusted replay shape",
-      );
-    }
 
     for (const draftInput of snapshot.drafts) {
       const parsed = RulePackDraftSchema.safeParse(draftInput);
@@ -449,12 +431,6 @@ export class InMemoryRulePackRepository {
     }
 
     const published = snapshot.publishedVersionIdByDraftId ?? {};
-    if (published === null || typeof published !== "object") {
-      throw new RulePackValidationError(
-        "INVALID_RULE_PACK_PUBLISH_REQUEST",
-        "publishedVersionIdByDraftId must be a record when provided",
-      );
-    }
     for (const [draftId, versionId] of Object.entries(published)) {
       if (!repository.#drafts.has(draftId)) {
         throw new RulePackNotFoundError(
@@ -463,10 +439,10 @@ export class InMemoryRulePackRepository {
           { draftId },
         );
       }
-      if (typeof versionId !== "string" || !repository.#versions.has(versionId)) {
+      if (!repository.#versions.has(versionId)) {
         throw new RulePackNotFoundError(
           "RULE_PACK_VERSION_NOT_FOUND",
-          `Rule Pack version ${String(versionId)} does not exist`,
+          `Rule Pack version ${versionId} does not exist`,
           { versionId },
         );
       }

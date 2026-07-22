@@ -207,8 +207,10 @@ export type ActivationHistoryInput =
   | Readonly<Record<string, readonly ActivationEvent[]>>
   | readonly ActivationEvent[];
 
-function isActivationEventArray(value: unknown): value is readonly ActivationEvent[] {
-  return Array.isArray(value);
+function isActivationHistoryMap(
+  value: ActivationHistoryInput,
+): value is ReadonlyMap<string, readonly ActivationEvent[]> {
+  return value instanceof Map;
 }
 
 /** In-memory append-only activation ledger and deterministic temporal resolver. */
@@ -233,17 +235,7 @@ export class InMemoryRulePackActivationLedger {
     const ledger = new InMemoryRulePackActivationLedger(versionReader);
     const grouped = new Map<string, ActivationEvent[]>();
 
-    if (eventsByPackId instanceof Map) {
-      for (const [packId, history] of eventsByPackId) {
-        if (typeof packId !== "string" || !isActivationEventArray(history)) {
-          throw new RulePackActivationValidationError(
-            "INVALID_ACTIVATION_EVENT",
-            "Activation history map entries must be packId → event arrays",
-          );
-        }
-        grouped.set(packId, [...history]);
-      }
-    } else if (isActivationEventArray(eventsByPackId)) {
+    if (Array.isArray(eventsByPackId)) {
       for (const eventInput of eventsByPackId) {
         const parsed = ActivationEventSchema.safeParse(eventInput);
         if (!parsed.success) {
@@ -257,21 +249,17 @@ export class InMemoryRulePackActivationLedger {
         bucket.push(parsed.data);
         grouped.set(parsed.data.packId, bucket);
       }
-    } else if (eventsByPackId !== null && typeof eventsByPackId === "object") {
-      for (const [packId, history] of Object.entries(eventsByPackId)) {
-        if (!isActivationEventArray(history)) {
-          throw new RulePackActivationValidationError(
-            "INVALID_ACTIVATION_EVENT",
-            "Activation history record values must be event arrays",
-          );
-        }
+    } else if (isActivationHistoryMap(eventsByPackId)) {
+      for (const [packId, history] of eventsByPackId) {
         grouped.set(packId, [...history]);
       }
     } else {
-      throw new RulePackActivationValidationError(
-        "INVALID_ACTIVATION_EVENT",
-        "Activation history must be a map, record, or sorted event array",
-      );
+      const record: Readonly<Record<string, readonly ActivationEvent[]>> = eventsByPackId;
+      for (const packId of Object.keys(record)) {
+        const history = record[packId];
+        if (history === undefined) continue;
+        grouped.set(packId, [...history]);
+      }
     }
 
     for (const [packId, history] of grouped) {
@@ -327,9 +315,7 @@ export class InMemoryRulePackActivationLedger {
         }
         if (event.versionId !== null) {
           try {
-            const version = RulePackVersionSchema.parse(
-              versionReader.getVersion(event.versionId),
-            );
+            const version = RulePackVersionSchema.parse(versionReader.getVersion(event.versionId));
             if (version.packId !== event.packId) {
               throw new RulePackActivationInvariantError(
                 "ACTIVATION_VERSION_MISMATCH",

@@ -95,17 +95,17 @@ Risultato:
 Implementazione aggiunta:
 
 - Migration `20260722180000_phase14_domain_aggregates` e repository durable
-  (`DurableComplianceSourceRepository`, `DurableRuleCardRepository`,
-  `DurableRulePackRepository`, `DurableRulePackActivationLedger`,
-  `DurableRuleTestRunRepository`) con hydrate da storico `@vera/rules-core`.
-- API domain routes in `apps/api/src/domain-routes.ts` e RAG routes in
-  `apps/api/src/rag-routes.ts` (`/v1/rag/retrieve`, `/v1/rag/rule-card-drafts`,
-  index su versioni `APPROVED`, delete indice su `RETIRED`).
+  (`DurableComplianceSourceRepository`, `DurableRuleCardRepository`, `DurableRulePackRepository`,
+  `DurableRulePackActivationLedger`, `DurableRuleTestRunRepository`) con hydrate da storico
+  `@vera/rules-core`.
+- API domain routes in `apps/api/src/domain-routes.ts` e RAG routes in `apps/api/src/rag-routes.ts`
+  (`/v1/rag/retrieve`, `/v1/rag/rule-card-drafts`, index su versioni `APPROVED`, delete indice su
+  `RETIRED`).
 - Backup/restore `vera.storage-backup/v3` in `packages/storage/src/backup.ts`.
 - Hardening RAG: replace atomico per `sourceVersionId`, grounding citazioni draft.
 
-Gate eseguiti in ambiente agent (PostgreSQL 16 locale + pgvector via
-`VERA_TEST_DATABASE_URL`, in assenza di Testcontainers/Docker nested):
+Gate eseguiti in ambiente agent (PostgreSQL 16 locale + pgvector via `VERA_TEST_DATABASE_URL`, in
+assenza di Testcontainers/Docker nested):
 
 ```bash
 VERA_TEST_DATABASE_URL='postgresql://vera:local-only@127.0.0.1:5432/vera' \
@@ -123,8 +123,8 @@ pnpm --filter @vera/rag test:unit
 pnpm --filter @vera/api typecheck
 ```
 
-Risultato: suite sopra passate (storage integration 10/10, rag integration 6/6, api MVP 1/1,
-api HTTP 9/9, unit storage/rag ok).
+Risultato: suite sopra passate (storage integration 10/10, rag integration 6/6, api MVP 1/1, api
+HTTP 9/9, unit storage/rag ok).
 
 ## Limiti
 

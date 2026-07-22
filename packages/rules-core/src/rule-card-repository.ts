@@ -234,12 +234,6 @@ export class InMemoryRuleCardRepository {
     sourceReader: RuleCardSourceReader,
   ): InMemoryRuleCardRepository {
     const repository = new InMemoryRuleCardRepository(sourceReader);
-    if (history === null || typeof history !== "object" || !Array.isArray(history.revisions)) {
-      throw new RuleCardValidationError(
-        "INVALID_RULE_CARD_PAYLOAD",
-        "Rule Card history does not satisfy the trusted replay shape",
-      );
-    }
 
     const parsedCard = RuleCardSchema.safeParse(history.card);
     if (!parsedCard.success) {
@@ -255,13 +249,6 @@ export class InMemoryRuleCardRepository {
     repository.#revisionIdsByCard.set(card.id, revisionIds);
 
     for (const snapshot of history.revisions) {
-      if (snapshot === null || typeof snapshot !== "object" || !Array.isArray(snapshot.audit)) {
-        throw new RuleCardValidationError(
-          "INVALID_RULE_CARD_REVISION_PAYLOAD",
-          "Rule Card revision snapshot does not satisfy the trusted replay shape",
-        );
-      }
-
       const parsedRevision = RuleCardRevisionSchema.safeParse(snapshot.revision);
       if (!parsedRevision.success) {
         throw new RuleCardValidationError(

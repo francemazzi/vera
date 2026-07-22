@@ -256,10 +256,7 @@ export class DurableRulePackRepository {
     };
   }
 
-  async #persistDraftCreate(
-    transaction: TransactionClient,
-    draft: RulePackDraft,
-  ): Promise<void> {
+  async #persistDraftCreate(transaction: TransactionClient, draft: RulePackDraft): Promise<void> {
     await transaction.rulePackDraftRecord.create({
       data: {
         id: draft.id,
