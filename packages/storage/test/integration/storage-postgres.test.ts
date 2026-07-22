@@ -7,11 +7,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  DurableComplianceSourceRepository,
   PrivateLabelGovernanceRepository,
   VeraStorageRepository,
   canonicalizeStorageBackup,
   createPrismaClient,
   exportStorageBackup,
+  restoreStorageBackup,
 } from "../../src/index.js";
 import type { VeraPrismaClient } from "../../src/index.js";
 import { makeEvaluationRun, makeReviewDecision, uuid } from "../fixtures/evaluation.js";
@@ -26,6 +28,7 @@ describe("PostgreSQL storage integration", () => {
   let prisma: VeraPrismaClient;
   let repository: VeraStorageRepository;
   let privateGovernance: PrivateLabelGovernanceRepository;
+  let complianceSources: DurableComplianceSourceRepository;
 
   beforeAll(async () => {
     container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
@@ -46,6 +49,7 @@ describe("PostgreSQL storage integration", () => {
     prisma = createPrismaClient({ connectionString });
     repository = new VeraStorageRepository(prisma);
     privateGovernance = new PrivateLabelGovernanceRepository(prisma);
+    complianceSources = new DurableComplianceSourceRepository(prisma);
   }, 120_000);
 
   afterAll(async () => {
@@ -191,9 +195,7 @@ describe("PostgreSQL storage integration", () => {
       rulePackVersionId: rulePack.id,
       sourceSnapshotHash,
     });
-    expect(persistedRun.controls).toEqual([
-      { fieldCode: "elenco_ingredienti", outcome: "REVIEW" },
-    ]);
+    expect(persistedRun.controls).toEqual([{ fieldCode: "elenco_ingredienti", outcome: "REVIEW" }]);
     await expect(
       privateGovernance.saveEvaluationRun({
         id: uuid(309),
@@ -397,6 +399,69 @@ describe("PostgreSQL storage integration", () => {
     expect(
       backup.idempotencyRecords.some((record) => BackupIdempotencySchema.safeParse(record).success),
     ).toBe(true);
-    expect(canonicalizeStorageBackup(backup)).toContain("vera.storage-backup/v2");
+    expect(canonicalizeStorageBackup(backup)).toContain("vera.storage-backup/v3");
+  });
+
+  it("restores a v3 backup into empty durable tables with stable hash", async () => {
+    await clearBackupManagedTables(prisma);
+    await repository.createAccount({
+      id: uuid(901),
+      email: "backup-restore@example.test",
+      displayName: "Backup Restore",
+      passwordHash: "$argon2id$v=19$m=1,t=1,p=1$c3ludGhldGlj$AAAAAAAAAAAAAAAAAAAAAA",
+      role: "ADMIN",
+      createdAt: "2026-07-20T10:00:00.000Z",
+    });
+    await repository.saveEvaluationRun(makeEvaluationRun(uuid(902)));
+    await complianceSources.addSource({
+      id: uuid(903),
+      type: "POLICY",
+      domain: "synthetic-domain",
+      jurisdiction: "DEMO",
+      title: "Backup restore source",
+      stableReference: "BACKUP-RESTORE-001",
+      validationScope: "TECHNICAL_DEMO",
+    });
+
+    const backup = await exportStorageBackup(prisma, "2026-07-20T10:30:00.000Z");
+
+    await clearBackupManagedTables(prisma);
+    expect(await prisma.localAccount.count()).toBe(0);
+    expect(await prisma.evaluationRunRecord.count()).toBe(0);
+    expect(await prisma.complianceSourceRecord.count()).toBe(0);
+
+    await restoreStorageBackup(prisma, backup);
+    const restored = await exportStorageBackup(prisma, "2026-07-20T10:30:00.000Z");
+
+    expect(restored.contentHash).toBe(backup.contentHash);
+    expect(await prisma.localAccount.count()).toBe(1);
+    expect(await prisma.session.count()).toBe(0);
+    expect(await prisma.evaluationRunRecord.count()).toBe(1);
+    expect(await prisma.complianceSourceRecord.count()).toBe(1);
   });
 });
+
+async function clearBackupManagedTables(prisma: VeraPrismaClient): Promise<void> {
+  await prisma.$transaction([
+    prisma.reviewDecisionRecord.deleteMany(),
+    prisma.evaluationRunRecord.deleteMany(),
+    prisma.idempotencyRecord.deleteMany(),
+    prisma.blobObject.deleteMany(),
+    prisma.rulePackImpactReportRecord.deleteMany(),
+    prisma.ruleTestRunRecord.deleteMany(),
+    prisma.activationEventRecord.deleteMany(),
+    prisma.rulePackDraftPublicationRecord.deleteMany(),
+    prisma.rulePackVersionExcludedActivatorRecord.deleteMany(),
+    prisma.rulePackVersionRecord.deleteMany(),
+    prisma.rulePackDraftContributorRecord.deleteMany(),
+    prisma.rulePackDraftRecord.deleteMany(),
+    prisma.ruleCardAuditRecord.deleteMany(),
+    prisma.ruleCardRevisionRecord.deleteMany(),
+    prisma.ruleCardRecord.deleteMany(),
+    prisma.complianceSourceTransitionRecord.deleteMany(),
+    prisma.complianceSourceVersionRecord.deleteMany(),
+    prisma.complianceSourceRecord.deleteMany(),
+    prisma.session.deleteMany(),
+    prisma.localAccount.deleteMany(),
+  ]);
+}

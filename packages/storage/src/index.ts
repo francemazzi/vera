@@ -1,5 +1,11 @@
 export { ContentAddressedBlobStore, type BlobDescriptor } from "./blob-store.js";
-export { canonicalizeStorageBackup, exportStorageBackup, type StorageBackup } from "./backup.js";
+export {
+  canonicalizeStorageBackup,
+  exportStorageBackup,
+  restoreStorageBackup,
+  type RestoreStorageBackupOptions,
+  type StorageBackup,
+} from "./backup.js";
 export {
   createPrismaClient,
   type CreatePrismaClientOptions,

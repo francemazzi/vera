@@ -360,6 +360,6 @@ describe("MVP through real API and PostgreSQL", () => {
     expect(backup.idempotencyRecords).toHaveLength(40);
     for (const record of backup.idempotencyRecords) BackupIdempotencySchema.parse(record);
     expect(sha256CanonicalJson(hashInput)).toBe(contentHash);
-    expect(canonicalizeStorageBackup(backup)).toContain("vera.storage-backup/v2");
+    expect(canonicalizeStorageBackup(backup)).toContain("vera.storage-backup/v3");
   }, 120_000);
 });
