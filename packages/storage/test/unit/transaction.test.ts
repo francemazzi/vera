@@ -9,6 +9,10 @@ import {
 } from "../../src/transaction.js";
 import type { VeraPrismaClient } from "../../src/index.js";
 
+function prismaError(code: string, message = code): Error & { readonly code: string } {
+  return Object.assign(new Error(message), { code });
+}
+
 describe("storage transaction helpers", () => {
   it("identifies unique and retryable Prisma error codes conservatively", () => {
     expect(isUniqueConstraint({ code: "P2002" })).toBe(true);
@@ -25,21 +29,21 @@ describe("storage transaction helpers", () => {
   it("runs serializable transactions and retries retryable failures", async () => {
     let attempts = 0;
     const prisma = {
-      async $transaction<T>(
+      $transaction<T>(
         operation: (transaction: { readonly marker: string }) => Promise<T>,
         options: { readonly isolationLevel?: string },
       ): Promise<T> {
         attempts += 1;
         expect(options.isolationLevel).toBe("Serializable");
-        if (attempts < 3) throw { code: "P2034" };
+        if (attempts < 3) return Promise.reject(prismaError("P2034"));
         return operation({ marker: "transaction" });
       },
     } as unknown as VeraPrismaClient;
 
     await expect(
-      runSerializableWithRetries(prisma, async (transaction) => {
+      runSerializableWithRetries(prisma, (transaction) => {
         expect(transaction).toEqual({ marker: "transaction" });
-        return "stored";
+        return Promise.resolve("stored");
       }),
     ).resolves.toBe("stored");
     expect(attempts).toBe(3);
@@ -48,27 +52,27 @@ describe("storage transaction helpers", () => {
   it("stops retrying after the configured attempts or on non-retryable errors", async () => {
     let retryableAttempts = 0;
     const retryable = {
-      async $transaction(): Promise<never> {
+      $transaction(): Promise<never> {
         retryableAttempts += 1;
-        throw { code: "P2034" };
-      },
-    } as unknown as VeraPrismaClient;
-
-    await expect(runSerializableWithRetries(retryable, async () => "unreachable")).rejects.toEqual({
-      code: "P2034",
-    });
-    expect(retryableAttempts).toBe(3);
-
-    let nonRetryableAttempts = 0;
-    const nonRetryable = {
-      async $transaction(): Promise<never> {
-        nonRetryableAttempts += 1;
-        throw new Error("boom");
+        return Promise.reject(prismaError("P2034"));
       },
     } as unknown as VeraPrismaClient;
 
     await expect(
-      runSerializableWithRetries(nonRetryable, async () => "unreachable"),
+      runSerializableWithRetries(retryable, () => Promise.resolve("unreachable")),
+    ).rejects.toMatchObject({ code: "P2034" });
+    expect(retryableAttempts).toBe(3);
+
+    let nonRetryableAttempts = 0;
+    const nonRetryable = {
+      $transaction(): Promise<never> {
+        nonRetryableAttempts += 1;
+        return Promise.reject(new Error("boom"));
+      },
+    } as unknown as VeraPrismaClient;
+
+    await expect(
+      runSerializableWithRetries(nonRetryable, () => Promise.resolve("unreachable")),
     ).rejects.toThrow("boom");
     expect(nonRetryableAttempts).toBe(1);
   });
