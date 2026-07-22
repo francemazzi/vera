@@ -138,6 +138,81 @@ function approvalRequirement(revision: RuleCardRevision): 1 | 2 {
   return risk === "HIGH" || risk === "CRITICAL" ? 2 : 1;
 }
 
+function parseHydratedAuditRecord(entry: unknown): RuleCardAuditRecord {
+  if (entry === null || typeof entry !== "object" || nodeUtilTypes.isProxy(entry)) {
+    throw new RuleCardValidationError(
+      "INVALID_RULE_CARD_TRANSITION_PAYLOAD",
+      "Rule Card audit record does not satisfy the trusted replay shape",
+    );
+  }
+  const kindDescriptor = Object.getOwnPropertyDescriptor(entry, "kind");
+  const recordDescriptor = Object.getOwnPropertyDescriptor(entry, "record");
+  if (
+    kindDescriptor === undefined ||
+    recordDescriptor === undefined ||
+    !("value" in kindDescriptor) ||
+    !("value" in recordDescriptor) ||
+    !kindDescriptor.enumerable ||
+    !recordDescriptor.enumerable
+  ) {
+    throw new RuleCardValidationError(
+      "INVALID_RULE_CARD_TRANSITION_PAYLOAD",
+      "Rule Card audit record does not satisfy the trusted replay shape",
+    );
+  }
+  const kind: unknown = kindDescriptor.value;
+  const record: unknown = recordDescriptor.value;
+  if (kind === "TRANSITION") {
+    const parsed = RuleCardTransitionEventSchema.safeParse(record);
+    if (!parsed.success) {
+      throw new RuleCardValidationError(
+        "INVALID_RULE_CARD_TRANSITION_PAYLOAD",
+        "Rule Card transition does not satisfy its public contract",
+        { issueCount: parsed.error.issues.length },
+      );
+    }
+    return { kind, record: clone(parsed.data) };
+  }
+  if (kind === "COMMENT") {
+    const parsed = RuleCardCommentSchema.safeParse(record);
+    if (!parsed.success) {
+      throw new RuleCardValidationError(
+        "INVALID_RULE_CARD_COMMENT_PAYLOAD",
+        "Rule Card comment does not satisfy its public contract",
+        { issueCount: parsed.error.issues.length },
+      );
+    }
+    return { kind, record: clone(parsed.data) };
+  }
+  if (kind === "REVIEW") {
+    const parsed = RuleCardReviewDecisionSchema.safeParse(record);
+    if (!parsed.success) {
+      throw new RuleCardValidationError(
+        "INVALID_REVIEW_DECISION_PAYLOAD",
+        "Rule Card review decision does not satisfy its public contract",
+        { issueCount: parsed.error.issues.length },
+      );
+    }
+    return { kind, record: clone(parsed.data) };
+  }
+  if (kind === "APPROVAL") {
+    const parsed = RuleCardApprovalDecisionSchema.safeParse(record);
+    if (!parsed.success) {
+      throw new RuleCardValidationError(
+        "INVALID_APPROVAL_DECISION_PAYLOAD",
+        "Rule Card approval decision does not satisfy its public contract",
+        { issueCount: parsed.error.issues.length },
+      );
+    }
+    return { kind, record: clone(parsed.data) };
+  }
+  throw new RuleCardValidationError(
+    "INVALID_RULE_CARD_TRANSITION_PAYLOAD",
+    "Rule Card audit record kind is not recognized",
+    { kind: typeof kind === "string" ? kind : null },
+  );
+}
+
 export class InMemoryRuleCardRepository {
   readonly #sourceReader: RuleCardSourceReader;
   readonly #cards = new Map<string, RuleCard>();
@@ -148,6 +223,115 @@ export class InMemoryRuleCardRepository {
 
   public constructor(sourceReader: RuleCardSourceReader) {
     this.#sourceReader = sourceReader;
+  }
+
+  /**
+   * Hydrates a trusted durable Rule Card history without re-running workflow authorization.
+   * Payloads are validated with the public Zod contracts; audit records are inserted directly.
+   */
+  public static fromHistory(
+    history: RuleCardHistory,
+    sourceReader: RuleCardSourceReader,
+  ): InMemoryRuleCardRepository {
+    const repository = new InMemoryRuleCardRepository(sourceReader);
+    if (history === null || typeof history !== "object" || !Array.isArray(history.revisions)) {
+      throw new RuleCardValidationError(
+        "INVALID_RULE_CARD_PAYLOAD",
+        "Rule Card history does not satisfy the trusted replay shape",
+      );
+    }
+
+    const parsedCard = RuleCardSchema.safeParse(history.card);
+    if (!parsedCard.success) {
+      throw new RuleCardValidationError(
+        "INVALID_RULE_CARD_PAYLOAD",
+        "Rule Card payload does not satisfy the strict public contract",
+        { issueCount: parsedCard.error.issues.length },
+      );
+    }
+    const card = clone(parsedCard.data);
+    repository.#cards.set(card.id, card);
+    const revisionIds: string[] = [];
+    repository.#revisionIdsByCard.set(card.id, revisionIds);
+
+    for (const snapshot of history.revisions) {
+      if (snapshot === null || typeof snapshot !== "object" || !Array.isArray(snapshot.audit)) {
+        throw new RuleCardValidationError(
+          "INVALID_RULE_CARD_REVISION_PAYLOAD",
+          "Rule Card revision snapshot does not satisfy the trusted replay shape",
+        );
+      }
+
+      const parsedRevision = RuleCardRevisionSchema.safeParse(snapshot.revision);
+      if (!parsedRevision.success) {
+        throw new RuleCardValidationError(
+          "INVALID_RULE_CARD_REVISION_PAYLOAD",
+          "Rule Card revision does not satisfy its canonical public contract",
+          { issueCount: parsedRevision.error.issues.length },
+        );
+      }
+      const revision = clone(parsedRevision.data);
+      if (revision.cardId !== card.id) {
+        throw new RuleCardInvariantError(
+          "INVALID_RULE_CARD_REVISION_REPLACEMENT",
+          "Hydrated revision does not belong to the history card",
+          { cardId: card.id, revisionId: revision.id },
+        );
+      }
+      if (repository.#revisions.has(revision.id)) {
+        throw new RuleCardConflictError(
+          "RULE_CARD_REVISION_ALREADY_EXISTS",
+          `Rule Card revision ${revision.id} already exists`,
+          { revisionId: revision.id },
+        );
+      }
+
+      const audit: RuleCardAuditRecord[] = [];
+      for (const entry of snapshot.audit) {
+        const parsedEntry = parseHydratedAuditRecord(entry);
+        if (parsedEntry.record.revisionId !== revision.id) {
+          throw new RuleCardInvariantError(
+            "AUDIT_RECORD_MISMATCH",
+            "Hydrated audit record does not belong to its revision snapshot",
+            { auditId: parsedEntry.record.id, revisionId: revision.id },
+          );
+        }
+        if (repository.#auditIds.has(parsedEntry.record.id)) {
+          throw new RuleCardConflictError(
+            "AUDIT_RECORD_ALREADY_EXISTS",
+            `Rule Card audit record ${parsedEntry.record.id} already exists`,
+            { auditId: parsedEntry.record.id },
+          );
+        }
+        audit.push(parsedEntry);
+        repository.#auditIds.add(parsedEntry.record.id);
+      }
+
+      const projectedState = repository.#projectState(revision, audit);
+      if (snapshot.state !== projectedState) {
+        throw new RuleCardInvariantError(
+          "AUDIT_RECORD_MISMATCH",
+          "Hydrated revision state does not match its audit history",
+          { projectedState, revisionId: revision.id, state: snapshot.state },
+        );
+      }
+      if (snapshot.requiredApprovals !== approvalRequirement(revision)) {
+        throw new RuleCardInvariantError(
+          "AUDIT_RECORD_MISMATCH",
+          "Hydrated requiredApprovals does not match the revision risk",
+          {
+            requiredApprovals: snapshot.requiredApprovals,
+            revisionId: revision.id,
+          },
+        );
+      }
+
+      repository.#revisions.set(revision.id, revision);
+      revisionIds.push(revision.id);
+      repository.#auditByRevision.set(revision.id, audit);
+    }
+
+    return repository;
   }
 
   public addCard(card: RuleCard): RuleCard {

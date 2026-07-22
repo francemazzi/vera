@@ -96,6 +96,110 @@ export class InMemoryComplianceSourceRepository {
   readonly #eventsByVersion = new Map<string, ComplianceSourceTransitionEvent[]>();
   readonly #eventIds = new Set<string>();
 
+  /**
+   * Hydrates a trusted durable history into private maps without re-running authorization.
+   * Payloads are validated with the public Zod contracts; transitions are inserted directly.
+   */
+  public static fromHistory(history: ComplianceSourceHistory): InMemoryComplianceSourceRepository {
+    const repository = new InMemoryComplianceSourceRepository();
+    if (history === null || typeof history !== "object" || !Array.isArray(history.versions)) {
+      throw new ComplianceSourceValidationError(
+        "INVALID_SOURCE_PAYLOAD",
+        "Compliance source history does not satisfy the trusted replay shape",
+      );
+    }
+
+    const parsedSource = ComplianceSourceSchema.safeParse(history.source);
+    if (!parsedSource.success) {
+      throw new ComplianceSourceValidationError(
+        "INVALID_SOURCE_PAYLOAD",
+        "Compliance source payload does not satisfy the strict public contract",
+        { issueCount: parsedSource.error.issues.length },
+      );
+    }
+    const source = clone(parsedSource.data);
+    repository.#sources.set(source.id, source);
+    const versionIds: string[] = [];
+    repository.#versionIdsBySource.set(source.id, versionIds);
+
+    for (const snapshot of history.versions) {
+      if (snapshot === null || typeof snapshot !== "object" || !Array.isArray(snapshot.transitions)) {
+        throw new ComplianceSourceValidationError(
+          "INVALID_VERSION_PAYLOAD",
+          "Compliance source version snapshot does not satisfy the trusted replay shape",
+        );
+      }
+
+      const parsedVersion = ComplianceSourceVersionSchema.safeParse(snapshot.version);
+      if (!parsedVersion.success) {
+        throw new ComplianceSourceValidationError(
+          "INVALID_VERSION_PAYLOAD",
+          "Compliance source version payload does not satisfy the strict public contract",
+          { issueCount: parsedVersion.error.issues.length },
+        );
+      }
+      const version = clone(parsedVersion.data);
+      if (version.sourceId !== source.id) {
+        throw new ComplianceSourceInvariantError(
+          "INVALID_REPLACEMENT",
+          "Hydrated version does not belong to the history source",
+          { sourceId: source.id, versionId: version.id },
+        );
+      }
+      if (repository.#versions.has(version.id)) {
+        throw new ComplianceSourceConflictError(
+          "VERSION_ALREADY_EXISTS",
+          `Compliance source version ${version.id} already exists`,
+          { versionId: version.id },
+        );
+      }
+
+      const events: ComplianceSourceTransitionEvent[] = [];
+      for (const transition of snapshot.transitions) {
+        const parsedEvent = ComplianceSourceTransitionEventSchema.safeParse(transition);
+        if (!parsedEvent.success) {
+          throw new ComplianceSourceValidationError(
+            "INVALID_TRANSITION_PAYLOAD",
+            "Compliance source transition payload does not satisfy the strict public contract",
+            { issueCount: parsedEvent.error.issues.length },
+          );
+        }
+        const event = clone(parsedEvent.data);
+        if (event.versionId !== version.id) {
+          throw new ComplianceSourceInvariantError(
+            "TRANSITION_EVENT_MISMATCH",
+            "Hydrated transition does not belong to its version snapshot",
+            { eventId: event.id, versionId: version.id },
+          );
+        }
+        if (repository.#eventIds.has(event.id)) {
+          throw new ComplianceSourceConflictError(
+            "TRANSITION_ALREADY_EXISTS",
+            `Compliance source transition ${event.id} already exists`,
+            { eventId: event.id },
+          );
+        }
+        events.push(event);
+        repository.#eventIds.add(event.id);
+      }
+
+      const projectedState = events.at(-1)?.to ?? null;
+      if (snapshot.state !== projectedState) {
+        throw new ComplianceSourceInvariantError(
+          "TRANSITION_EVENT_MISMATCH",
+          "Hydrated version state does not match its transition history",
+          { projectedState, state: snapshot.state, versionId: version.id },
+        );
+      }
+
+      repository.#versions.set(version.id, version);
+      versionIds.push(version.id);
+      repository.#eventsByVersion.set(version.id, events);
+    }
+
+    return repository;
+  }
+
   public addSource(source: ComplianceSource): ComplianceSource {
     const parsed = ComplianceSourceSchema.safeParse(source);
     if (!parsed.success) {

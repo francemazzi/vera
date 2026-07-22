@@ -158,6 +158,16 @@ export class RepositoryBackedRulePackEligibilityReader implements RulePackRuleEl
   }
 }
 
+/** Trusted durable snapshot used to hydrate an in-memory Rule Pack repository. */
+export interface RulePackRepositorySnapshot {
+  readonly drafts: readonly RulePackDraft[];
+  readonly versions: readonly RulePackVersion[];
+  readonly contributorIdsByDraftId: Readonly<Record<string, readonly string[]>>;
+  readonly excludedActivatorIdsByVersionId: Readonly<Record<string, readonly string[]>>;
+  /** Optional map of published draft → immutable version for OCC on draft mutation. */
+  readonly publishedVersionIdByDraftId?: Readonly<Record<string, string>>;
+}
+
 export interface CloneRulePackVersionRequest {
   readonly sourceVersionId: string;
   readonly draftId: string;
@@ -316,6 +326,31 @@ interface RulePackContentSnapshot {
   readonly validity: ValidityInterval;
 }
 
+function parseActorIdList(
+  value: unknown,
+  label: string,
+): Set<string> {
+  if (!Array.isArray(value)) {
+    throw new RulePackValidationError(
+      "INVALID_RULE_PACK_DRAFT_PAYLOAD",
+      `${label} must be an array of canonical actor identities`,
+    );
+  }
+  const ids = new Set<string>();
+  for (const entry of value) {
+    const parsed = ActorIdSchema.safeParse(entry);
+    if (!parsed.success) {
+      throw new RulePackValidationError(
+        "INVALID_RULE_PACK_DRAFT_PAYLOAD",
+        `${label} contains an invalid actor identity`,
+        { issueCount: parsed.error.issues.length },
+      );
+    }
+    ids.add(parsed.data);
+  }
+  return ids;
+}
+
 export class InMemoryRulePackRepository {
   readonly #eligibility: RulePackRuleEligibilityReader;
   readonly #readinessGate: RulePackReadinessGate | null;
@@ -332,6 +367,113 @@ export class InMemoryRulePackRepository {
   ) {
     this.#eligibility = eligibility;
     this.#readinessGate = readinessGate;
+  }
+
+  /**
+   * Hydrates drafts and published versions from a trusted durable snapshot without re-running
+   * publication authorization. Payloads are validated with the public Zod contracts.
+   */
+  public static fromSnapshot(
+    snapshot: RulePackRepositorySnapshot,
+    eligibility: RulePackRuleEligibilityReader,
+    readinessGate: RulePackReadinessGate | null = null,
+  ): InMemoryRulePackRepository {
+    const repository = new InMemoryRulePackRepository(eligibility, readinessGate);
+    if (
+      snapshot === null ||
+      typeof snapshot !== "object" ||
+      !Array.isArray(snapshot.drafts) ||
+      !Array.isArray(snapshot.versions) ||
+      snapshot.contributorIdsByDraftId === null ||
+      typeof snapshot.contributorIdsByDraftId !== "object" ||
+      snapshot.excludedActivatorIdsByVersionId === null ||
+      typeof snapshot.excludedActivatorIdsByVersionId !== "object"
+    ) {
+      throw new RulePackValidationError(
+        "INVALID_RULE_PACK_DRAFT_PAYLOAD",
+        "Rule Pack repository snapshot does not satisfy the trusted replay shape",
+      );
+    }
+
+    for (const draftInput of snapshot.drafts) {
+      const parsed = RulePackDraftSchema.safeParse(draftInput);
+      if (!parsed.success) {
+        throw new RulePackValidationError(
+          "INVALID_RULE_PACK_DRAFT_PAYLOAD",
+          "Rule Pack draft does not satisfy its strict canonical contract",
+          { issueCount: parsed.error.issues.length },
+        );
+      }
+      const draft = immutableCopy(parsed.data);
+      if (repository.#drafts.has(draft.id)) {
+        throw new RulePackConflictError(
+          "RULE_PACK_DRAFT_ALREADY_EXISTS",
+          `Rule Pack draft ${draft.id} already exists`,
+          { draftId: draft.id },
+        );
+      }
+      const contributors = parseActorIdList(
+        snapshot.contributorIdsByDraftId[draft.id],
+        `contributorIdsByDraftId[${draft.id}]`,
+      );
+      repository.#drafts.set(draft.id, draft);
+      repository.#contributorIdsByDraft.set(draft.id, contributors);
+    }
+
+    for (const versionInput of snapshot.versions) {
+      const parsed = RulePackVersionSchema.safeParse(versionInput);
+      if (!parsed.success) {
+        throw new RulePackValidationError(
+          "INVALID_RULE_PACK_VERSION_PAYLOAD",
+          "Rule Pack version does not satisfy its strict canonical contract",
+          { issueCount: parsed.error.issues.length },
+        );
+      }
+      const version = immutableCopy(parsed.data);
+      if (repository.#versions.has(version.id)) {
+        throw new RulePackConflictError(
+          "RULE_PACK_VERSION_ALREADY_EXISTS",
+          `Rule Pack version ${version.id} already exists`,
+          { versionId: version.id },
+        );
+      }
+      const excluded = parseActorIdList(
+        snapshot.excludedActivatorIdsByVersionId[version.id],
+        `excludedActivatorIdsByVersionId[${version.id}]`,
+      );
+      repository.#versions.set(version.id, version);
+      const versionIds = repository.#versionIdsByPack.get(version.packId) ?? [];
+      versionIds.push(version.id);
+      repository.#versionIdsByPack.set(version.packId, versionIds);
+      repository.#excludedActivatorIdsByVersion.set(version.id, excluded);
+    }
+
+    const published = snapshot.publishedVersionIdByDraftId ?? {};
+    if (published === null || typeof published !== "object") {
+      throw new RulePackValidationError(
+        "INVALID_RULE_PACK_PUBLISH_REQUEST",
+        "publishedVersionIdByDraftId must be a record when provided",
+      );
+    }
+    for (const [draftId, versionId] of Object.entries(published)) {
+      if (!repository.#drafts.has(draftId)) {
+        throw new RulePackNotFoundError(
+          "RULE_PACK_DRAFT_NOT_FOUND",
+          `Rule Pack draft ${draftId} does not exist`,
+          { draftId },
+        );
+      }
+      if (typeof versionId !== "string" || !repository.#versions.has(versionId)) {
+        throw new RulePackNotFoundError(
+          "RULE_PACK_VERSION_NOT_FOUND",
+          `Rule Pack version ${String(versionId)} does not exist`,
+          { versionId },
+        );
+      }
+      repository.#publishedVersionIdByDraft.set(draftId, versionId);
+    }
+
+    return repository;
   }
 
   public addDraft(draft: RulePackDraft, actor: Actor): RulePackDraft {

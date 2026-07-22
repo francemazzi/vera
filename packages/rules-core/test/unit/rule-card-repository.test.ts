@@ -1231,3 +1231,76 @@ describe("InMemoryRuleCardRepository rule generation guard", () => {
     expect(getterCalls).toBe(0);
   });
 });
+
+describe("InMemoryRuleCardRepository.fromHistory", () => {
+  it("hydrates trusted history and continues OCC audit appends", () => {
+    const setup = repositoryWithDraft();
+    setup.repository.appendComment(makeRuleCardComment(setup.revision), RULE_CARD_ACTORS.author, {
+      sequence: 1,
+    });
+    const history = setup.repository.getHistory(RULE_CARD_IDS.card);
+
+    const hydrated = InMemoryRuleCardRepository.fromHistory(history, setup.source.reader);
+    expect(hydrated.getRevisionState(setup.revision.id)).toBe("DRAFT");
+    expect(hydrated.getAudit(setup.revision.id)).toHaveLength(2);
+
+    hydrated.submitForReview(
+      makeRuleCardTransition(setup.revision, {
+        id: RULE_CARD_IDS.audit3,
+        sequence: 3,
+        from: "DRAFT",
+        to: "IN_REVIEW",
+        at: RULE_CARD_TIMES.submitted,
+      }),
+      RULE_CARD_ACTORS.author,
+      { sequence: 2 },
+    );
+    expect(hydrated.getRevisionState(setup.revision.id)).toBe("IN_REVIEW");
+
+    expect(() =>
+      hydrated.submitForReview(
+        makeRuleCardTransition(setup.revision, {
+          id: RULE_CARD_IDS.audit4,
+          sequence: 3,
+          from: "DRAFT",
+          to: "IN_REVIEW",
+          at: RULE_CARD_TIMES.submitted,
+        }),
+        RULE_CARD_ACTORS.author,
+        { sequence: 2 },
+      ),
+    ).toThrow(expect.objectContaining({ code: "AUDIT_SEQUENCE_CONFLICT" }));
+  });
+
+  it("rejects invalid hydrated payloads and mismatched projected state", () => {
+    const source = makeSourceReader("APPROVED");
+    const malformedCard = { ...makeRuleCard(), unexpected: true };
+    expect(() =>
+      InMemoryRuleCardRepository.fromHistory(
+        {
+          card: malformedCard,
+          revisions: [],
+        },
+        source.reader,
+      ),
+    ).toThrow(expect.objectContaining({ code: "INVALID_RULE_CARD_PAYLOAD" }));
+
+    const revision = makeRuleCardRevision();
+    expect(() =>
+      InMemoryRuleCardRepository.fromHistory(
+        {
+          card: makeRuleCard(),
+          revisions: [
+            {
+              revision,
+              state: "APPROVED",
+              requiredApprovals: 1,
+              audit: [{ kind: "TRANSITION", record: makeRuleCardTransition(revision) }],
+            },
+          ],
+        },
+        source.reader,
+      ),
+    ).toThrow(expect.objectContaining({ code: "AUDIT_RECORD_MISMATCH" }));
+  });
+});
