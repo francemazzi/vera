@@ -22,6 +22,7 @@
     "@fastify/swagger": "catalog:",
     "@node-rs/argon2": "catalog:",
     "@vera/contracts": "workspace:*",
+    "@vera/rules-core": "workspace:*",
     "@vera/storage": "workspace:*",
     "fastify": "catalog:",
     "zod": "catalog:"
@@ -29,7 +30,6 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@vera/demo-mvp": "workspace:*",
-    "@vera/rules-core": "workspace:*",
     "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

@@ -42,6 +42,10 @@ class FakeRepository {
     return Promise.resolve(decision);
   }
 
+  public listReviewDecisions(runId: string): Promise<readonly ReviewDecision[]> {
+    return Promise.resolve([...(this.decisions.get(runId) ?? [])]);
+  }
+
   public saveEvaluationRunIdempotently(input: {
     readonly run: EvaluationRun;
     readonly scope: string;
@@ -83,6 +87,24 @@ class FakeRepository {
     await mutate();
     this.idempotency.set(mapKey, { requestHash, response });
     return { response, created: true };
+  }
+
+  public getOrCreateIdempotency(input: {
+    readonly scope: string;
+    readonly key: string;
+    readonly requestHash: string;
+    readonly response: JsonValue;
+  }): Promise<{ readonly response: JsonValue; readonly created: boolean }> {
+    const mapKey = `${input.scope}:${input.key}`;
+    const existing = this.idempotency.get(mapKey);
+    if (existing !== undefined) {
+      if (existing.requestHash !== input.requestHash) {
+        throw new StorageConflictError("Idempotency key already exists for a different request");
+      }
+      return Promise.resolve({ response: existing.response, created: false });
+    }
+    this.idempotency.set(mapKey, { requestHash: input.requestHash, response: input.response });
+    return Promise.resolve({ response: input.response, created: true });
   }
 
   public recordBlob(): Promise<void> {
