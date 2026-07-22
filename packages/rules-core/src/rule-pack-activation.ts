@@ -203,9 +203,35 @@ function compareStrings(left: string, right: string): -1 | 0 | 1 {
 }
 
 export type ActivationHistoryInput =
-  | ReadonlyMap<string, readonly ActivationEvent[]>
+  | Map<string, readonly ActivationEvent[]>
   | Readonly<Record<string, readonly ActivationEvent[]>>
   | readonly ActivationEvent[];
+
+function activationHistoryEntries(
+  input: ActivationHistoryInput,
+): ReadonlyArray<readonly [string, readonly ActivationEvent[]]> {
+  if (input instanceof Map) {
+    return [...input.entries()];
+  }
+  if (Array.isArray(input)) {
+    const byPack = new Map<string, ActivationEvent[]>();
+    for (const eventInput of input) {
+      const parsed = ActivationEventSchema.safeParse(eventInput);
+      if (!parsed.success) {
+        throw new RulePackActivationValidationError(
+          "INVALID_ACTIVATION_EVENT",
+          "Activation event does not satisfy its strict, hash-verified public contract",
+          { issueCount: parsed.error.issues.length },
+        );
+      }
+      const bucket = byPack.get(parsed.data.packId) ?? [];
+      bucket.push(parsed.data);
+      byPack.set(parsed.data.packId, bucket);
+    }
+    return [...byPack.entries()];
+  }
+  return Object.entries(input);
+}
 
 /** In-memory append-only activation ledger and deterministic temporal resolver. */
 export class InMemoryRulePackActivationLedger {
@@ -229,30 +255,8 @@ export class InMemoryRulePackActivationLedger {
     const ledger = new InMemoryRulePackActivationLedger(versionReader);
     const grouped = new Map<string, ActivationEvent[]>();
 
-    if (eventsByPackId instanceof Map) {
-      for (const [packId, history] of eventsByPackId) {
-        grouped.set(packId, [...history]);
-      }
-    } else if (Array.isArray(eventsByPackId)) {
-      for (const eventInput of eventsByPackId) {
-        const parsed = ActivationEventSchema.safeParse(eventInput);
-        if (!parsed.success) {
-          throw new RulePackActivationValidationError(
-            "INVALID_ACTIVATION_EVENT",
-            "Activation event does not satisfy its strict, hash-verified public contract",
-            { issueCount: parsed.error.issues.length },
-          );
-        }
-        const bucket = grouped.get(parsed.data.packId) ?? [];
-        bucket.push(parsed.data);
-        grouped.set(parsed.data.packId, bucket);
-      }
-    } else {
-      for (const packId of Object.keys(eventsByPackId)) {
-        const history = eventsByPackId[packId];
-        if (history === undefined) continue;
-        grouped.set(packId, [...history]);
-      }
+    for (const [packId, history] of activationHistoryEntries(eventsByPackId)) {
+      grouped.set(packId, [...history]);
     }
 
     for (const [packId, history] of grouped) {
