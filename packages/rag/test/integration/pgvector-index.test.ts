@@ -109,4 +109,78 @@ describe("PgVectorRagIndex", () => {
 
     expect(result).toMatchObject({ status: "UNAVAILABLE", requiresReview: true });
   });
+
+  it("replaces all chunks for a source version when reindexing with fewer sections", async () => {
+    const tableName = "rag_chunks_reindex_test";
+    const sourceVersionId = uuid(40);
+    const index = new PgVectorRagIndex({
+      db: pool,
+      embeddingProvider: new KeywordEmbeddingProvider(),
+      dimensions: 4,
+      tableName,
+    });
+    await index.ensureSchema();
+    await index.indexApprovedSections([
+      section({
+        sourceVersionId,
+        sectionId: "retention",
+        sectionTitle: "Retention",
+        text: "Retention text says synthetic records must retain a visible label for seven days.",
+      }),
+      section({
+        sourceVersionId,
+        sectionId: "archive",
+        sectionTitle: "Archive",
+        text: "Archive text should disappear after the next source version reindex.",
+      }),
+    ]);
+    expect(
+      Number(
+        (
+          await pool.query<{ readonly count: string }>(
+            `SELECT count(*) AS count FROM "${tableName}" WHERE source_version_id = $1`,
+            [sourceVersionId],
+          )
+        ).rows[0]?.count ?? "0",
+      ),
+    ).toBe(2);
+
+    await index.indexApprovedSections([
+      section({
+        sourceVersionId,
+        sectionId: "retention",
+        sectionTitle: "Retention",
+        text: "Retention replacement text keeps only the visible label requirement.",
+      }),
+    ]);
+    const rows = await pool.query<{ readonly section_id: string }>(
+      `SELECT section_id FROM "${tableName}" WHERE source_version_id = $1 ORDER BY section_id`,
+      [sourceVersionId],
+    );
+
+    expect(rows.rows.map((row) => row.section_id)).toEqual(["retention"]);
+  });
+
+  it("deletes chunks by source version id", async () => {
+    const tableName = "rag_chunks_delete_test";
+    const sourceVersionId = uuid(41);
+    const index = new PgVectorRagIndex({
+      db: pool,
+      embeddingProvider: new KeywordEmbeddingProvider(),
+      dimensions: 4,
+      tableName,
+    });
+    await index.ensureSchema();
+    await index.indexApprovedSections([
+      section({ sourceVersionId, sectionId: "retention", sectionTitle: "Retention" }),
+      section({ sourceVersionId: uuid(42), sectionId: "archive", sectionTitle: "Archive" }),
+    ]);
+
+    await expect(index.deleteBySourceVersionId(sourceVersionId)).resolves.toBe(1);
+    const rows = await pool.query<{ readonly source_version_id: string }>(
+      `SELECT source_version_id FROM "${tableName}" ORDER BY source_version_id`,
+    );
+
+    expect(rows.rows.map((row) => row.source_version_id)).toEqual([uuid(42)]);
+  });
 });

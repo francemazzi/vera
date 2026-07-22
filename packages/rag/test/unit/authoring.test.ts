@@ -80,6 +80,36 @@ describe("Rule Card draft authoring", () => {
     ).rejects.toThrow("unknown citation");
   });
 
+  it("rejects citation quotes that are not substrings of their chunks", async () => {
+    const chunk = retrievedChunk();
+    await expect(
+      generateRuleCardDraft({
+        instruction: "Draft one synthetic label rule.",
+        chunks: [chunk],
+        provider: new StaticDraftProvider({
+          ...(validDraftOutput(chunk.chunkId) as Record<string, unknown>),
+          citations: [{ chunkId: chunk.chunkId, quote: "This quote is not in the source text." }],
+        }),
+        generatedAt: GENERATED_AT,
+      }),
+    ).rejects.toThrow("quote is not grounded");
+  });
+
+  it("rejects drafts whose source identity does not match cited chunks", async () => {
+    const chunk = retrievedChunk();
+    await expect(
+      generateRuleCardDraft({
+        instruction: "Draft one synthetic label rule.",
+        chunks: [chunk],
+        provider: new StaticDraftProvider({
+          ...(validDraftOutput(chunk.chunkId) as Record<string, unknown>),
+          sourceVersionId: "00000000-0000-4000-8000-000000000099",
+        }),
+        generatedAt: GENERATED_AT,
+      }),
+    ).rejects.toThrow("source does not match");
+  });
+
   it("requires human confirmation for workflow advancement", () => {
     const draft = validDraftOutput(retrievedChunk().chunkId);
     const result = createRuleCardWorkflowAdvancementRequest(draft as never);

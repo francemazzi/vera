@@ -133,7 +133,9 @@ export function validDraftOutput(chunkId = retrievedChunk().chunkId): unknown {
       },
     ],
     exceptions: [],
-    citations: [{ chunkId, quote: "Synthetic records must retain a visible label." }],
+    citations: [
+      { chunkId, quote: "Synthetic records must retain a visible label for seven days." },
+    ],
   };
 }
 
