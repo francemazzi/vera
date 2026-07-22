@@ -23,3 +23,4 @@ export {
   type PrivateLabelSourceState,
   type PrivateLabelSourceVersionInput,
 } from "./private-label-governance-repository.js";
+export { DurableComplianceSourceRepository } from "./compliance-source-repository.js";

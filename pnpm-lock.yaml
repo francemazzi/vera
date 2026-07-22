@@ -518,6 +518,9 @@ importers:
       "@vera/contracts":
         specifier: workspace:*
         version: link:../contracts
+      "@vera/rules-core":
+        specifier: workspace:*
+        version: link:../rules-core
       pg:
         specifier: "catalog:"
         version: 8.22.0
@@ -531,9 +534,6 @@ importers:
       "@types/pg":
         specifier: "catalog:"
         version: 8.20.0
-      "@vera/rules-core":
-        specifier: workspace:*
-        version: link:../rules-core
       prisma:
         specifier: "catalog:"
         version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
