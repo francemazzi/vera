@@ -8,6 +8,7 @@ import {
   sha256Bytes,
   sha256CanonicalJson,
 } from "@vera/contracts";
+import type { EmbeddingProvider, PgVectorRagIndex, RuleDraftProvider } from "@vera/rag";
 import type {
   DurableComplianceSourceRepository,
   DurableRuleCardRepository,
@@ -25,6 +26,7 @@ import type { AuthenticatedAccount, AuthService } from "./auth.js";
 import { registerDomainRoutes } from "./domain-routes.js";
 import { assertLocalEgressAllowed } from "./egress.js";
 import { ApiProblem, installProblemHandler } from "./errors.js";
+import { registerRagRoutes, retireRagSourceVersion } from "./rag-routes.js";
 
 const ActorRoleSchema = z.enum(["AUTHOR", "REVIEWER", "APPROVER", "ADMIN"]);
 const Sha256DigestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -51,6 +53,9 @@ export interface CreateApiServerOptions {
   readonly rulePacks?: DurableRulePackRepository;
   readonly activations?: DurableRulePackActivationLedger;
   readonly ruleTestRuns?: DurableRuleTestRunRepository;
+  readonly ragIndex?: PgVectorRagIndex;
+  readonly ragEmbeddingProvider?: EmbeddingProvider;
+  readonly ragDraftProvider?: RuleDraftProvider;
   readonly auth?: AuthService;
   readonly bootstrapTokenHash?: string;
   readonly logger?: boolean;
@@ -282,6 +287,19 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
     rulePacks: options.rulePacks,
     activations: options.activations,
     ruleTestRuns: options.ruleTestRuns,
+    auth,
+    now,
+    onComplianceSourceRetired: async (sourceVersionId) => {
+      await retireRagSourceVersion(options.ragIndex, sourceVersionId);
+    },
+  });
+
+  registerRagRoutes(server, {
+    repository: options.repository,
+    complianceSources: options.complianceSources,
+    ragIndex: options.ragIndex,
+    embeddingProvider: options.ragEmbeddingProvider,
+    draftProvider: options.ragDraftProvider,
     auth,
     now,
   });

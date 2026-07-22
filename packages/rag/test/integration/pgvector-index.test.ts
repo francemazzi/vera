@@ -11,10 +11,15 @@ import {
 import { PgVectorRagIndex } from "../../src/index.js";
 
 describe("PgVectorRagIndex", () => {
-  let container: StartedTestContainer;
+  let container: StartedTestContainer | undefined;
   let pool: Pool;
 
   beforeAll(async () => {
+    const externalUrl = process.env["VERA_TEST_DATABASE_URL"];
+    if (externalUrl !== undefined && externalUrl.length > 0) {
+      pool = new Pool({ connectionString: externalUrl });
+      return;
+    }
     container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
       .withEnvironment({
         POSTGRES_DB: "vera",
@@ -33,7 +38,7 @@ describe("PgVectorRagIndex", () => {
 
   afterAll(async () => {
     await pool.end();
-    await container.stop();
+    if (container !== undefined) await container.stop();
   });
 
   it("indexes only approved chunks and retrieves with scope and temporal filters", async () => {

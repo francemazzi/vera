@@ -15,6 +15,10 @@ Card in stato `DRAFT`.
   vettoriale.
 - Se embedding, provider di draft o retrieval non sono disponibili, il risultato sicuro è
   `UNAVAILABLE` con `requiresReview=true`.
+- La reindicizzazione di una `sourceVersionId` è atomica: elimina i chunk precedenti della versione
+  e inserisce i nuovi, così non restano ordinali orfani.
+- La transizione durable `RETIRED` rimuove i chunk live dell’indice tramite
+  `deleteBySourceVersionId`; lo storico della fonte resta nello storage di dominio.
 
 ## Authoring
 
@@ -29,9 +33,27 @@ Il draft contiene:
 - requisiti evidenziali ed eccezioni con `citationChunkIds`;
 - nessun esito normativo, finding, verdict, approvazione o attivazione.
 
+Le citazioni del draft sono groundate: ogni `chunkId` deve esistere nel retrieval, `sourceId` /
+`sourceVersionId` devono coincidere con i chunk citati, `sourceSection` deve riferire una sezione
+citata e ogni `quote` deve essere sottostringa del testo del chunk. In caso contrario il risultato è
+`DRAFT_INVALID`.
+
 Qualsiasi avanzamento verso `IN_REVIEW` produce solo una richiesta con
 `requiresHumanConfirmation=true` e `rationaleRequired=true`. Non esiste un percorso nel package che
 approvi o attivi una regola generata dalla sola AI.
+
+## Orchestrazione API
+
+Quando `@vera/api` viene avviata con `ragIndex` (e provider opzionali), espone:
+
+- `POST /v1/compliance-sources/versions/:versionId/rag-index` (`APPROVER`/`ADMIN`) — indica sezioni
+  `APPROVED` il cui metadata coincide con la versione durable;
+- `POST /v1/rag/retrieve` — retrieval fail-closed via `retrieveSafely`;
+- `POST /v1/rag/rule-card-drafts` (`AUTHOR`/`ADMIN`) — retrieve + bozza `DRAFT`, senza avanzamento
+  automatico di workflow.
+
+Il testo delle sezioni non è ancora persistito nel modello durable della fonte: l’indicizzazione
+richiede il payload sezioni nella richiesta di index.
 
 ## Provider
 

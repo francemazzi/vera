@@ -162,6 +162,7 @@ export interface DomainRouteRepositories {
 interface RegisterDomainRoutesOptions extends DomainRouteRepositories {
   readonly auth: AuthService;
   readonly now: () => string;
+  readonly onComplianceSourceRetired?: (sourceVersionId: string) => Promise<void>;
 }
 
 function idempotencyKey(request: FastifyRequest): string {
@@ -200,8 +201,7 @@ function assertActorMatchesAccount(actor: Actor, account: AuthenticatedAccount):
   if (
     actor.id !== account.id ||
     actor.role !== account.role ||
-    actor.displayName !== account.displayName ||
-    actor.validationScope !== ValidationScope
+    actor.displayName !== account.displayName
   ) {
     throw new ApiProblem(403, "Forbidden", "Actor must match the authenticated account");
   }
@@ -249,7 +249,10 @@ function codeForCreated(created: boolean): 200 | 201 {
   return created ? 201 : 200;
 }
 
-export function registerDomainRoutes(server: FastifyInstance, options: RegisterDomainRoutesOptions) {
+export function registerDomainRoutes(
+  server: FastifyInstance,
+  options: RegisterDomainRoutesOptions,
+): void {
   server.post("/v1/compliance-sources", async (request, reply) => {
     const account = await authenticated(request, options.auth, options.now);
     assertRole(account, ["AUTHOR", "ADMIN"]);
@@ -292,8 +295,18 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       key: idempotencyKey(request),
       request: body,
       now: writtenAt,
-      mutate: () => repository.appendTransition(body.event, authorization, body.expected),
-      replay: async () => body.event,
+      mutate: async () => {
+        const transition = await repository.appendTransition(
+          body.event,
+          authorization,
+          body.expected,
+        );
+        if (transition.to === "RETIRED" && options.onComplianceSourceRetired !== undefined) {
+          await options.onComplianceSourceRetired(versionId);
+        }
+        return transition;
+      },
+      replay: () => Promise.resolve(body.event),
     });
     return reply
       .code(codeForCreated(result.created))
@@ -349,7 +362,9 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       mutate: () => repository.appendVersion(body.version, body.expectedCurrentRevision),
       replay: () => repository.getVersion(body.version.id),
     });
-    return reply.code(codeForCreated(result.created)).send({ complianceSourceVersion: result.value });
+    return reply
+      .code(codeForCreated(result.created))
+      .send({ complianceSourceVersion: result.value });
   });
 
   server.post("/v1/rule-cards", async (request, reply) => {
@@ -388,7 +403,7 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       request: body,
       now: writtenAt,
       mutate: () => repository.appendComment(body.comment, actorFor(account), body.expected),
-      replay: async () => body.comment,
+      replay: () => Promise.resolve(body.comment),
     });
     return reply.code(codeForCreated(result.created)).send({ ruleCardComment: result.value });
   });
@@ -412,7 +427,7 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       request: body,
       now: writtenAt,
       mutate: () => repository.submitForReview(body.transition, actorFor(account), body.expected),
-      replay: async () => body.transition,
+      replay: () => Promise.resolve(body.transition),
     });
     return reply.code(codeForCreated(result.created)).send({ ruleCardTransition: result.value });
   });
@@ -436,7 +451,7 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       request: body,
       now: writtenAt,
       mutate: () => repository.recordReview(body.decision, actorFor(account), body.expected),
-      replay: async () => body.decision,
+      replay: () => Promise.resolve(body.decision),
     });
     return reply.code(codeForCreated(result.created)).send({ ruleCardReview: result.value });
   });
@@ -460,7 +475,7 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       request: body,
       now: writtenAt,
       mutate: () => repository.recordApproval(body.decision, actorFor(account), body.expected),
-      replay: async () => body.decision,
+      replay: () => Promise.resolve(body.decision),
     });
     return reply.code(codeForCreated(result.created)).send({ ruleCardApproval: result.value });
   });
@@ -484,7 +499,7 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       request: body,
       now: writtenAt,
       mutate: () => repository.retireRevision(body.transition, actorFor(account), body.expected),
-      replay: async () => body.transition,
+      replay: () => Promise.resolve(body.transition),
     });
     return reply.code(codeForCreated(result.created)).send({ ruleCardTransition: result.value });
   });
@@ -568,7 +583,11 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       throw new ApiProblem(400, "Bad Request", "RulePackDraft id must match route");
     }
     return reply.send({
-      rulePackDraft: await repository.replaceDraft(body.draft, body.expectedRevision, actorFor(account)),
+      rulePackDraft: await repository.replaceDraft(
+        body.draft,
+        body.expectedRevision,
+        actorFor(account),
+      ),
     });
   });
 
@@ -665,7 +684,7 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
       request: body,
       now: writtenAt,
       mutate: () => repository.appendEvent(body.event, command),
-      replay: async () => body.event,
+      replay: () => Promise.resolve(body.event),
     });
     return reply.code(codeForCreated(result.created)).send({ activationEvent: result.value });
   });
@@ -704,7 +723,9 @@ export function registerDomainRoutes(server: FastifyInstance, options: RegisterD
     assertRole(account, ["AUTHOR", "ADMIN"]);
     const repository = requireRepository(options.ruleTestRuns, "Rule test runs");
     const report = RulePackImpactReportSchema.parse(request.body);
-    return reply.code(201).send({ rulePackImpactReport: await repository.saveImpactReport(report) });
+    return reply
+      .code(201)
+      .send({ rulePackImpactReport: await repository.saveImpactReport(report) });
   });
 
   server.get("/v1/rule-pack-impact-reports/:id", async (request, reply) => {

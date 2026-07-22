@@ -5,15 +5,22 @@
 > persistenza di fonti, Rule Card, Rule Pack, attivazioni e test-run, né il restore. La Fase 14 è
 > pertanto tornata `[~]`; vedere ADR 0006. I risultati originali sono preservati come evidenza dei
 > gate effettivamente eseguiti, non come prova dello scope mancante.
+>
+> **Chiusura del 2026-07-22:** lo scope ADR 0006 è stato completato. Fonti, Rule Card, Rule Pack,
+> attivazioni e rule-test runs sono durable via Prisma; backup/restore `vera.storage-backup/v3`
+> supera il round-trip; le route `/v1` di dominio e RAG editoriale sono esposte. La Fase 14 è
+> tornata `[x]` in roadmap.
 
-Data: 2026-07-15T17:57:24+02:00
+Data storica: 2026-07-15T17:57:24+02:00  
+Data chiusura scope: 2026-07-22
 
 ## Esito
 
-Fase completata. VERA espone una prima API locale `/v1` con account locali, sessioni opache,
-controlli RBAC, idempotenza, errori Problem Details e persistenza PostgreSQL/Prisma. Gli asset
-binari sono salvati in un blob store locale content-addressed, mentre run e decisioni restano
-immutabili o append-only.
+Fase completata. VERA espone un’API locale `/v1` con account locali, sessioni opache, controlli
+RBAC, idempotenza, errori Problem Details e persistenza PostgreSQL/Prisma per gli aggregati di
+dominio pubblici. Gli asset binari sono salvati in un blob store locale content-addressed; run e
+decisioni restano immutabili o append-only; backup/restore v3 include account e aggregati di
+dominio.
 
 ## Implementazione verificata
 
@@ -83,8 +90,45 @@ Risultato:
 - Override `@hono/node-server@1.19.13` applicato per mantenere pulita la scansione OSV della
   dependency tree.
 
+## Chiusura 2026-07-22 — evidenza aggiuntiva
+
+Implementazione aggiunta:
+
+- Migration `20260722180000_phase14_domain_aggregates` e repository durable
+  (`DurableComplianceSourceRepository`, `DurableRuleCardRepository`,
+  `DurableRulePackRepository`, `DurableRulePackActivationLedger`,
+  `DurableRuleTestRunRepository`) con hydrate da storico `@vera/rules-core`.
+- API domain routes in `apps/api/src/domain-routes.ts` e RAG routes in
+  `apps/api/src/rag-routes.ts` (`/v1/rag/retrieve`, `/v1/rag/rule-card-drafts`,
+  index su versioni `APPROVED`, delete indice su `RETIRED`).
+- Backup/restore `vera.storage-backup/v3` in `packages/storage/src/backup.ts`.
+- Hardening RAG: replace atomico per `sourceVersionId`, grounding citazioni draft.
+
+Gate eseguiti in ambiente agent (PostgreSQL 16 locale + pgvector via
+`VERA_TEST_DATABASE_URL`, in assenza di Testcontainers/Docker nested):
+
+```bash
+VERA_TEST_DATABASE_URL='postgresql://vera:local-only@127.0.0.1:5432/vera' \
+  pnpm --filter @vera/storage test:integration
+VERA_TEST_DATABASE_URL='postgresql://vera:local-only@127.0.0.1:5432/vera' \
+  pnpm --filter @vera/rag test:integration
+VERA_TEST_DATABASE_URL='postgresql://vera:local-only@127.0.0.1:5432/vera' \
+  pnpm --filter @vera/api exec vitest run test/integration/api-postgres-mvp.test.ts
+pnpm --filter @vera/api exec vitest run \
+  test/integration/api.test.ts \
+  test/integration/domain-routes.test.ts \
+  test/integration/rag-routes.test.ts
+pnpm --filter @vera/storage test:unit
+pnpm --filter @vera/rag test:unit
+pnpm --filter @vera/api typecheck
+```
+
+Risultato: suite sopra passate (storage integration 10/10, rag integration 6/6, api MVP 1/1,
+api HTTP 9/9, unit storage/rag ok).
+
 ## Limiti
 
 La persistenza copre il percorso locale necessario alle fasi successive e non introduce identity
-provider, cloud storage o servizi esterni. Le identità, le decisioni e gli asset di test restano
-dimostrativi; nessun output costituisce validazione professionale, certificazione o consulenza.
+provider, cloud storage o servizi esterni. La UI resta su store locale. Le identità, le decisioni e
+gli asset di test restano dimostrativi; nessun output costituisce validazione professionale,
+certificazione o consulenza.

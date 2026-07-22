@@ -24,23 +24,29 @@ const BackupIdempotencySchema = z.object({
 });
 
 describe("PostgreSQL storage integration", () => {
-  let container: StartedTestContainer;
+  let container: StartedTestContainer | undefined;
   let prisma: VeraPrismaClient;
   let repository: VeraStorageRepository;
   let privateGovernance: PrivateLabelGovernanceRepository;
   let complianceSources: DurableComplianceSourceRepository;
 
   beforeAll(async () => {
-    container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
-      .withEnvironment({
-        POSTGRES_DB: "vera",
-        POSTGRES_USER: "vera",
-        POSTGRES_PASSWORD: "local-only",
-      })
-      .withExposedPorts(5432)
-      .withWaitStrategy(Wait.forLogMessage("database system is ready to accept connections", 2))
-      .start();
-    const connectionString = `postgresql://vera:local-only@${container.getHost()}:${container.getMappedPort(5432).toString()}/vera`;
+    const externalUrl = process.env["VERA_TEST_DATABASE_URL"];
+    let connectionString: string;
+    if (externalUrl !== undefined && externalUrl.length > 0) {
+      connectionString = externalUrl;
+    } else {
+      container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
+        .withEnvironment({
+          POSTGRES_DB: "vera",
+          POSTGRES_USER: "vera",
+          POSTGRES_PASSWORD: "local-only",
+        })
+        .withExposedPorts(5432)
+        .withWaitStrategy(Wait.forLogMessage("database system is ready to accept connections", 2))
+        .start();
+      connectionString = `postgresql://vera:local-only@${container.getHost()}:${container.getMappedPort(5432).toString()}/vera`;
+    }
     execFileSync("pnpm", ["migrate:deploy"], {
       cwd: packageRoot,
       env: { ...process.env, DATABASE_URL: connectionString },
@@ -54,7 +60,7 @@ describe("PostgreSQL storage integration", () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
-    await container.stop();
+    if (container !== undefined) await container.stop();
   });
 
   it("allows exactly one ADMIN bootstrap during a concurrent first-account race", async () => {
