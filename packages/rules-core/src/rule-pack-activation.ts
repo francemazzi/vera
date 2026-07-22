@@ -207,12 +207,6 @@ export type ActivationHistoryInput =
   | Readonly<Record<string, readonly ActivationEvent[]>>
   | readonly ActivationEvent[];
 
-function isActivationHistoryMap(
-  value: ActivationHistoryInput,
-): value is ReadonlyMap<string, readonly ActivationEvent[]> {
-  return value instanceof Map;
-}
-
 /** In-memory append-only activation ledger and deterministic temporal resolver. */
 export class InMemoryRulePackActivationLedger {
   readonly #versionReader: RulePackActivationVersionReader;
@@ -235,7 +229,11 @@ export class InMemoryRulePackActivationLedger {
     const ledger = new InMemoryRulePackActivationLedger(versionReader);
     const grouped = new Map<string, ActivationEvent[]>();
 
-    if (Array.isArray(eventsByPackId)) {
+    if (eventsByPackId instanceof Map) {
+      for (const [packId, history] of eventsByPackId) {
+        grouped.set(packId, [...history]);
+      }
+    } else if (Array.isArray(eventsByPackId)) {
       for (const eventInput of eventsByPackId) {
         const parsed = ActivationEventSchema.safeParse(eventInput);
         if (!parsed.success) {
@@ -249,14 +247,9 @@ export class InMemoryRulePackActivationLedger {
         bucket.push(parsed.data);
         grouped.set(parsed.data.packId, bucket);
       }
-    } else if (isActivationHistoryMap(eventsByPackId)) {
-      for (const [packId, history] of eventsByPackId) {
-        grouped.set(packId, [...history]);
-      }
     } else {
-      const record: Readonly<Record<string, readonly ActivationEvent[]>> = eventsByPackId;
-      for (const packId of Object.keys(record)) {
-        const history = record[packId];
+      for (const packId of Object.keys(eventsByPackId)) {
+        const history = eventsByPackId[packId];
         if (history === undefined) continue;
         grouped.set(packId, [...history]);
       }
