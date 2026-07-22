@@ -81,22 +81,40 @@ describe("MVP through real API and PostgreSQL", () => {
   let server: FastifyInstance | undefined;
 
   beforeAll(async () => {
-    container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
-      .withEnvironment({
-        POSTGRES_DB: "vera",
-        POSTGRES_USER: "vera",
-        POSTGRES_PASSWORD: "local-only",
-      })
-      .withExposedPorts(5432)
-      .withWaitStrategy(Wait.forLogMessage("database system is ready to accept connections", 2))
-      .start();
-    const connectionString = `postgresql://vera:local-only@${container.getHost()}:${container.getMappedPort(5432).toString()}/vera`;
+    const externalUrl = process.env["VERA_TEST_DATABASE_URL"];
+    let connectionString: string;
+    if (externalUrl !== undefined && externalUrl.length > 0) {
+      connectionString = externalUrl;
+    } else {
+      container = await new GenericContainer("pgvector/pgvector:0.8.5-pg17")
+        .withEnvironment({
+          POSTGRES_DB: "vera",
+          POSTGRES_USER: "vera",
+          POSTGRES_PASSWORD: "local-only",
+        })
+        .withExposedPorts(5432)
+        .withWaitStrategy(Wait.forLogMessage("database system is ready to accept connections", 2))
+        .start();
+      connectionString = `postgresql://vera:local-only@${container.getHost()}:${container.getMappedPort(5432).toString()}/vera`;
+    }
     execFileSync("pnpm", ["migrate:deploy"], {
       cwd: storageRoot,
       env: { ...process.env, DATABASE_URL: connectionString },
       stdio: "pipe",
     });
     prisma = createPrismaClient({ connectionString });
+    if (externalUrl !== undefined && externalUrl.length > 0) {
+      await prisma.$executeRawUnsafe(`
+        TRUNCATE TABLE
+          "review_decisions",
+          "evaluation_runs",
+          "idempotency_records",
+          "blob_objects",
+          "sessions",
+          "local_accounts"
+        RESTART IDENTITY CASCADE
+      `);
+    }
     repository = new VeraStorageRepository(prisma);
     server = await createApiServer({
       repository,
@@ -360,6 +378,6 @@ describe("MVP through real API and PostgreSQL", () => {
     expect(backup.idempotencyRecords).toHaveLength(40);
     for (const record of backup.idempotencyRecords) BackupIdempotencySchema.parse(record);
     expect(sha256CanonicalJson(hashInput)).toBe(contentHash);
-    expect(canonicalizeStorageBackup(backup)).toContain("vera.storage-backup/v2");
+    expect(canonicalizeStorageBackup(backup)).toContain("vera.storage-backup/v3");
   }, 120_000);
 });

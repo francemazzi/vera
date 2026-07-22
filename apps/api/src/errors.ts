@@ -1,6 +1,9 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 
 import { StorageConflictError, StorageNotFoundError } from "@vera/storage";
+import { ZodError } from "zod";
+
+import { domainProblemDescriptor } from "./domain-errors.js";
 
 export class ApiProblem extends Error {
   public constructor(
@@ -29,11 +32,18 @@ export function problemBody(problem: ApiProblem): {
 
 export function toProblem(error: FastifyError | Error): ApiProblem {
   if (error instanceof ApiProblem) return error;
+  const domainProblem = domainProblemDescriptor(error);
+  if (domainProblem !== null) {
+    return new ApiProblem(domainProblem.status, domainProblem.title, domainProblem.detail);
+  }
   if (error instanceof StorageConflictError) {
     return new ApiProblem(409, "Conflict", error.message);
   }
   if (error instanceof StorageNotFoundError) {
     return new ApiProblem(404, "Not Found", error.message);
+  }
+  if (error instanceof ZodError) {
+    return new ApiProblem(400, "Bad Request", "Request validation failed");
   }
   const validation = (error as { readonly validation?: unknown }).validation;
   if (validation !== undefined) {

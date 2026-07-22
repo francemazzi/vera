@@ -1,6 +1,6 @@
 # ADR 0006: Corrective Phase 14 boundary
 
-- **Status:** Accepted
+- **Status:** Accepted (scope completed 2026-07-22)
 - **Date:** 2026-07-16
 
 ## Context

@@ -58,6 +58,7 @@ export { InMemoryRulePackActivationLedger } from "./rule-pack-activation.js";
 export type {
   ActivationAppendCommand,
   ActivationAppendExpectation,
+  ActivationHistoryInput,
   RulePackActivationVersionReader,
 } from "./rule-pack-activation.js";
 export {
@@ -71,6 +72,7 @@ export type {
   RulePackReadinessGateContext,
   RulePackCardEligibilityReader,
   RulePackEligibilityPurpose,
+  RulePackRepositorySnapshot,
   RulePackRuleEligibilityReader,
   RulePackRuleEligibilitySnapshot,
   RulePackSourceEligibilityReader,

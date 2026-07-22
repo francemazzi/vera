@@ -35,13 +35,13 @@ function parseJsonObject(rawOutput: string): unknown {
   }
 }
 
-function chunkCitationMap(chunks: readonly RagRetrievedChunk[]): ReadonlyMap<string, RagCitation> {
-  return new Map(chunks.map((chunk) => [chunk.chunkId, chunk.citation]));
+function chunkMap(chunks: readonly RagRetrievedChunk[]): ReadonlyMap<string, RagRetrievedChunk> {
+  return new Map(chunks.map((chunk) => [chunk.chunkId, chunk]));
 }
 
 function validateDraftCitations(
   draft: RuleCardDraftSuggestion,
-  citations: ReadonlyMap<string, RagCitation>,
+  chunks: ReadonlyMap<string, RagRetrievedChunk>,
 ): readonly RagCitation[] {
   const referenced = new Set<string>();
   draft.citations.forEach((citation) => {
@@ -55,21 +55,69 @@ function validateDraftCitations(
   });
 
   for (const chunkId of referenced) {
-    if (!citations.has(chunkId)) {
+    if (!chunks.has(chunkId)) {
       throw new RagError("DRAFT_INVALID", "Rule Card draft referenced an unknown citation", {
         details: { chunkId },
       });
     }
   }
 
-  return [...referenced].sort().map((chunkId) => {
-    const citation = citations.get(chunkId);
-    if (citation === undefined) {
+  const referencedChunks = [...referenced].map((chunkId) => {
+    const chunk = chunks.get(chunkId);
+    if (chunk === undefined) {
       throw new RagError("DRAFT_INVALID", "Rule Card draft referenced an unknown citation", {
         details: { chunkId },
       });
     }
-    return citation;
+    return chunk;
+  });
+  const sourceIds = new Set(referencedChunks.map((chunk) => chunk.sourceId));
+  const sourceVersionIds = new Set(referencedChunks.map((chunk) => chunk.sourceVersionId));
+  if (sourceIds.size !== 1 || sourceVersionIds.size !== 1) {
+    throw new RagError("DRAFT_INVALID", "Rule Card draft citations span multiple sources", {
+      details: {
+        sourceIds: [...sourceIds].sort(),
+        sourceVersionIds: [...sourceVersionIds].sort(),
+      },
+    });
+  }
+  if (
+    referencedChunks.some(
+      (chunk) =>
+        chunk.sourceId !== draft.sourceId || chunk.sourceVersionId !== draft.sourceVersionId,
+    )
+  ) {
+    throw new RagError("DRAFT_INVALID", "Rule Card draft source does not match its citations", {
+      details: { sourceId: draft.sourceId, sourceVersionId: draft.sourceVersionId },
+    });
+  }
+  if (!referencedChunks.some((chunk) => chunk.sectionId === draft.sourceSection)) {
+    throw new RagError("DRAFT_INVALID", "Rule Card draft sourceSection is not cited", {
+      details: { sourceSection: draft.sourceSection },
+    });
+  }
+  for (const citation of draft.citations) {
+    const chunk = chunks.get(citation.chunkId);
+    if (chunk === undefined) {
+      throw new RagError("DRAFT_INVALID", "Rule Card draft referenced an unknown citation", {
+        details: { chunkId: citation.chunkId },
+      });
+    }
+    if (!chunk.text.includes(citation.quote)) {
+      throw new RagError("DRAFT_INVALID", "Rule Card draft quote is not grounded in its chunk", {
+        details: { chunkId: citation.chunkId },
+      });
+    }
+  }
+
+  return [...referenced].sort().map((chunkId) => {
+    const chunk = chunks.get(chunkId);
+    if (chunk === undefined) {
+      throw new RagError("DRAFT_INVALID", "Rule Card draft referenced an unknown citation", {
+        details: { chunkId },
+      });
+    }
+    return chunk.citation;
   });
 }
 
@@ -106,7 +154,7 @@ export async function generateRuleCardDraft(
   const prompt = buildRuleCardDraftPrompt(options);
   const providerResult = await options.provider.generateJson(prompt);
   const draft = RuleCardDraftSuggestionSchema.parse(parseJsonObject(providerResult.rawOutput));
-  const citations = validateDraftCitations(draft, chunkCitationMap(options.chunks));
+  const citations = validateDraftCitations(draft, chunkMap(options.chunks));
 
   return RuleCardDraftGenerationResultSchema.parse({
     draft,

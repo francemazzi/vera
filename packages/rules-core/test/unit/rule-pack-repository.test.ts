@@ -1136,3 +1136,112 @@ describe("InMemoryRulePackRepository publication", () => {
     ).toThrow(expect.objectContaining({ code: "RULE_PACK_ACTIVATION_OUTSIDE_VALIDITY" }));
   });
 });
+
+describe("InMemoryRulePackRepository.fromSnapshot", () => {
+  it("hydrates drafts and versions and preserves OCC on subsequent draft updates", () => {
+    const { repository: seeded, eligibility } = setup();
+    const publishedDraft = makeDraft();
+    seeded.addDraft(publishedDraft, RULE_PACK_ACTORS.author);
+    const version = seeded.publishDraft(
+      {
+        draftId: RULE_PACK_IDS.draft1,
+        versionId: RULE_PACK_IDS.version1,
+        publishedAt: RULE_PACK_TIMES.published1,
+        expectedDraftRevision: 1,
+      },
+      RULE_PACK_ACTORS.publisher,
+    );
+    const unpublished = makeDraft({
+      id: RULE_PACK_IDS.draft2,
+      packId: RULE_PACK_IDS.foreignPack,
+      domain: "synthetic-quality",
+      jurisdiction: "OTHER-DEMO",
+      semver: "1.0.0",
+    });
+    seeded.addDraft(unpublished, RULE_PACK_ACTORS.author);
+
+    const hydrated = InMemoryRulePackRepository.fromSnapshot(
+      {
+        drafts: [seeded.getDraft(RULE_PACK_IDS.draft1), seeded.getDraft(RULE_PACK_IDS.draft2)],
+        versions: [version],
+        contributorIdsByDraftId: {
+          [RULE_PACK_IDS.draft1]: [SOURCE_IDS.author],
+          [RULE_PACK_IDS.draft2]: [SOURCE_IDS.author],
+        },
+        excludedActivatorIdsByVersionId: {
+          [RULE_PACK_IDS.version1]: [SOURCE_IDS.author],
+        },
+        publishedVersionIdByDraftId: {
+          [RULE_PACK_IDS.draft1]: RULE_PACK_IDS.version1,
+        },
+      },
+      eligibility.reader,
+    );
+
+    expect(hydrated.getVersion(RULE_PACK_IDS.version1).id).toBe(RULE_PACK_IDS.version1);
+    expect(() =>
+      hydrated.replaceDraft(
+        rehashDraft(unpublished, {
+          revision: 2,
+          updatedAt: RULE_PACK_TIMES.updated,
+          updatedBy: SOURCE_IDS.author,
+          changeReason: "Hydrated OCC update",
+        }),
+        1,
+        RULE_PACK_ACTORS.author,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      hydrated.replaceDraft(
+        rehashDraft(unpublished, {
+          revision: 2,
+          updatedAt: RULE_PACK_TIMES.updated,
+          updatedBy: SOURCE_IDS.author,
+          changeReason: "Stale OCC update",
+        }),
+        1,
+        RULE_PACK_ACTORS.author,
+      ),
+    ).toThrow(expect.objectContaining({ code: "RULE_PACK_DRAFT_REVISION_CONFLICT" }));
+    expect(() =>
+      hydrated.replaceDraft(
+        rehashDraft(publishedDraft, {
+          revision: 2,
+          updatedAt: RULE_PACK_TIMES.updated,
+          updatedBy: SOURCE_IDS.author,
+        }),
+        1,
+        RULE_PACK_ACTORS.author,
+      ),
+    ).toThrow(expect.objectContaining({ code: "RULE_PACK_VERSION_ALREADY_PUBLISHED" }));
+  });
+
+  it("rejects invalid hydrated draft and version payloads", () => {
+    const { eligibility } = setup();
+    const malformedDraft = { ...makeDraft(), unexpected: true };
+    expect(() =>
+      InMemoryRulePackRepository.fromSnapshot(
+        {
+          drafts: [malformedDraft],
+          versions: [],
+          contributorIdsByDraftId: {},
+          excludedActivatorIdsByVersionId: {},
+        },
+        eligibility.reader,
+      ),
+    ).toThrow(expect.objectContaining({ code: "INVALID_RULE_PACK_DRAFT_PAYLOAD" }));
+
+    const malformedVersion = { ...publishFirst(setup().repository), unexpected: true };
+    expect(() =>
+      InMemoryRulePackRepository.fromSnapshot(
+        {
+          drafts: [],
+          versions: [malformedVersion],
+          contributorIdsByDraftId: {},
+          excludedActivatorIdsByVersionId: {},
+        },
+        eligibility.reader,
+      ),
+    ).toThrow(expect.objectContaining({ code: "INVALID_RULE_PACK_VERSION_PAYLOAD" }));
+  });
+});

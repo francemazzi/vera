@@ -1032,3 +1032,79 @@ describe("InMemoryRulePackActivationLedger append invariants", () => {
     ).toThrow(expect.objectContaining({ code: "RULE_PACK_RESOLUTION_NOT_FOUND" }));
   });
 });
+
+describe("InMemoryRulePackActivationLedger.fromHistory", () => {
+  it("hydrates trusted events and continues OCC appends", () => {
+    const { first, second, reader } = setup();
+    const firstEvent = makeActivationEvent();
+    const ledger = InMemoryRulePackActivationLedger.fromHistory([firstEvent], reader);
+
+    expect(ledger.getHistory(RULE_PACK_IDS.pack)).toHaveLength(1);
+    expect(ledger.resolve(resolutionRequest(TIMES.activation1Effective)).rulePackVersion.id).toBe(
+      first.id,
+    );
+
+    const next = secondEvent(firstEvent);
+    ledger.appendEvent(next, expectation(1, firstEvent.contentHash, RULE_PACK_IDS.version1));
+    expect(ledger.getHistory(RULE_PACK_IDS.pack)).toHaveLength(2);
+    expect(ledger.resolve(resolutionRequest(TIMES.activation2Effective)).rulePackVersion.id).toBe(
+      second.id,
+    );
+
+    const stale = makeActivationEvent({
+      id: IDS.conflictingEvent,
+      sequence: 2,
+      type: "DEACTIVATE",
+      versionId: null,
+      versionContentHash: null,
+      expectedPreviousVersionId: RULE_PACK_IDS.version2,
+      effectiveAt: TIMES.deactivateEffective,
+      recordedAt: TIMES.deactivateRecorded,
+      previousEventHash: firstEvent.contentHash,
+      reason: "Stale OCC deactivation after hydrate",
+    });
+    expect(() =>
+      ledger.appendEvent(stale, expectation(1, firstEvent.contentHash, RULE_PACK_IDS.version1)),
+    ).toThrow(expect.objectContaining({ code: "ACTIVATION_CONCURRENCY_CONFLICT" }));
+  });
+
+  it("accepts map and record shapes and rejects invalid history", () => {
+    const { reader } = setup();
+    const firstEvent = makeActivationEvent();
+    const fromMap = InMemoryRulePackActivationLedger.fromHistory(
+      new Map([[RULE_PACK_IDS.pack, [firstEvent]]]),
+      reader,
+    );
+    expect(fromMap.getHistory(RULE_PACK_IDS.pack)).toHaveLength(1);
+
+    const fromRecord = InMemoryRulePackActivationLedger.fromHistory(
+      { [RULE_PACK_IDS.pack]: [firstEvent] },
+      reader,
+    );
+    expect(fromRecord.getHistory(RULE_PACK_IDS.pack)).toHaveLength(1);
+
+    const malformedEvent = { ...firstEvent, unexpected: true };
+    expect(() => InMemoryRulePackActivationLedger.fromHistory([malformedEvent], reader)).toThrow(
+      expect.objectContaining({ code: "INVALID_ACTIVATION_EVENT" }),
+    );
+
+    expect(() =>
+      InMemoryRulePackActivationLedger.fromHistory(
+        [
+          firstEvent,
+          makeActivationEvent({
+            id: IDS.activation2,
+            sequence: 3,
+            previousEventHash: firstEvent.contentHash,
+            versionId: RULE_PACK_IDS.version2,
+            versionContentHash: makeSecondVersion().contentHash,
+            expectedPreviousVersionId: RULE_PACK_IDS.version1,
+            effectiveAt: TIMES.activation2Effective,
+            recordedAt: TIMES.activation2Recorded,
+          }),
+        ],
+        reader,
+      ),
+    ).toThrow(expect.objectContaining({ code: "ACTIVATION_SEQUENCE_MISMATCH" }));
+  });
+});
