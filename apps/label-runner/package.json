@@ -12,7 +12,7 @@
     "test:smoke:openrouter": "vitest run test/smoke/openrouter-live.test.ts"
   },
   "dependencies": {
-    "@google-cloud/storage": "7.19.0",
+    "@google-cloud/storage": "7.21.0",
     "fastify": "catalog:",
     "google-auth-library": "9.15.1",
     "zod": "catalog:"
