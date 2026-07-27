@@ -6,12 +6,26 @@ export interface LabelPageStore {
   loadNormalizedPage(input: RunnerInput): Promise<Uint8Array>;
 }
 
+function createEmulatorAwareStorage(projectId: string): Storage {
+  const configured =
+    process.env["LABEL_GCS_API_ENDPOINT"]?.trim() || process.env["STORAGE_EMULATOR_HOST"]?.trim();
+  if (configured || process.env["LABEL_LOCAL_MODE"] === "true") {
+    const host = configured || "http://localhost:4443";
+    const apiEndpoint =
+      host.startsWith("http://") || host.startsWith("https://") ? host : `http://${host}`;
+    // apiEndpoint alone works with fake-gcs; STORAGE_EMULATOR_HOST breaks downloads.
+    delete process.env["STORAGE_EMULATOR_HOST"];
+    return new Storage({ projectId, apiEndpoint });
+  }
+  return new Storage({ projectId });
+}
+
 export function createGcsLabelPageStore(options: {
   readonly bucketName: string;
   readonly projectId: string;
   readonly storage?: Storage;
 }): LabelPageStore {
-  const storage = options.storage ?? new Storage({ projectId: options.projectId });
+  const storage = options.storage ?? createEmulatorAwareStorage(options.projectId);
   const bucket = storage.bucket(options.bucketName);
   return {
     async loadNormalizedPage(input) {

@@ -11,6 +11,8 @@ async function main(): Promise<void> {
   const backend = createLabelBackendClient({
     backendUrl: config.backendUrl,
     audience: config.backendAudience,
+    localMode: config.localMode,
+    localAuthToken: config.localAuthToken,
   });
   const processor = createLabelJobProcessor({
     backend,
@@ -31,6 +33,8 @@ async function main(): Promise<void> {
     authorizer: createTaskOidcAuthorizer({
       audience: config.taskAudience,
       expectedServiceAccountEmail: config.taskInvokerServiceAccountEmail,
+      localMode: config.localMode,
+      localAuthToken: config.localAuthToken,
     }),
     processor,
     logger: true,

@@ -43,6 +43,9 @@ export function createLabelJobProcessor(options: {
         });
         return { replayed: false };
       } catch (error) {
+        if (process.env["LABEL_LOCAL_MODE"] === "true") {
+          console.error("Label runner evaluation failed", error);
+        }
         if (error instanceof OpenRouterLabelEvaluationError && error.retryable) throw error;
         await options.backend.fail({
           analysisId,

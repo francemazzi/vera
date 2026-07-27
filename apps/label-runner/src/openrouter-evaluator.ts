@@ -34,9 +34,18 @@ function jsonSchema(): Record<string, unknown> {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["fieldCode", "outcome", "rationale", "ruleVersion", "confidence"],
+          // Azure/OpenAI strict schemas require every property key to appear in `required`.
+          required: [
+            "fieldCode",
+            "countryCode",
+            "outcome",
+            "rationale",
+            "sourceCitation",
+            "ruleVersion",
+            "confidence",
+          ],
           properties: {
-            fieldCode: { type: "string", enum: LABEL_FIELD_CODES },
+            fieldCode: { type: "string", enum: [...LABEL_FIELD_CODES] },
             countryCode: { type: "string" },
             outcome: { type: "string", enum: ["PASS", "FAIL", "REVIEW", "NOT_APPLICABLE"] },
             rationale: { type: "string" },
@@ -159,13 +168,26 @@ export function createOpenRouterLabelEvaluator(options: {
             false,
           );
         }
+        const record = parsed as Record<string, unknown>;
+        const controls = Array.isArray(record["controls"])
+          ? record["controls"].map((control) => {
+              if (typeof control !== "object" || control === null) return control;
+              const item = { ...(control as Record<string, unknown>) };
+              if (item["countryCode"] === "") delete item["countryCode"];
+              if (item["sourceCitation"] === "" || item["sourceCitation"] === "n/a") {
+                delete item["sourceCitation"];
+              }
+              return item;
+            })
+          : record["controls"];
         const evaluation = RunnerEvaluationSchema.parse({
           provider: "openrouter",
           model: options.model,
           promptVersion: options.promptVersion,
           rulePackVersion: options.rulePackVersion,
           sourceSnapshot: options.sourceSnapshot,
-          ...(parsed as Record<string, unknown>),
+          ...record,
+          controls,
         });
         return evaluation;
       } catch (error) {
