@@ -7,9 +7,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  PRIVATE_LABEL_FIELD_CODES,
   PrivateLabelGovernanceRepository,
   VeraStorageRepository,
   canonicalizeStorageBackup,
+  computePrivateLabelSourceSnapshotHash,
   createPrismaClient,
   exportStorageBackup,
 } from "../../src/index.js";
@@ -20,6 +22,25 @@ const packageRoot = fileURLToPath(new URL("../..", import.meta.url));
 const BackupIdempotencySchema = z.object({
   requestHash: z.string().regex(/^[0-9a-f]{64}$/u),
 });
+
+function privateRulePackSnapshot(sourceVersionId: string, sourceContentHash: string) {
+  return {
+    schemaVersion: "silto-label-rule-pack/v1" as const,
+    baseline: PRIVATE_LABEL_FIELD_CODES.filter(
+      (fieldCode) => fieldCode !== "etichettatura_specifica_prodotto",
+    ).map((fieldCode) => ({
+      fieldCode,
+      source: {
+        sourceVersionId,
+        sourceContentHash,
+        citation: `Synthetic private citation for ${fieldCode}`,
+      },
+      ruleVersion: "eu-private-v1",
+    })),
+    countryOverlays: [],
+    categoryExtensions: [],
+  };
+}
 
 describe("PostgreSQL storage integration", () => {
   let container: StartedTestContainer;
@@ -138,20 +159,64 @@ describe("PostgreSQL storage integration", () => {
     expect(source.state).toBe("UNVERIFIED");
     expect(await prisma.privateLabelSourceTransition.count()).toBe(1);
 
-    const sourceSnapshotHash = "2".repeat(64);
+    await expect(
+      privateGovernance.appendSourceTransition({
+        sourceVersionId: uuid(302),
+        expectedSequence: 1,
+        expectedState: "UNVERIFIED",
+        toState: "VERIFIED",
+        actorId: uuid(303),
+        actorRole: "ADMIN",
+        createdAt: "2026-07-18T10:00:30.000Z",
+      }),
+    ).rejects.toThrow("distinct from prior contributors");
+    const verified = await privateGovernance.appendSourceTransition({
+      sourceVersionId: uuid(302),
+      expectedSequence: 1,
+      expectedState: "UNVERIFIED",
+      toState: "VERIFIED",
+      actorId: uuid(304),
+      actorRole: "ADMIN",
+      createdAt: "2026-07-18T10:00:30.000Z",
+    });
+    await expect(
+      privateGovernance.appendSourceTransition({
+        sourceVersionId: uuid(302),
+        expectedSequence: verified.sequence,
+        expectedState: "VERIFIED",
+        toState: "APPROVED",
+        actorId: uuid(304),
+        actorRole: "ADMIN",
+        createdAt: "2026-07-18T10:00:45.000Z",
+      }),
+    ).rejects.toThrow("distinct from prior contributors");
+    const approved = await privateGovernance.appendSourceTransition({
+      sourceVersionId: uuid(302),
+      expectedSequence: verified.sequence,
+      expectedState: "VERIFIED",
+      toState: "APPROVED",
+      actorId: uuid(305),
+      actorRole: "ADMIN",
+      createdAt: "2026-07-18T10:00:45.000Z",
+    });
+    expect(approved.state).toBe("APPROVED");
+    expect((await privateGovernance.getSourceVersion(uuid(302))).state).toBe("APPROVED");
+
+    const snapshot = privateRulePackSnapshot(uuid(302), "1".repeat(64));
+    const sourceSnapshotHash = computePrivateLabelSourceSnapshotHash(snapshot);
     const rulePack = await privateGovernance.saveRulePackSnapshot({
-      id: uuid(304),
+      id: uuid(306),
       version: "eu-private-v1",
       sourceSnapshotHash,
-      snapshot: { sourceVersionIds: [uuid(302)], controlCount: 24 },
-      createdByActorId: uuid(305),
+      snapshot,
+      createdByActorId: uuid(306),
       createdAt: "2026-07-18T10:01:00.000Z",
     });
     const activated = await privateGovernance.appendRulePackActivation({
       rulePackVersionId: rulePack.id,
       action: "ACTIVATED",
       countryCodes: ["IT", "FR"],
-      actorId: uuid(306),
+      actorId: uuid(307),
       reason: "Synthetic private integration verification",
       createdAt: "2026-07-18T10:02:00.000Z",
     });
@@ -159,7 +224,7 @@ describe("PostgreSQL storage integration", () => {
       rulePackVersionId: rulePack.id,
       action: "DEACTIVATED",
       countryCodes: ["IT", "FR"],
-      actorId: uuid(306),
+      actorId: uuid(307),
       reason: "Synthetic rollback verification",
       createdAt: "2026-07-18T10:03:00.000Z",
     });
@@ -167,8 +232,8 @@ describe("PostgreSQL storage integration", () => {
     expect(deactivated.sequence).toBe(2);
 
     const run = await privateGovernance.saveEvaluationRun({
-      id: uuid(307),
-      externalAnalysisId: uuid(308),
+      id: uuid(308),
+      externalAnalysisId: uuid(309),
       inputSha256: "3".repeat(64),
       provider: "openrouter",
       model: "provider/private-vision-model",
@@ -191,13 +256,11 @@ describe("PostgreSQL storage integration", () => {
       rulePackVersionId: rulePack.id,
       sourceSnapshotHash,
     });
-    expect(persistedRun.controls).toEqual([
-      { fieldCode: "elenco_ingredienti", outcome: "REVIEW" },
-    ]);
+    expect(persistedRun.controls).toEqual([{ fieldCode: "elenco_ingredienti", outcome: "REVIEW" }]);
     await expect(
       privateGovernance.saveEvaluationRun({
-        id: uuid(309),
-        externalAnalysisId: uuid(308),
+        id: uuid(310),
+        externalAnalysisId: uuid(309),
         inputSha256: "3".repeat(64),
         provider: "openrouter",
         model: "provider/private-vision-model",
@@ -209,6 +272,85 @@ describe("PostgreSQL storage integration", () => {
         createdAt: "2026-07-18T10:04:00.000Z",
       }),
     ).rejects.toThrow("does not match");
+
+    const retired = await privateGovernance.appendSourceTransition({
+      sourceVersionId: uuid(302),
+      expectedSequence: approved.sequence,
+      expectedState: "APPROVED",
+      toState: "RETIRED",
+      actorId: uuid(306),
+      actorRole: "ADMIN",
+      reason: "Synthetic source withdrawal",
+      createdAt: "2026-07-18T10:05:00.000Z",
+    });
+    expect(retired.state).toBe("RETIRED");
+    await expect(
+      privateGovernance.appendRulePackActivation({
+        rulePackVersionId: rulePack.id,
+        action: "ACTIVATED",
+        countryCodes: ["IT"],
+        actorId: uuid(307),
+        reason: "Must not reactivate withdrawn regulatory material",
+        createdAt: "2026-07-18T10:05:10.000Z",
+      }),
+    ).rejects.toThrow("requires approved");
+  });
+
+  it("keeps catalogue revisions as an ordered immutable VERA source chain", async () => {
+    // RegulatoryCatalogEntry.id is the stable VERA source identity. Every
+    // backend candidate is instead a separate immutable VERA version ID.
+    const catalogueSourceId = uuid(320);
+    const firstVersionId = uuid(321);
+    const secondVersionId = uuid(322);
+    const source = {
+      id: catalogueSourceId,
+      stableReference: "https://eur-lex.europa.eu/eli/reg/2011/1169/oj",
+      title: "Regolamento (UE) n. 1169/2011",
+      jurisdiction: "EU",
+    } as const;
+
+    await expect(
+      privateGovernance.createSourceVersion({
+        source,
+        version: {
+          id: firstVersionId,
+          revision: 1,
+          contentHash: "a".repeat(64),
+          contentObjectRef: "label-governance/sources/catalogue/1169/revision-1.pdf",
+        },
+        actorId: uuid(323),
+        actorRole: "ADMIN",
+        createdAt: "2026-07-20T10:00:00.000Z",
+      }),
+    ).resolves.toMatchObject({ sourceVersionId: firstVersionId, state: "UNVERIFIED" });
+
+    await expect(
+      privateGovernance.createSourceVersion({
+        source,
+        version: {
+          id: secondVersionId,
+          revision: 2,
+          contentHash: "b".repeat(64),
+          contentObjectRef: "label-governance/sources/catalogue/1169/revision-2.pdf",
+        },
+        actorId: uuid(324),
+        actorRole: "ADMIN",
+        createdAt: "2026-08-20T10:00:00.000Z",
+      }),
+    ).resolves.toMatchObject({ sourceVersionId: secondVersionId, state: "UNVERIFIED" });
+
+    const versions = await prisma.privateLabelSourceVersion.findMany({
+      where: { sourceId: catalogueSourceId },
+      orderBy: { revision: "asc" },
+      select: { id: true, revision: true, contentHash: true },
+    });
+    expect(versions).toEqual([
+      { id: firstVersionId, revision: 1, contentHash: "a".repeat(64) },
+      { id: secondVersionId, revision: 2, contentHash: "b".repeat(64) },
+    ]);
+    expect(await prisma.privateLabelSource.count({ where: { id: catalogueSourceId } })).toBe(1);
+    expect((await privateGovernance.getSourceVersion(firstVersionId)).state).toBe("UNVERIFIED");
+    expect((await privateGovernance.getSourceVersion(secondVersionId)).state).toBe("UNVERIFIED");
   });
 
   it("atomically replays run writes and rejects key collisions before mutation", async () => {

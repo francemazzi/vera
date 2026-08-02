@@ -7,12 +7,15 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run test/integration",
-    "test:smoke:openrouter": "vitest run test/smoke/openrouter-live.test.ts"
+    "test:unit": "vitest run --dir test/unit",
+    "test:integration": "vitest run --dir test/integration",
+    "test:smoke:openrouter": "vitest run test/smoke/openrouter-live.test.ts",
+    "archive:preliminary-sources": "node dist/import-preliminary-sources.js"
   },
   "dependencies": {
     "@google-cloud/storage": "7.19.0",
+    "@vera/contracts": "workspace:*",
+    "@vera/rag": "workspace:*",
     "fastify": "catalog:",
     "google-auth-library": "9.15.1",
     "zod": "catalog:"

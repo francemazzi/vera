@@ -1,0 +1,26 @@
+# Copy to governance.tfvars and set only deployment identifiers. Secrets stay
+# in Secret Manager, never in this file.
+project_id                         = "siltopro"
+artifact_repository_id             = "silto-governance"
+cloud_build_service_account_email  = "REPLACE_WITH_CLOUD_BUILD_EXECUTION_SERVICE_ACCOUNT@siltopro.iam.gserviceaccount.com"
+image                              = "europe-west1-docker.pkg.dev/siltopro/silto-governance/silto-vera-governance@sha256:REPLACE_WITH_64_HEX_DIGEST"
+serverless_vpc_connector           = "projects/siltopro/locations/europe-west1/connectors/silto-chroma-connector"
+chroma_endpoint                    = "http://10.90.0.10:8000"
+openrouter_api_key_secret_id       = "OPENROUTER_API_KEY"
+database_url_secret_id             = "VERA_GOVERNANCE_DATABASE_URL"
+label_bucket_name                  = "silto-label-private-siltopro"
+# Use the deterministic default URL of the existing backend Cloud Run service.
+backend_url                        = "https://silto-gfsi-be-REPLACE_WITH_PROJECT_NUMBER.europe-west1.run.app"
+backend_audience                   = "https://silto-gfsi-be-REPLACE_WITH_PROJECT_NUMBER.europe-west1.run.app"
+backend_service_account_email      = "silto-label-backend@siltopro.iam.gserviceaccount.com"
+
+# The queue is created with conservative defaults (one dispatch and one active
+# task at a time). It is the value for LABEL_GOVERNANCE_TASKS_QUEUE.
+governance_tasks_queue_name = "silto-label-governance"
+
+# The monthly job is created paused. All three acknowledgements must be true
+# only after the initial curated batch, backend runtime flags/OIDC, and a
+# dedicated non-human audit actor have been reviewed.
+catalog_sync_enabled                  = false
+catalog_sync_backend_flag_confirmed   = false
+catalog_sync_actor_confirmed          = false

@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+exec > >(tee -a /var/log/silto-chroma-startup.log | logger -t silto-chroma-startup) 2>&1
+
+apt_update() {
+  for _ in $(seq 1 12); do
+    if apt-get update; then return 0; fi
+    sleep 10
+  done
+  return 1
+}
+
+apt_install() {
+  for _ in $(seq 1 12); do
+    if DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"; then return 0; fi
+    sleep 10
+  done
+  return 1
+}
+
+apt_update
+# Install the bootstrap dependencies from Ubuntu first. The Google packages
+# below are only available after their signed repository has been added.
+apt_install ca-certificates curl docker.io gnupg
+curl --fail --silent --show-error https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" >/etc/apt/sources.list.d/google-cloud-sdk.list
+apt_update
+apt_install google-cloud-cli
+# The Ops Agent is distributed from its own signed repository, not from the
+# Cloud SDK repository above. Its installer registers that repository and
+# installs the package atomically.
+curl --fail --silent --show-error --location \
+  https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh \
+  --output /tmp/add-google-cloud-ops-agent-repo.sh
+bash /tmp/add-google-cloud-ops-agent-repo.sh --also-install
+rm -f /tmp/add-google-cloud-ops-agent-repo.sh
+systemctl enable --now docker google-cloud-ops-agent
+
+DATA_DEVICE="/dev/disk/by-id/google-${data_disk_name}"
+DATA_PATH="/mnt/disks/chroma"
+mkdir -p "$DATA_PATH"
+if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
+  mkfs.ext4 -F "$DATA_DEVICE"
+fi
+if ! grep -q " $DATA_PATH " /etc/fstab; then
+  echo "$DATA_DEVICE $DATA_PATH ext4 defaults,nofail 0 2" >> /etc/fstab
+fi
+mount -a
+chmod 750 "$DATA_PATH"
+
+gcloud auth configure-docker "${artifact_registry_hostname}" --quiet
+docker pull "${chroma_image}"
+
+cat >/usr/local/bin/silto-chroma-healthcheck <<'HEALTHCHECK'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+for _ in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 2 http://127.0.0.1:8000/api/v2/heartbeat >/dev/null; then
+    exit 0
+  fi
+  sleep 2
+done
+
+logger -t silto-chroma-healthcheck "silto-chroma-healthcheck failed"
+exit 1
+HEALTHCHECK
+chmod 0755 /usr/local/bin/silto-chroma-healthcheck
+
+cat >/etc/systemd/system/silto-chroma.service <<'UNIT'
+[Unit]
+Description=Private SILTO Chroma server
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=180
+ExecStartPre=-/usr/bin/docker rm -f silto-chroma
+ExecStart=/usr/bin/docker run --name silto-chroma --rm --pull=never --security-opt=no-new-privileges --cap-drop=ALL --memory=3g --cpus=2 -e IS_PERSISTENT=TRUE -e PERSIST_DIRECTORY=/data -e ALLOW_RESET=FALSE -p 8000:8000 -v /mnt/disks/chroma:/data:rw ${chroma_image}
+ExecStartPost=/usr/local/bin/silto-chroma-healthcheck
+ExecStop=/usr/bin/docker stop -t 30 silto-chroma
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now silto-chroma.service
+
+cat >/etc/systemd/system/silto-chroma-healthcheck.service <<'UNIT'
+[Unit]
+Description=Private SILTO Chroma periodic localhost health check
+After=silto-chroma.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/local/bin/silto-chroma-healthcheck || systemctl restart silto-chroma.service'
+UNIT
+
+cat >/etc/systemd/system/silto-chroma-healthcheck.timer <<'UNIT'
+[Unit]
+Description=Run private SILTO Chroma health check every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+Unit=silto-chroma-healthcheck.service
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now silto-chroma-healthcheck.timer

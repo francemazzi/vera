@@ -2,12 +2,13 @@ export { createLabelBackendClient, type LabelBackendClient } from "./backend-cli
 export { readLabelRunnerConfig, type LabelRunnerConfig } from "./config.js";
 export {
   LABEL_FIELD_CODES,
-  LabelOutcomeSchema,
+  PRELIMINARY_INDICATORS,
   LabelTaskSchema,
-  RunnerControlSchema,
+  PreliminaryTemplateSchema,
+  PreliminaryRunnerControlSchema,
   RunnerEvaluationSchema,
   RunnerInputSchema,
-  type LabelOutcome,
+  type PreliminaryTemplate,
   type RunnerEvaluation,
   type RunnerInput,
 } from "./contracts.js";

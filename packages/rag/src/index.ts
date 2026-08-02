@@ -1,12 +1,37 @@
-export { citationFromChunk, chunkApprovedSourceSections } from "./chunking.js";
+export { citationFromChunk, chunkApprovedSourceSections, splitRagText } from "./chunking.js";
 export type { ChunkingOptions } from "./chunking.js";
 export { RagError } from "./errors.js";
 export type { RagErrorCode } from "./errors.js";
+export { ChromaHttpVectorStore } from "./chroma-http-client.js";
+export type { ChromaHttpVectorStoreOptions } from "./chroma-http-client.js";
+export type {
+  ChromaCollection,
+  ChromaMetadata,
+  ChromaMetadataValue,
+  ChromaVectorMatch,
+  ChromaVectorQuery,
+  ChromaVectorRecord,
+  ChromaVectorStore,
+} from "./chroma-client.js";
+export { ChromaPrivateLabelRagIndex } from "./private-label-chroma-index.js";
+export type {
+  ChromaPrivateLabelRagIndexOptions,
+  PrivateLabelRagIndex,
+  PrivateLabelRagIndexResult,
+} from "./private-label-chroma-index.js";
+export {
+  OPENROUTER_GEMINI_EMBEDDING_DIMENSIONS,
+  OPENROUTER_GEMINI_EMBEDDING_MODEL,
+  OPENROUTER_GEMINI_EMBEDDING_ROUTING_CONFIG_HASH,
+  OpenRouterEmbeddingProvider,
+} from "./openrouter-embedding-provider.js";
+export type { OpenRouterEmbeddingProviderOptions } from "./openrouter-embedding-provider.js";
 export { PgVectorRagIndex } from "./pgvector-index.js";
 export type { PgVectorRagIndexOptions, RagIndexResult } from "./pgvector-index.js";
 export { RetryingEmbeddingProvider, RetryingRuleDraftProvider, withRetry } from "./providers.js";
 export type {
   EmbeddingProvider,
+  PrivateLabelEmbeddingProvider,
   RetryOptions,
   RuleDraftProvider,
   RuleDraftProviderResult,
@@ -72,3 +97,30 @@ export type {
   RuleCardDraftSuggestion,
   RuleCardWorkflowAdvancementRequest,
 } from "./types.js";
+export {
+  PRIVATE_LABEL_APPROVED_COLLECTION,
+  PRIVATE_LABEL_PRELIMINARY_COLLECTION,
+  PRIVATE_LABEL_SHARED_CATALOG_WORKSPACE_SCOPE,
+  PRIVATE_LABEL_VERIFIED_COLLECTION,
+  PRIVATE_LABEL_RAG_EMBEDDING_DIMENSIONS,
+  PrivateLabelRagChunkSchema,
+  PrivateLabelRagCitationSchema,
+  PrivateLabelRagQuerySchema,
+  PrivateLabelRagRetrievedChunkSchema,
+  PrivateLabelRagScopeSchema,
+  PrivateLabelRagSectionSchema,
+  PrivateLabelRagSourceStateSchema,
+  PrivateLabelRagWorkspaceScopeSchema,
+} from "./private-label-rag-types.js";
+export type {
+  ParsedPrivateLabelRagQuery,
+  PrivateLabelRagChunk,
+  PrivateLabelRagCitation,
+  PrivateLabelRagQuery,
+  PrivateLabelRagRetrievedChunk,
+  PrivateLabelRagSafeRetrievalResult,
+  PrivateLabelRagScope,
+  PrivateLabelRagSection,
+  PrivateLabelRagSourceState,
+  PrivateLabelRagWorkspaceScope,
+} from "./private-label-rag-types.js";

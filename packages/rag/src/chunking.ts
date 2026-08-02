@@ -61,22 +61,27 @@ function findBreak(text: string, start: number, hardEnd: number): number {
   return hardEnd;
 }
 
-function splitText(text: string, options: NormalizedChunkingOptions): readonly string[] {
+function splitText(text: string, normalizedOptions: NormalizedChunkingOptions): readonly string[] {
   const normalized = normalizeWhitespace(text);
-  if (normalized.length <= options.maxChars) return [normalized];
+  if (normalized.length <= normalizedOptions.maxChars) return [normalized];
 
   const chunks: string[] = [];
   let start = 0;
   while (start < normalized.length) {
-    const hardEnd = Math.min(normalized.length, start + options.maxChars);
+    const hardEnd = Math.min(normalized.length, start + normalizedOptions.maxChars);
     const end = findBreak(normalized, start, hardEnd);
     const chunk = normalized.slice(start, end).trim();
     if (chunk.length > 0) chunks.push(chunk);
     if (end >= normalized.length) break;
-    start = Math.max(0, end - options.overlapChars);
+    start = Math.max(0, end - normalizedOptions.overlapChars);
   }
 
   return chunks;
+}
+
+/** Splits normalized source text into stable, overlapping RAG chunks. */
+export function splitRagText(text: string, options: ChunkingOptions = {}): readonly string[] {
+  return splitText(text, normalizeOptions(options));
 }
 
 function computeChunkId(

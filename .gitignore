@@ -18,3 +18,8 @@ reports/private/
 
 .DS_Store
 *.log
+
+# Terraform runtime state and downloaded providers are local-only artifacts.
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*

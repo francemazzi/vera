@@ -1,0 +1,29 @@
+{
+  "name": "@vera/label-governance",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "7.19.0",
+    "@langchain/langgraph": "^1.4.8",
+    "@vera/contracts": "workspace:*",
+    "@vera/rag": "workspace:*",
+    "@vera/storage": "workspace:*",
+    "fastify": "catalog:",
+    "google-auth-library": "9.15.1",
+    "pdfjs-dist": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

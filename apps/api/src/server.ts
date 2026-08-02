@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
@@ -8,7 +8,12 @@ import {
   sha256Bytes,
   sha256CanonicalJson,
 } from "@vera/contracts";
-import type { VeraStorageRepository } from "@vera/storage";
+import {
+  PrivateLabelEuCountryCodeSchema,
+  PrivateLabelRulePackSnapshotSchema,
+  type PrivateLabelGovernanceRepository,
+  type VeraStorageRepository,
+} from "@vera/storage";
 import Fastify from "fastify";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -35,9 +40,54 @@ const BlobUploadSchema = z
     base64: z.string().min(1).max(20_000_000),
   })
   .strict();
+const PrivateLabelSourceCreateSchema = z
+  .object({
+    source: z
+      .object({
+        id: z.uuid().optional(),
+        stableReference: z.url().max(500),
+        title: z.string().trim().min(1).max(300),
+        jurisdiction: z.string().trim().min(1).max(120),
+      })
+      .strict(),
+    version: z
+      .object({
+        id: z.uuid().optional(),
+        revision: z.int().min(1),
+        contentHash: Sha256DigestSchema,
+        contentObjectRef: z.string().trim().min(1).max(1_000),
+      })
+      .strict(),
+  })
+  .strict();
+const PrivateLabelSourceTransitionSchema = z
+  .object({
+    expectedSequence: z.int().min(1),
+    expectedState: z.enum(["UNVERIFIED", "VERIFIED", "APPROVED"]),
+    toState: z.enum(["VERIFIED", "APPROVED", "RETIRED"]),
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict();
+const PrivateLabelRulePackCreateSchema = z
+  .object({
+    id: z.uuid().optional(),
+    version: z.string().trim().min(1).max(120),
+    sourceSnapshotHash: Sha256DigestSchema,
+    snapshot: PrivateLabelRulePackSnapshotSchema,
+  })
+  .strict();
+const PrivateLabelRulePackActivationSchema = z
+  .object({
+    action: z.enum(["ACTIVATED", "DEACTIVATED"]),
+    countryCodes: z.array(PrivateLabelEuCountryCodeSchema).min(1).max(27),
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict();
 
 export interface CreateApiServerOptions {
   readonly repository: VeraStorageRepository;
+  /** Optional because the technical-demo API can be embedded without Label governance. */
+  readonly privateLabelGovernance?: PrivateLabelGovernanceRepository;
   readonly auth?: AuthService;
   readonly bootstrapTokenHash?: string;
   readonly logger?: boolean;
@@ -102,6 +152,13 @@ function validBootstrapAuthorization(
     Buffer.from(comparisonHash, "hex"),
   );
   return expectedHash !== undefined && match !== null && matches;
+}
+
+function labelGovernance(options: CreateApiServerOptions): PrivateLabelGovernanceRepository {
+  if (options.privateLabelGovernance === undefined) {
+    throw new ApiProblem(503, "Service Unavailable", "Private Label governance is not configured");
+  }
+  return options.privateLabelGovernance;
 }
 
 export async function createApiServer(options: CreateApiServerOptions): Promise<FastifyInstance> {
@@ -253,6 +310,123 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
     const url = assertLocalEgressAllowed(body.url);
     return reply.send({ allowed: true, origin: url.origin, hash: sha256CanonicalJson(url.origin) });
   });
+
+  // Food Consulting back-office. These routes keep source bodies private: callers
+  // submit only the hash and opaque archive reference created by the private store.
+  server.get("/v1/private-label/sources", async (request, reply) => {
+    const account = await authenticated(request, auth, now);
+    assertRole(account, ["ADMIN"]);
+    return reply.send({ sourceVersions: await labelGovernance(options).listSourceVersions() });
+  });
+
+  server.post(
+    "/v1/private-label/sources",
+    {
+      schema: {
+        body: zodBody(PrivateLabelSourceCreateSchema),
+        response: { 201: openObjectJsonSchema() },
+      },
+    },
+    async (request, reply) => {
+      const account = await authenticated(request, auth, now);
+      assertRole(account, ["ADMIN"]);
+      const body = PrivateLabelSourceCreateSchema.parse(request.body);
+      const sourceVersion = await labelGovernance(options).createSourceVersion({
+        source: {
+          id: body.source.id ?? randomUUID(),
+          stableReference: body.source.stableReference,
+          title: body.source.title,
+          jurisdiction: body.source.jurisdiction,
+        },
+        version: {
+          id: body.version.id ?? randomUUID(),
+          revision: body.version.revision,
+          contentHash: body.version.contentHash,
+          contentObjectRef: body.version.contentObjectRef,
+        },
+        actorId: account.id,
+        actorRole: "ADMIN",
+        createdAt: now(),
+      });
+      return reply.code(201).send({ sourceVersion });
+    },
+  );
+
+  server.post(
+    "/v1/private-label/source-versions/:id/transitions",
+    {
+      schema: {
+        body: zodBody(PrivateLabelSourceTransitionSchema),
+        response: { 201: openObjectJsonSchema() },
+      },
+    },
+    async (request, reply) => {
+      const account = await authenticated(request, auth, now);
+      assertRole(account, ["ADMIN"]);
+      const sourceVersionId = z.object({ id: z.uuid() }).parse(request.params).id;
+      const body = PrivateLabelSourceTransitionSchema.parse(request.body);
+      const transition = await labelGovernance(options).appendSourceTransition({
+        sourceVersionId,
+        expectedSequence: body.expectedSequence,
+        expectedState: body.expectedState,
+        toState: body.toState,
+        actorId: account.id,
+        actorRole: "ADMIN",
+        ...(body.reason === undefined ? {} : { reason: body.reason }),
+        createdAt: now(),
+      });
+      return reply.code(201).send({ transition });
+    },
+  );
+
+  server.post(
+    "/v1/private-label/rule-packs",
+    {
+      schema: {
+        body: zodBody(PrivateLabelRulePackCreateSchema),
+        response: { 201: openObjectJsonSchema() },
+      },
+    },
+    async (request, reply) => {
+      const account = await authenticated(request, auth, now);
+      assertRole(account, ["ADMIN"]);
+      const body = PrivateLabelRulePackCreateSchema.parse(request.body);
+      const rulePack = await labelGovernance(options).saveRulePackSnapshot({
+        id: body.id ?? randomUUID(),
+        version: body.version,
+        sourceSnapshotHash: body.sourceSnapshotHash,
+        snapshot: body.snapshot,
+        createdByActorId: account.id,
+        createdAt: now(),
+      });
+      return reply.code(201).send({ rulePack });
+    },
+  );
+
+  server.post(
+    "/v1/private-label/rule-packs/:id/activations",
+    {
+      schema: {
+        body: zodBody(PrivateLabelRulePackActivationSchema),
+        response: { 201: openObjectJsonSchema() },
+      },
+    },
+    async (request, reply) => {
+      const account = await authenticated(request, auth, now);
+      assertRole(account, ["ADMIN"]);
+      const rulePackVersionId = z.object({ id: z.uuid() }).parse(request.params).id;
+      const body = PrivateLabelRulePackActivationSchema.parse(request.body);
+      const activation = await labelGovernance(options).appendRulePackActivation({
+        rulePackVersionId,
+        action: body.action,
+        countryCodes: body.countryCodes,
+        actorId: account.id,
+        ...(body.reason === undefined ? {} : { reason: body.reason }),
+        createdAt: now(),
+      });
+      return reply.code(201).send({ activation });
+    },
+  );
 
   return server;
 }

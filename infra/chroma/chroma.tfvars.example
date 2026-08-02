@@ -1,0 +1,11 @@
+# Copy this file to chroma.tfvars. Never commit production values or secrets.
+project_id = "siltopro"
+
+# Mirror and scan the image into the Artifact Registry repository created by this stack,
+# then pin its exact immutable digest here.
+chroma_image = "europe-west1-docker.pkg.dev/siltopro/silto-chroma/chroma@sha256:REPLACE_WITH_64_HEX_DIGEST"
+
+# Required: existing Cloud Monitoring notification-channel resource IDs.
+alert_notification_channels = [
+  "projects/siltopro/notificationChannels/REPLACE_WITH_CHANNEL_ID",
+]

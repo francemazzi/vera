@@ -6,7 +6,9 @@ export type RagErrorCode =
   | "INDEX_REJECTED"
   | "PROVIDER_UNAVAILABLE"
   | "QUERY_INVALID"
-  | "RETRY_EXHAUSTED";
+  | "RETRY_EXHAUSTED"
+  | "VECTOR_STORE_INVALID"
+  | "VECTOR_STORE_UNAVAILABLE";
 
 export class RagError extends Error {
   public readonly code: RagErrorCode;

@@ -1,7 +1,7 @@
 import { sha256Bytes, sha256CanonicalJson } from "@vera/contracts";
 import type { ActorRole, EvaluationRun, JsonValue, ReviewDecision } from "@vera/contracts";
 import { StorageConflictError } from "@vera/storage";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ApiProblem, createApiServer } from "../../src/index.js";
 import type { AuthService, AuthenticatedAccount } from "../../src/index.js";
@@ -121,6 +121,23 @@ const fakeAuth: AuthService = {
   },
 };
 
+const privateGovernance = {
+  listSourceVersions: vi.fn().mockResolvedValue([]),
+  createSourceVersion: vi.fn().mockResolvedValue({
+    sourceVersionId: uuid(901),
+    state: "UNVERIFIED",
+    transitionHash: "a".repeat(64),
+  }),
+  appendSourceTransition: vi.fn().mockResolvedValue({
+    id: uuid(902),
+    sequence: 2,
+    state: "VERIFIED",
+    contentHash: "b".repeat(64),
+  }),
+  saveRulePackSnapshot: vi.fn(),
+  appendRulePackActivation: vi.fn(),
+};
+
 describe("VERA API", () => {
   const repository = new FakeRepository();
   let server: Awaited<ReturnType<typeof createApiServer>>;
@@ -145,6 +162,76 @@ describe("VERA API", () => {
     expect(health.statusCode).toBe(200);
     expect(openapi.statusCode).toBe(200);
     expect(openapi.json()).toMatchObject({ openapi: "3.0.3" });
+  });
+
+  it("exposes the private Label source back-office to ADMIN accounts only", async () => {
+    const governanceServer = await createApiServer({
+      repository: repository as never,
+      auth: fakeAuth,
+      privateLabelGovernance: privateGovernance as never,
+      now: () => "2026-07-15T12:00:00.000Z",
+    });
+    const sourceId = uuid(900);
+    const sourceVersionId = uuid(901);
+    const payload = {
+      source: {
+        id: sourceId,
+        stableReference: "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32011R1169",
+        title: "Synthetic official source",
+        jurisdiction: "EU",
+      },
+      version: {
+        id: sourceVersionId,
+        revision: 1,
+        contentHash: "c".repeat(64),
+        contentObjectRef: "gs://private-governance/sources/synthetic.pdf",
+      },
+    } as const;
+
+    expect(
+      (await governanceServer.inject({ method: "GET", url: "/v1/private-label/sources" }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await governanceServer.inject({
+          method: "GET",
+          url: "/v1/private-label/sources",
+          headers: { authorization: "Bearer reviewer" },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await governanceServer.inject({
+          method: "POST",
+          url: "/v1/private-label/sources",
+          headers: { authorization: "Bearer admin" },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(privateGovernance.createSourceVersion).toHaveBeenLastCalledWith(
+      expect.objectContaining({ actorId: account("ADMIN").id, actorRole: "ADMIN" }),
+    );
+    expect(
+      (
+        await governanceServer.inject({
+          method: "POST",
+          url: `/v1/private-label/source-versions/${sourceVersionId}/transitions`,
+          headers: { authorization: "Bearer admin" },
+          payload: {
+            expectedSequence: 1,
+            expectedState: "UNVERIFIED",
+            toState: "VERIFIED",
+          },
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(privateGovernance.appendSourceTransition).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sourceVersionId, actorRole: "ADMIN" }),
+    );
+    await governanceServer.close();
   });
 
   it("permits one-time ADMIN bootstrap credentials and otherwise requires an ADMIN", async () => {

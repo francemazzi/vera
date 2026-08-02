@@ -3,7 +3,7 @@ import { Storage } from "@google-cloud/storage";
 import type { RunnerInput } from "./contracts.js";
 
 export interface LabelPageStore {
-  loadNormalizedPage(input: RunnerInput): Promise<Uint8Array>;
+  loadNormalizedPages(input: RunnerInput): Promise<readonly Readonly<{ page: number; bytes: Uint8Array }>[]>;
 }
 
 function createEmulatorAwareStorage(projectId: string): Storage {
@@ -28,12 +28,16 @@ export function createGcsLabelPageStore(options: {
   const storage = options.storage ?? createEmulatorAwareStorage(options.projectId);
   const bucket = storage.bucket(options.bucketName);
   return {
-    async loadNormalizedPage(input) {
-      const [bytes] = await bucket.file(input.normalizedPageObjectKey).download();
-      if (bytes.byteLength === 0 || bytes.byteLength > 20 * 1024 * 1024) {
-        throw new Error("Normalized label page has an invalid size");
-      }
-      return bytes;
+    async loadNormalizedPages(input) {
+      return Promise.all(
+        input.normalizedPages.map(async (page) => {
+          const [bytes] = await bucket.file(page.objectKey).download();
+          if (bytes.byteLength === 0 || bytes.byteLength > 20 * 1024 * 1024) {
+            throw new Error("Normalized label page has an invalid size");
+          }
+          return { page: page.page, bytes };
+        }),
+      );
     },
   };
 }

@@ -1,8 +1,9 @@
-import { createHash } from "node:crypto";
-
 import { describe, expect, it } from "vitest";
 
 import { createOpenRouterLabelEvaluator } from "../../src/openrouter-evaluator.js";
+import { fallbackRegulatoryScope } from "../../src/source-retriever.js";
+import { LABEL_FIELD_CODES } from "../../src/contracts.js";
+import { preliminaryTemplate, sourceSnapshot } from "../fixtures/preliminary-template.js";
 
 const ENABLED =
   process.env["VERA_OPENROUTER_LIVE"] === "1" &&
@@ -12,28 +13,35 @@ const ONE_PIXEL_PNG = Buffer.from(
   "base64",
 );
 
-describe.skipIf(!ENABLED)("Private Label runner OpenRouter smoke", () => {
+describe.skipIf(!ENABLED)("Private preliminary label service OpenRouter smoke", () => {
   it("uses a synthetic PNG and records no credential material", async () => {
     const apiKey = process.env["OPENROUTER_API_KEY"];
-    const model = process.env["LABEL_OPENROUTER_MODEL"];
-    if (!apiKey || !model)
-      throw new Error("OPENROUTER_API_KEY and LABEL_OPENROUTER_MODEL are required");
+    if (!apiKey) throw new Error("OPENROUTER_API_KEY is required");
     const evaluator = createOpenRouterLabelEvaluator({
       apiKey,
-      model,
-      promptVersion: "label-live-smoke-v1",
-      rulePackVersion: "synthetic-live-smoke",
-      sourceSnapshot: createHash("sha256").update("synthetic source only", "utf8").digest("hex"),
+      model: "google/gemini-2.5-flash",
+      promptVersion: "label-preliminary-eu-it-v1",
+      rulePackVersion: "eu-it-preliminary-v1@1",
+      sourceSnapshot,
       timeoutMs: 90_000,
     });
 
-    const result = await evaluator.evaluate({ page: ONE_PIXEL_PNG, countryCodes: ["IT"] });
+    const result = await evaluator.evaluate({
+      pages: [{ page: 1, bytes: ONE_PIXEL_PNG }],
+      countryCodes: ["IT"],
+      regulatoryScope: fallbackRegulatoryScope({ countryCodes: ["IT"] }),
+      sources: {
+        controls: LABEL_FIELD_CODES.map((fieldCode) => ({ fieldCode, citations: [] })),
+        sourceSnapshot,
+      },
+      template: preliminaryTemplate,
+    });
 
     expect(result.provider).toBe("openrouter");
-    expect(result.model).toBe(model);
+    expect(result.model).toBe("google/gemini-2.5-flash");
     expect(result.controls).toHaveLength(24);
     process.stdout.write(
-      `VERA_LABEL_RUNNER_OPENROUTER_SMOKE=${JSON.stringify({
+      `LABEL_PRELIMINARY_OPENROUTER_SMOKE=${JSON.stringify({
         model: result.model,
         promptVersion: result.promptVersion,
         rulePackVersion: result.rulePackVersion,

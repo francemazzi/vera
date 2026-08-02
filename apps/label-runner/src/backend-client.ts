@@ -20,6 +20,7 @@ export interface LabelBackendClient {
     readonly analysisId: string;
     readonly expectedVersion: number;
     readonly runnerInvocationId: string;
+    readonly failureCode?: string;
   }): Promise<void>;
 }
 
@@ -66,6 +67,8 @@ async function localFetchRequest(
 export function createLabelBackendClient(options: {
   readonly backendUrl: string;
   readonly audience: string;
+  /** Explicit loopback-only development bridge; production omits this. */
+  readonly localToken?: string | null;
   readonly auth?: Pick<GoogleAuth, "getIdTokenClient">;
   readonly localMode?: boolean;
   readonly localAuthToken?: string;
@@ -84,6 +87,19 @@ export function createLabelBackendClient(options: {
       return localFetchRequest(options.backendUrl, localAuthToken, path, method, data);
     }
     try {
+      if (options.localToken) {
+        const response = await fetch(`${options.backendUrl}${path}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${options.localToken}`,
+            ...(data === undefined ? {} : { "Content-Type": "application/json" }),
+          },
+          ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+        });
+        const body: unknown = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(errorMessage(body));
+        return body;
+      }
       const response = await (
         await idTokenClient()
       ).request({
@@ -127,6 +143,7 @@ export function createLabelBackendClient(options: {
         status: "FAILED",
         expectedVersion: input.expectedVersion,
         runnerInvocationId: input.runnerInvocationId,
+        ...(input.failureCode ? { failureCode: input.failureCode } : {}),
       });
     },
   };

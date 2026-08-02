@@ -39,6 +39,14 @@ inserito in file `.env` tracciati, Cloud Build substitutions, log, frontend o co
 deploy verificare che il service account Cloud Tasks disponga di `roles/run.invoker` sul servizio
 VERA e che il service account VERA sia quello atteso dal middleware OIDC del backend.
 
+### Modalità standby
+
+`LABEL_RUNNER_MODE=standby` permette di pubblicare e verificare il servizio privato, la sua
+identità, il bucket e il montaggio del segreto prima di attivare una configurazione operativa. In
+questa modalità `/health` è disponibile agli invoker autorizzati, mentre ogni POST a
+`/internal/label-jobs` risponde `503 RUNNER_STANDBY`: non viene letto alcun file e OpenRouter non
+viene invocato.
+
 ## Elaborazione e retry
 
 Il runner acquisisce un lease ottimistico prima di valutare un'analisi. Una task duplicata riceve un

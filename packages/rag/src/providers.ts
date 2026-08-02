@@ -6,6 +6,16 @@ export interface EmbeddingProvider {
   embedTexts(texts: readonly string[]): Promise<readonly (readonly number[])[]>;
 }
 
+/**
+ * Separate document/query embedding methods for a governance worker. They
+ * prevent a source-ingestion path from accidentally treating a search query as
+ * a source document while retaining compatibility with the generic RAG port.
+ */
+export interface PrivateLabelEmbeddingProvider extends EmbeddingProvider {
+  embedDocuments(texts: readonly string[]): Promise<readonly (readonly number[])[]>;
+  embedQuery(text: string): Promise<readonly number[]>;
+}
+
 export interface RuleDraftProviderResult {
   readonly rawOutput: string;
   readonly attempts: number;

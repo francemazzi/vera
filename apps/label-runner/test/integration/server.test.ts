@@ -1,10 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createLabelRunnerServer } from "../../src/server.js";
+import { createLabelRunnerServer, createLabelRunnerStandbyServer } from "../../src/server.js";
 
 const analysisId = "00000000-0000-4000-8000-000000000201";
 
 describe("Label runner HTTP boundary", () => {
+  it("reports readiness but refuses jobs while it is in standby", async () => {
+    const server = await createLabelRunnerStandbyServer();
+
+    const health = await server.inject({ method: "GET", url: "/health" });
+    expect(health.statusCode).toBe(200);
+    expect(health.json()).toMatchObject({ status: "ok", mode: "standby" });
+
+    const job = await server.inject({
+      method: "POST",
+      url: "/internal/label-jobs",
+      payload: { analysisId },
+    });
+    expect(job.statusCode).toBe(503);
+    expect(job.json()).toEqual({ status: "error", code: "RUNNER_STANDBY" });
+    await server.close();
+  });
+
   it("rejects a task without a verified OIDC identity", async () => {
     const authorizer = { authorize: vi.fn().mockRejectedValue(new Error("missing token")) };
     const processor = { process: vi.fn() };
