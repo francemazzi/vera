@@ -17,7 +17,7 @@
     "@vera/contracts": "workspace:*",
     "@vera/rag": "workspace:*",
     "fastify": "catalog:",
-    "google-auth-library": "9.15.1",
+    "google-auth-library": "10.9.1",
     "zod": "catalog:"
   },
   "devDependencies": {
