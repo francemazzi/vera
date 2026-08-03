@@ -11,7 +11,7 @@
     "test:integration": "vitest run test/integration"
   },
   "dependencies": {
-    "@google-cloud/storage": "7.19.0",
+    "@google-cloud/storage": "7.21.0",
     "@langchain/langgraph": "^1.4.8",
     "@vera/contracts": "workspace:*",
     "@vera/rag": "workspace:*",
