@@ -15,7 +15,7 @@ function embedding(value = 0.25): readonly number[] {
 
 function responseFor(
   vectors: readonly (readonly number[])[],
-  model: string = OPENROUTER_GEMINI_EMBEDDING_MODEL,
+  model = "gemini-embedding-001",
 ): Response {
   return new Response(
     JSON.stringify({
@@ -46,7 +46,7 @@ describe("OpenRouterEmbeddingProvider", () => {
       dimensions: 1_536,
       input_type: "search_document",
       input: ["Synthetic official source text."],
-      provider: { data_collection: "deny", order: ["google"], zdr: true },
+      provider: { data_collection: "deny", order: ["google-vertex"], zdr: true },
     });
     expect(vectors[0]).toHaveLength(1_536);
   });

@@ -74,8 +74,9 @@ describe("OpenRouter source classifier", () => {
     expect(request).toMatchObject({
       model: SOURCE_CLASSIFICATION_MODEL,
       temperature: 0,
+      reasoning: { max_tokens: 512, exclude: true },
       provider: {
-        order: ["google"],
+        order: ["google-vertex"],
         allow_fallbacks: false,
         require_parameters: true,
         data_collection: "deny",

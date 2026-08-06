@@ -18,11 +18,15 @@ import { SourceDiscoveryJobSchema } from "./source-discovery-jobs.js";
 import type { SourceDiscoveryJob } from "./source-discovery-jobs.js";
 
 const SourceDiscoveryWorkerInputEnvelopeSchema = z
-  .object({ data: SourceDiscoveryWorkerInputSchema })
+  .object({
+    status: z.literal("success"),
+    data: SourceDiscoveryWorkerInputSchema,
+  })
   .strict();
 
 const SourceDiscoveryClaimEnvelopeSchema = z
   .object({
+    status: z.literal("success"),
     data: z
       .object({
         // The backend's private worker DTO uses the resource name `runId`.
@@ -143,15 +147,14 @@ function errorFromBackend(error: unknown): SourceDiscoveryBackendClientError {
   );
 }
 
-/** OIDC-only client for the backend's private source-discovery endpoints. */
+/** OIDC client with an explicit development-only local bearer bridge. */
 export function createSourceDiscoveryBackendClient(options: {
   readonly backendUrl: string;
   readonly audience: string;
   readonly auth?: Pick<GoogleAuth, "getIdTokenClient">;
-  /** Used only so the development worker can boot on a loopback backend. */
-  readonly allowLoopbackHttp?: boolean;
+  readonly localToken?: string;
 }): SourceDiscoveryBackendClient {
-  const backendUrl = trimBaseUrl(options.backendUrl, options.allowLoopbackHttp === true);
+  const backendUrl = trimBaseUrl(options.backendUrl, options.localToken !== undefined);
   const auth = options.auth ?? new GoogleAuth();
   let client: Promise<IdTokenClient> | undefined;
   const idTokenClient = (): Promise<IdTokenClient> => {
@@ -160,6 +163,21 @@ export function createSourceDiscoveryBackendClient(options: {
   };
   const request = async (path: string, method: string, data?: unknown): Promise<unknown> => {
     try {
+      if (options.localToken !== undefined) {
+        const response = await fetch(`${backendUrl}${path}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${options.localToken}`,
+            ...(data === undefined ? {} : { "Content-Type": "application/json" }),
+          },
+          ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+          signal: AbortSignal.timeout(120_000),
+        });
+        if (!response.ok) {
+          throw new Error(`Source discovery backend returned HTTP ${String(response.status)}`);
+        }
+        return response.json();
+      }
       const response = await (
         await idTokenClient()
       ).request({

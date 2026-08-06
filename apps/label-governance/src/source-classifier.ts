@@ -106,8 +106,9 @@ export function createOpenRouterSourceClassifier(options: {
             model: SOURCE_CLASSIFICATION_MODEL,
             temperature: 0,
             max_tokens: 8_192,
+            reasoning: { max_tokens: 512, exclude: true },
             provider: {
-              order: ["google"],
+              order: ["google-vertex"],
               allow_fallbacks: false,
               // Refuse a route which cannot honour the strict JSON Schema
               // contract instead of silently degrading to prose output.

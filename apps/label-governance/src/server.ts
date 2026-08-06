@@ -104,6 +104,7 @@ export async function createLabelGovernanceServer(options: {
       return reply.code(200).send({ status: "success", meta: result });
     } catch (error) {
       if (error instanceof SourceGovernanceJobError) {
+        request.log.warn({ err: error }, "Source governance job failed");
         if (!error.retryable) {
           // The processor has already stored a terminal FAILED state. A 2xx
           // acknowledgement is essential: Cloud Tasks retries every non-2xx.
@@ -117,6 +118,7 @@ export async function createLabelGovernanceServer(options: {
           code: "SOURCE_JOB_RETRYABLE",
         });
       }
+      request.log.error({ err: error }, "Source governance job failed unexpectedly");
       throw error;
     }
   });
@@ -143,6 +145,7 @@ export async function createLabelGovernanceServer(options: {
       return reply.code(200).send({ status: "success", meta: result });
     } catch (error) {
       if (error instanceof SourceDiscoveryJobError) {
+        request.log.warn({ err: error }, "Source discovery job failed");
         if (!error.retryable) {
           return reply.code(200).send({ status: "success", meta: { terminalFailure: true } });
         }
@@ -151,6 +154,7 @@ export async function createLabelGovernanceServer(options: {
           code: "SOURCE_DISCOVERY_RETRYABLE",
         });
       }
+      request.log.error({ err: error }, "Source discovery job failed unexpectedly");
       throw error;
     }
   });

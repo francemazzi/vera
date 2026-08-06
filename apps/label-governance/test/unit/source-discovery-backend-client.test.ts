@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createSourceDiscoveryBackendClient } from "../../src/source-discovery-backend-client.js";
 import {
@@ -19,6 +19,10 @@ type PrivateBackendRequest = Readonly<{
 }>;
 
 describe("source discovery backend client", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("normalizes optional authority-profile metadata emitted by the backend", () => {
     const profile = OfficialAuthorityProfileSchema.parse({
       id: profileId,
@@ -71,10 +75,13 @@ describe("source discovery backend client", () => {
     const request = vi
       .fn<(input: PrivateBackendRequest) => Promise<{ readonly data: unknown }>>()
       .mockImplementation(({ url }) => {
-        if (url.endsWith("/worker-input")) return Promise.resolve({ data: { data: workerInput } });
+        if (url.endsWith("/worker-input")) {
+          return Promise.resolve({ data: { status: "success", data: workerInput } });
+        }
         if (url.endsWith("/worker-claim")) {
           return Promise.resolve({
             data: {
+              status: "success",
               data: {
                 runId,
                 status: "RUNNING",
@@ -172,5 +179,52 @@ describe("source discovery backend client", () => {
         diagnostics: { profilesConsulted: [profileId], skippedProfiles: [], skippedCandidates: [] },
       },
     });
+  });
+
+  it("uses the explicit local bearer without requesting a Google identity token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "success",
+          data: {
+            runId,
+            workspaceId: null,
+            scope: {
+              marketCountryCode: "IT",
+              regulatoryAreas: ["EU"],
+              productCategory: "generic-prepacked",
+              evaluationDate: "2026-08-05",
+              language: "it",
+              templateVersion: "global-food-label-preliminary-v1@1",
+              requiredTopics: ["ingredients"],
+            },
+            authorityProfiles: [],
+            existingDeduplicationKeys: [],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const getIdTokenClient = vi.fn();
+    const client = createSourceDiscoveryBackendClient({
+      backendUrl: "http://127.0.0.1:8084",
+      audience: "http://127.0.0.1:8084",
+      localToken: "local-governance-token",
+      auth: { getIdTokenClient },
+    });
+
+    await client.getInput({ kind: "DISCOVER_OFFICIAL_SOURCES", discoveryRunId: runId });
+
+    expect(getIdTokenClient).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://127.0.0.1:8084/internal/label/source-discovery/${runId}/worker-input`,
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer local-governance-token",
+        }),
+      }),
+    );
   });
 });

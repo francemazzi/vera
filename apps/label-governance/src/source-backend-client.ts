@@ -127,10 +127,16 @@ const SourceWorkerInputResponseSchema = z
   })
   .strict();
 
-const WorkerInputEnvelopeSchema = z.object({ data: SourceWorkerInputResponseSchema }).strict();
+const WorkerInputEnvelopeSchema = z
+  .object({
+    status: z.literal("success"),
+    data: SourceWorkerInputResponseSchema,
+  })
+  .strict();
 
 const ClaimEnvelopeSchema = z
   .object({
+    status: z.literal("success"),
     data: z
       .object({
         candidateId: z.uuid(),
@@ -143,7 +149,13 @@ const ClaimEnvelopeSchema = z
         lease: z.object({ expiresAt: z.iso.datetime({ offset: true }) }).nullable(),
       })
       .strict(),
-    meta: z.object({ acquired: z.boolean(), replayed: z.boolean() }).strict(),
+    meta: z
+      .object({
+        acquired: z.boolean(),
+        replayed: z.boolean(),
+        leaseExpiresAt: z.iso.datetime({ offset: true }).optional(),
+      })
+      .strict(),
   })
   .strict();
 
@@ -230,6 +242,7 @@ export type SourceWorkerProcessing = z.infer<typeof SourceWorkerProcessingSchema
 
 const ProcessingReservationEnvelopeSchema = z
   .object({
+    status: z.literal("success"),
     data: z.unknown(),
     meta: z
       .object({

@@ -12,11 +12,12 @@ const MAX_RESPONSE_BYTES = 8_000_000;
 
 export const OPENROUTER_GEMINI_EMBEDDING_MODEL = "google/gemini-embedding-001" as const;
 export const OPENROUTER_GEMINI_EMBEDDING_DIMENSIONS = 1_536 as const;
+const OPENROUTER_GEMINI_EMBEDDING_RESPONSE_MODEL = "gemini-embedding-001";
 
 const ROUTING_POLICY = Object.freeze({
   allow_fallbacks: false,
   data_collection: "deny" as const,
-  order: ["google"],
+  order: ["google-vertex"],
   zdr: true,
 });
 
@@ -73,7 +74,7 @@ function isRetryableStatus(status: number): boolean {
 }
 
 function parseEmbeddingItems(value: unknown, expectedCount: number): readonly (readonly number[])[] {
-  if (!isRecord(value) || value["model"] !== OPENROUTER_GEMINI_EMBEDDING_MODEL) {
+  if (!isRecord(value) || value["model"] !== OPENROUTER_GEMINI_EMBEDDING_RESPONSE_MODEL) {
     throw new RagError("EGRESS_UNAVAILABLE", "OpenRouter returned an unexpected embedding model");
   }
   const data = value["data"];

@@ -85,7 +85,7 @@ async function main(): Promise<void> {
       backend: createSourceDiscoveryBackendClient({
         backendUrl: config.backendUrl,
         audience: config.backendAudience,
-        allowLoopbackHttp: config.localAuthToken !== null,
+        ...(config.localAuthToken === null ? {} : { localToken: config.localAuthToken }),
       }),
       searchTool: createOfficialAuthoritySearchTool(),
       acquirer: createGcsOfficialSourceAcquirer({ bucketName: config.bucketName }),

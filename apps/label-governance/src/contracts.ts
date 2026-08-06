@@ -61,10 +61,31 @@ export const SourceClassificationRequestSchema = z
 
 export type SourceClassificationRequest = z.infer<typeof SourceClassificationRequestSchema>;
 
+const PROVIDER_SCHEMA_CONSTRAINTS = new Set([
+  "format",
+  "pattern",
+  "minimum",
+  "maximum",
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems",
+]);
+
+function providerCompatibleSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(providerCompatibleSchema);
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !PROVIDER_SCHEMA_CONSTRAINTS.has(key))
+      .map(([key, nested]) => [key, providerCompatibleSchema(nested)]),
+  );
+}
+
 export const SOURCE_CLASSIFICATION_JSON_SCHEMA = (() => {
   const schema = SourceClassificationProposalSchema.toJSONSchema({ target: "draft-07" });
-  const clone = structuredClone(schema);
-  delete clone.$schema;
+  const clone = providerCompatibleSchema(structuredClone(schema)) as Record<string, unknown>;
+  delete clone["$schema"];
   return Object.freeze(clone) as Readonly<Record<string, unknown>>;
 })();
 

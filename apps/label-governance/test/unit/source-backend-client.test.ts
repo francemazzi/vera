@@ -10,6 +10,7 @@ describe("source backend client artifact reservation", () => {
   it("preserves the curated official-HTML format from the private worker input", async () => {
     const request = vi.fn().mockResolvedValue({
       data: {
+        status: "success",
         data: {
           candidateId,
           classificationRunId,
@@ -66,6 +67,7 @@ describe("source backend client artifact reservation", () => {
   it("accepts the backend verified-RAG lifecycle in a strict worker lease payload", async () => {
     const request = vi.fn().mockResolvedValue({
       data: {
+        status: "success",
         data: {
           candidateId,
           kind: "INDEX_VERIFIED",
@@ -98,6 +100,7 @@ describe("source backend client artifact reservation", () => {
   it("sends a PROCESSING artifact preflight and exposes terminal duplicate metadata", async () => {
     const request = vi.fn().mockResolvedValue({
       data: {
+        status: "success",
         data: { candidateId },
         meta: { replayed: false, duplicate: true },
       },
