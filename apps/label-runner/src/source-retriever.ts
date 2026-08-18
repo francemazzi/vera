@@ -1,5 +1,5 @@
 import { sha256CanonicalJson } from "@vera/contracts";
-import type { PrivateLabelRagIndex, PrivateLabelRagRetrievedChunk } from "@vera/rag";
+import { normalizeLabelingTopic, type PrivateLabelRagIndex, type PrivateLabelRagRetrievedChunk } from "@vera/rag";
 
 import type {
   PreliminaryTemplate,
@@ -78,7 +78,10 @@ export function createChromaLabelSourceRetriever(options: {
             evaluationDate: input.scope.evaluationDate,
             language: input.scope.language,
             productCategory: input.productCategory,
-            labelingTopics: control.topics.length > 0 ? control.topics : undefined,
+            labelingTopics:
+              control.topics.length > 0
+                ? [...new Set(control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean))]
+                : undefined,
             topK: 3,
           });
           return {

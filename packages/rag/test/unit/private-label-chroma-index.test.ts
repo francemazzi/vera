@@ -284,10 +284,11 @@ describe("ChromaPrivateLabelRagIndex", () => {
     expect(chroma.lastQuery?.where).toEqual({
       $and: expect.arrayContaining([
         {
-          $or: [
+          $or: expect.arrayContaining([
             { labeling_topics: { $contains: "allergens" } },
+            { labeling_topics: { $contains: "ALLERGENS" } },
             { labeling_topics: { $contains: "ingredients" } },
-          ],
+          ]),
         },
       ]),
     });

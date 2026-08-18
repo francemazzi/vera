@@ -203,12 +203,52 @@ describe("LabelJobProcessor", () => {
     expect(evaluate).not.toHaveBeenCalled();
   });
 
-  it("records source readiness instead of calling the model when any governed RAG control is uncovered", async () => {
-    const fail = vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve());
+  it("evaluates the IT pilot when RAG citations are missing and leaves REVIEW_REQUIRED to the evaluator", async () => {
+    const complete = vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve());
     const evaluate = vi.fn<LabelEvaluator["evaluate"]>(() => Promise.resolve(evaluation()));
     const processor = createLabelJobProcessor({
       backend: {
         getInput: vi.fn<LabelBackendClient["getInput"]>(() => Promise.resolve(input())),
+        claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
+        complete,
+        fail: vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve()),
+      },
+      pageStore: {
+        loadNormalizedPages: vi.fn<LabelPageStore["loadNormalizedPages"]>(() =>
+          Promise.resolve([{ page: 1, bytes: new Uint8Array([1]) }]),
+        ),
+      },
+      evaluator: { evaluate },
+      sourceRetriever: {
+        retrieve: vi.fn().mockResolvedValue({
+          controls: LABEL_FIELD_CODES.map((fieldCode) => ({ fieldCode, citations: [] })),
+          sourceSnapshot,
+        }),
+      },
+      createInvocationId: () => "runner-invocation-it-pilot",
+    });
+
+    await expect(processor.process(analysisId)).resolves.toEqual({ replayed: false });
+    expect(evaluate).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("records source readiness instead of calling the model when a global RAG control is uncovered", async () => {
+    const fail = vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve());
+    const evaluate = vi.fn<LabelEvaluator["evaluate"]>(() => Promise.resolve(evaluation()));
+    const globalInput: RunnerInput = {
+      ...input(),
+      preliminaryTemplate: {
+        ...preliminaryTemplate,
+        id: "global-food-label-preliminary-v1",
+        promptVersion: "label-preliminary-rag-v1",
+        citations: [],
+        sourceArchives: [],
+      },
+    };
+    const processor = createLabelJobProcessor({
+      backend: {
+        getInput: vi.fn<LabelBackendClient["getInput"]>(() => Promise.resolve(globalInput)),
         claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
         complete: vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve()),
         fail,
@@ -233,6 +273,70 @@ describe("LabelJobProcessor", () => {
     expect(fail).toHaveBeenCalledWith(
       expect.objectContaining({ analysisId, expectedVersion: 3, failureCode: "SOURCE_READINESS_BLOCKED" }),
     );
+  });
+
+  it("does not block a global run when only sector-specific controls lack citations", async () => {
+    const complete = vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve());
+    const evaluate = vi.fn<LabelEvaluator["evaluate"]>(() =>
+      Promise.resolve({
+        ...evaluation(),
+        promptVersion: "label-preliminary-rag-v1",
+        rulePackVersion: "global-food-label-preliminary-v1@1",
+      }),
+    );
+    const citation = {
+      chunkId: "00000000-0000-4000-8000-000000000109:article-1:0:deadbeef",
+      sourceVersionId: "00000000-0000-4000-8000-000000000109",
+      sourceContentHash: "c".repeat(64),
+      title: "Verified official source",
+      documentType: "REGULATION",
+      actReference: "Regulation 1/2026",
+      canonicalReference: "https://official.example.test/act/1",
+      pdfReference: null,
+      sectionId: "article-1",
+      sectionTitle: "Article 1",
+      pageNumber: 1,
+      quote: "Mandatory food-label information.",
+    };
+    const processor = createLabelJobProcessor({
+      backend: {
+        getInput: vi.fn<LabelBackendClient["getInput"]>(() =>
+          Promise.resolve({
+            ...input(),
+            preliminaryTemplate: {
+              ...preliminaryTemplate,
+              id: "global-food-label-preliminary-v1" as const,
+              promptVersion: "label-preliminary-rag-v1" as const,
+              citations: [],
+              sourceArchives: [],
+            },
+          }),
+        ),
+        claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
+        complete,
+        fail: vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve()),
+      },
+      pageStore: {
+        loadNormalizedPages: vi.fn<LabelPageStore["loadNormalizedPages"]>(() =>
+          Promise.resolve([{ page: 1, bytes: new Uint8Array([1]) }]),
+        ),
+      },
+      evaluator: { evaluate },
+      sourceRetriever: {
+        retrieve: vi.fn().mockResolvedValue({
+          controls: LABEL_FIELD_CODES.map((fieldCode) => ({
+            fieldCode,
+            citations: fieldCode === "biologico" ? [] : [citation],
+          })),
+          sourceSnapshot,
+        }),
+      },
+      createInvocationId: () => "runner-invocation-sector",
+    });
+
+    await expect(processor.process(analysisId)).resolves.toEqual({ replayed: false });
+    expect(evaluate).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(1);
   });
 
   it("lets Cloud Tasks retry only transient OpenRouter failures", async () => {

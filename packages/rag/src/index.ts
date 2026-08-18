@@ -13,6 +13,7 @@ export type {
   ChromaVectorRecord,
   ChromaVectorStore,
 } from "./chroma-client.js";
+export { labelingTopicQueryValues, normalizeLabelingTopic } from "./labeling-topic.js";
 export { ChromaPrivateLabelRagIndex } from "./private-label-chroma-index.js";
 export type {
   ChromaPrivateLabelRagIndexOptions,

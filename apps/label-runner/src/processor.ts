@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import type { LabelBackendClient } from "./backend-client.js";
-import { RunnerEvaluationSchema } from "./contracts.js";
+import { RunnerEvaluationSchema, type PreliminaryTemplate } from "./contracts.js";
 import type { LabelEvaluator } from "./openrouter-evaluator.js";
 import { OpenRouterLabelEvaluationError } from "./openrouter-evaluator.js";
 import type { LabelPageStore } from "./page-store.js";
 import { fallbackRegulatoryScope } from "./source-retriever.js";
-import type { LabelSourceRetriever } from "./source-retriever.js";
+import type { LabelRetrievedSources, LabelSourceRetriever } from "./source-retriever.js";
 
 export interface LabelJobProcessor {
   process(analysisId: string): Promise<{ readonly replayed: boolean }>;
@@ -23,6 +23,22 @@ export class SourceReadinessBlockedError extends Error {
     super("Verified source coverage is incomplete for this analysis");
     this.name = "SourceReadinessBlockedError";
   }
+}
+
+function isSourceReadinessBlocked(
+  template: PreliminaryTemplate,
+  retriever: LabelSourceRetriever | undefined,
+  sources: LabelRetrievedSources,
+): boolean {
+  if (!retriever) return false;
+  // The IT pilot degrades uncovered non-sector controls to REVIEW_REQUIRED.
+  if (template.id === "eu-it-preliminary-v1") return false;
+  const sectorSpecific = new Set(
+    template.controls.filter((control) => control.sectorSpecific === true).map((control) => control.fieldCode),
+  );
+  return sources.controls.some(
+    (control) => control.citations.length === 0 && !sectorSpecific.has(control.fieldCode),
+  );
 }
 
 export function createLabelJobProcessor(options: {
@@ -63,10 +79,7 @@ export function createLabelJobProcessor(options: {
               })),
               sourceSnapshot: input.preliminaryTemplate.sourceSnapshot,
             };
-        if (
-          options.sourceRetriever &&
-          sources.controls.some((control) => control.citations.length === 0)
-        ) {
+        if (isSourceReadinessBlocked(input.preliminaryTemplate, options.sourceRetriever, sources)) {
           throw new SourceReadinessBlockedError();
         }
         const evaluated = await options.evaluator.evaluate({

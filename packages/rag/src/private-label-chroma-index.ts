@@ -2,6 +2,7 @@ import { sha256CanonicalJson } from "@vera/contracts";
 
 import { splitRagText } from "./chunking.js";
 import { RagError } from "./errors.js";
+import { labelingTopicQueryValues, normalizeLabelingTopic } from "./labeling-topic.js";
 import type { ChromaCollection, ChromaMetadata, ChromaVectorMatch, ChromaVectorStore } from "./chroma-client.js";
 import type { PrivateLabelEmbeddingProvider } from "./providers.js";
 import {
@@ -164,7 +165,9 @@ function chunkMetadata(chunk: PrivateLabelRagChunk): ChromaMetadata {
   };
   if (chunk.productCategories.length > 0) metadata["product_categories"] = chunk.productCategories;
   if ((chunk.labelingTopics?.length ?? 0) > 0) {
-    metadata["labeling_topics"] = chunk.labelingTopics ?? [];
+    metadata["labeling_topics"] = [
+      ...new Set((chunk.labelingTopics ?? []).map((topic) => normalizeLabelingTopic(topic)).filter(Boolean)),
+    ];
   }
   return Object.freeze(metadata);
 }
@@ -212,7 +215,9 @@ function queryFilter(query: ParsedPrivateLabelRagQuery, scope: PrivateLabelRagSc
   }
   if (query.labelingTopics !== undefined) {
     filters.push({
-      $or: query.labelingTopics.map((topic) => ({ labeling_topics: { $contains: topic } })),
+      $or: query.labelingTopics.flatMap((topic) =>
+        labelingTopicQueryValues(topic).map((value) => ({ labeling_topics: { $contains: value } })),
+      ),
     });
   }
   return { $and: filters };
