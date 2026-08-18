@@ -33,7 +33,7 @@ function isSourceReadinessBlocked(
   if (!retriever) return false;
   // The IT pilot degrades uncovered non-sector controls to REVIEW_REQUIRED.
   if (template.id === "eu-it-preliminary-v1") return false;
-  const sectorSpecific = new Set(
+  const sectorSpecific = new Set<string>(
     template.controls.filter((control) => control.sectorSpecific === true).map((control) => control.fieldCode),
   );
   return sources.controls.some(
