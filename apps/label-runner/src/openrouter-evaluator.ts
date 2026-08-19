@@ -10,6 +10,8 @@ import type {
 import type { LabelRetrievedSources } from "./source-retriever.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+/** 24 controls plus retrieved citation IDs overflow 4096 once Chroma is populated. */
+const EVALUATION_MAX_TOKENS = 8_192;
 
 export class OpenRouterLabelEvaluationError extends Error {
   public constructor(
@@ -192,10 +194,15 @@ function normalizedControls(input: {
   return reconciled.map(({ control, fieldCode, repaired }) => {
     // A repaired control keeps no evidence: the model never named it, so its
     // assessment cannot be attributed and the result abstains.
-    const citations = repaired
+    const retrieved =
+      input.sources.controls.find((entry) => entry.fieldCode === fieldCode)?.citations ?? [];
+    const cited = repaired
       ? []
       : citationsForControl(fieldCode, control.citationChunkIds, input.sources);
-    const mustReview = repaired || citations.length === 0;
+    // A 1×1 or illegible page still needs the retrieved excerpts on the
+    // review record. COVERAGE_DETECTED remains reserved for a model citation.
+    const citations = cited.length > 0 ? cited : repaired ? [] : retrieved.slice(0, 3);
+    const mustReview = repaired || cited.length === 0;
     // A malformed region is dropped, never corrected: the zoom is evidence, and
     // an approximate one would point the reviewer at the wrong place.
     const box = repaired ? undefined : RunnerBoundingBoxSchema.safeParse(control.boundingBox);
@@ -337,7 +344,7 @@ export function createOpenRouterLabelEvaluator(options: {
             // the full 24-control contract is then enforced locally by Zod and
             // again by the backend before any result is persisted.
             response_format: { type: "json_object" },
-            max_tokens: 4096,
+            max_tokens: EVALUATION_MAX_TOKENS,
             messages: [
               {
                 role: "system",

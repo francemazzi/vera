@@ -106,7 +106,7 @@ describe("OpenRouter preliminary label evaluator", () => {
       }),
     );
     expect(request["response_format"]).toEqual({ type: "json_object" });
-    expect(request["max_tokens"]).toBe(4096);
+    expect(request["max_tokens"]).toBe(8192);
     expect(JSON.stringify(request["messages"])).toContain("The root key must be controls");
     expect(JSON.stringify(request)).not.toContain("synthetic-openrouter-key-1234");
     expect(JSON.stringify(request)).not.toContain("sourceCitation");
@@ -196,6 +196,42 @@ describe("OpenRouter preliminary label evaluator", () => {
     );
 
     expect(result.controls.every((control) => control.boundingBox === undefined)).toBe(true);
+  });
+
+  it("keeps retrieved excerpts on REVIEW_REQUIRED when the model does not cite them", async () => {
+    const retrieved = {
+      chunkId: "00000000-0000-4000-8000-000000000201:art-9:0:aaaaaaaaaaaaaaaa",
+      sourceVersionId: "00000000-0000-4000-8000-000000000201",
+      sourceContentHash: "a".repeat(64),
+      title: "Regolamento (UE) n. 1169/2011",
+      documentType: "REGULATION",
+      actReference: "Reg. (UE) 1169/2011",
+      canonicalReference: "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32011R1169",
+      pdfReference: null,
+      sectionId: "art-9",
+      sectionTitle: "Indicazioni obbligatorie",
+      pageNumber: 12,
+      quote: "L'etichetta deve riportare le informazioni obbligatorie.",
+    } as const;
+    const base = evaluationInput();
+    const input = {
+      ...base,
+      sources: {
+        ...base.sources,
+        controls: base.sources.controls.map((control) =>
+          control.fieldCode === "elenco_ingredienti"
+            ? { ...control, citations: [retrieved] }
+            : control,
+        ),
+      },
+    };
+
+    const result = await evaluatorWith(fetchReturning(responseForAllPreliminary())).evaluate(input);
+    const control = result.controls.find((entry) => entry.fieldCode === "elenco_ingredienti");
+    expect(control).toMatchObject({
+      indicator: "REVIEW_REQUIRED",
+      citations: [retrieved],
+    });
   });
 
   it("never asks for a paid retry of a deterministic schema violation", async () => {

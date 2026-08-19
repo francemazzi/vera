@@ -2,6 +2,7 @@ import { sha256CanonicalJson } from "@vera/contracts";
 import {
   normalizeLabelingTopic,
   type PrivateLabelRagIndex,
+  type PrivateLabelRagQuery,
   type PrivateLabelRagRetrievedChunk,
 } from "@vera/rag";
 
@@ -29,6 +30,8 @@ export interface LabelSourceRetriever {
 }
 
 function citation(chunk: PrivateLabelRagRetrievedChunk): RunnerSourceCitation {
+  const quote = chunk.citation.quote.trim().slice(0, 1_000);
+  const pageNumber = chunk.citation.pageNumber;
   return {
     chunkId: chunk.citation.chunkId,
     sourceVersionId: chunk.citation.sourceVersionId,
@@ -40,8 +43,8 @@ function citation(chunk: PrivateLabelRagRetrievedChunk): RunnerSourceCitation {
     pdfReference: chunk.citation.pdfReference,
     sectionId: chunk.citation.sectionId,
     sectionTitle: chunk.citation.sectionTitle,
-    pageNumber: chunk.citation.pageNumber,
-    quote: chunk.citation.quote,
+    pageNumber: pageNumber !== null && pageNumber >= 1 ? pageNumber : null,
+    quote,
   };
 }
 
@@ -59,6 +62,51 @@ function distinctCitations(
     .slice(0, 3);
 }
 
+type ControlRetrievalQuery = Readonly<{
+  queryText: string;
+  workspaceId: string;
+  jurisdictions: readonly string[];
+  evaluationDate: string;
+  language: string;
+  productCategory: string;
+  labelingTopics?: readonly string[];
+}>;
+
+/**
+ * Topic and product-category `$contains` filters are best-effort. Older Chroma
+ * servers reject list metadata; retry without them so a verified source remains
+ * visible to the IT pilot.
+ */
+async function retrieveControlChunks(
+  ragIndex: Pick<PrivateLabelRagIndex, "retrievePreliminarySafely">,
+  query: ControlRetrievalQuery,
+): Promise<readonly PrivateLabelRagRetrievedChunk[]> {
+  const scoped = {
+    queryText: query.queryText,
+    workspaceId: query.workspaceId,
+    jurisdictions: [...query.jurisdictions],
+    evaluationDate: query.evaluationDate,
+    language: query.language,
+    topK: 3,
+  };
+  const attempts: PrivateLabelRagQuery[] = [
+    {
+      ...scoped,
+      productCategory: query.productCategory,
+      ...(query.labelingTopics && query.labelingTopics.length > 0
+        ? { labelingTopics: [...query.labelingTopics] }
+        : {}),
+    },
+    { ...scoped, productCategory: query.productCategory },
+    scoped,
+  ];
+  for (const attempt of attempts) {
+    const result = await ragIndex.retrievePreliminarySafely(attempt);
+    if (result.status === "AVAILABLE" && result.chunks.length > 0) return result.chunks;
+  }
+  return [];
+}
+
 /**
  * RAG is queried once per template control. Retrieval failure is deliberately
  * converted into an empty source set: the evaluator then emits REVIEW_REQUIRED
@@ -71,7 +119,10 @@ export function createChromaLabelSourceRetriever(options: {
     async retrieve(input) {
       const controls = await Promise.all(
         input.template.controls.map(async (control): Promise<LabelControlSourceContext> => {
-          const result = await options.ragIndex.retrievePreliminarySafely({
+          const labelingTopics = [
+            ...new Set(control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean)),
+          ];
+          const chunks = await retrieveControlChunks(options.ragIndex, {
             queryText: [control.fieldCode, ...control.topics, control.instruction]
               .filter(Boolean)
               .join(" — "),
@@ -80,19 +131,11 @@ export function createChromaLabelSourceRetriever(options: {
             evaluationDate: input.scope.evaluationDate,
             language: input.scope.language,
             productCategory: input.productCategory,
-            labelingTopics:
-              control.topics.length > 0
-                ? [
-                    ...new Set(
-                      control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean),
-                    ),
-                  ]
-                : undefined,
-            topK: 3,
+            ...(labelingTopics.length > 0 ? { labelingTopics } : {}),
           });
           return {
             fieldCode: control.fieldCode,
-            citations: result.status === "AVAILABLE" ? distinctCitations(result.chunks) : [],
+            citations: distinctCitations(chunks),
           };
         }),
       );

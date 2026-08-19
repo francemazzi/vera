@@ -76,6 +76,58 @@ describe("Chroma label source retriever", () => {
     expect(result.sourceSnapshot).toMatch(/^[0-9a-f]{64}$/u);
   });
 
+  it("retries without topic and category filters when the first query is empty", async () => {
+    const retrievePreliminarySafely = vi.fn(async (query: { labelingTopics?: unknown; productCategory?: unknown }) => {
+      if (query.labelingTopics !== undefined || query.productCategory !== undefined) {
+        return {
+          status: "UNAVAILABLE" as const,
+          scope: "PRELIMINARY" as const,
+          requiresReview: true as const,
+          reason: "VECTOR_STORE_INVALID: filter",
+        };
+      }
+      return {
+        status: "AVAILABLE" as const,
+        scope: "PRELIMINARY" as const,
+        requiresReview: true as const,
+        chunks: [
+          {
+            ...citation,
+            sourceId: "00000000-0000-4000-8000-000000000202",
+            workspaceScope: "00000000-0000-4000-8000-000000000203",
+            sourceState: "VERIFIED" as const,
+            validityStatus: "ADMIN_DECLARED" as const,
+            jurisdiction: "EU",
+            language: "it",
+            revisionLabel: "2026-01",
+            validity: { validFrom: "2020-01-01T00:00:00.000Z", validTo: null },
+            productCategories: ["generic-prepacked"],
+            chunkOrdinal: 0,
+            text: citation.quote,
+            contentHash: "b".repeat(64),
+            score: 0.9,
+            citation,
+          },
+        ],
+      };
+    });
+    const retriever = createChromaLabelSourceRetriever({ ragIndex: { retrievePreliminarySafely } });
+    const result = await retriever.retrieve({
+      workspaceId: "00000000-0000-4000-8000-000000000203",
+      scope: {
+        countryCode: "IT",
+        regulatoryAreas: ["EU"],
+        jurisdictions: ["EU", "IT"],
+        language: "it",
+        evaluationDate: "2026-07-20T00:00:00.000Z",
+      },
+      productCategory: "generic-prepacked",
+      template: preliminaryTemplate,
+    });
+    expect(result.controls[0]?.citations).toEqual([citation]);
+    expect(retrievePreliminarySafely).toHaveBeenCalled();
+  });
+
   it("turns a RAG outage into an empty evidence set, never an invented citation", async () => {
     const retriever = createChromaLabelSourceRetriever({
       ragIndex: {
