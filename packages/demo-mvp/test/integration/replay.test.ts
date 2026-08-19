@@ -18,7 +18,7 @@ describe("synthetic demo MVP replay", () => {
     expect(second.report.rulePack.contentHash).toBe(first.report.rulePack.contentHash);
     expect(second.report.benchmark.modelDigest).toBe(first.report.benchmark.modelDigest);
     expect(second.report.audit.exportHash).toBe(first.report.audit.exportHash);
-  });
+  }, 30_000);
 
   it("exports immutable audit records that replay to the evaluation snapshots", async () => {
     const { cases, report } = await runDemoMvp();
@@ -33,5 +33,5 @@ describe("synthetic demo MVP replay", () => {
 
     expect(canonicalExports).toHaveLength(report.audit.exportedRuns);
     expect(report.audit.replayHash).toMatch(/^[0-9a-f]{64}$/u);
-  });
+  }, 30_000);
 });

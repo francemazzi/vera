@@ -186,3 +186,190 @@ model PrivateLabelEvaluationRun {
   @@index([rulePackVersionId])
   @@map("private_label_evaluation_runs")
 }
+
+/// Public Phase 14 durable compliance-source aggregate (TECHNICAL_DEMO).
+model ComplianceSourceRecord {
+  id               String                         @id @db.Uuid
+  type             String
+  domain           String
+  jurisdiction     String
+  title            String
+  stableReference  String
+  validationScope  String
+  payload          Json
+  createdAt        DateTime                       @db.Timestamptz(6) @default(now())
+  versions         ComplianceSourceVersionRecord[]
+
+  @@index([domain, jurisdiction])
+  @@map("compliance_sources")
+}
+
+model ComplianceSourceVersionRecord {
+  id                 String                              @id @db.Uuid
+  sourceId           String                              @db.Uuid
+  source             ComplianceSourceRecord              @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  revision           Int
+  contentHash        String                              @unique
+  replacesVersionId  String?                             @db.Uuid
+  payload            Json
+  createdAt          DateTime                            @db.Timestamptz(6)
+  transitions        ComplianceSourceTransitionRecord[]
+
+  @@unique([sourceId, revision])
+  @@index([sourceId])
+  @@map("compliance_source_versions")
+}
+
+model ComplianceSourceTransitionRecord {
+  id              String                        @id @db.Uuid
+  versionId       String                        @db.Uuid
+  version         ComplianceSourceVersionRecord @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  sequence        Int
+  fromState       String?
+  toState         String
+  actorId         String                        @db.Uuid
+  contentHash     String
+  payload         Json
+  createdAt       DateTime                      @db.Timestamptz(6)
+
+  @@unique([versionId, sequence])
+  @@index([versionId])
+  @@map("compliance_source_transitions")
+}
+
+model RuleCardRecord {
+  id               String                 @id @db.Uuid
+  sourceId         String                 @db.Uuid
+  sourceVersionId  String                 @db.Uuid
+  sourceSection    String
+  validationScope  String
+  payload          Json
+  createdAt        DateTime               @db.Timestamptz(6) @default(now())
+  revisions        RuleCardRevisionRecord[]
+
+  @@index([sourceId, sourceVersionId])
+  @@map("rule_cards")
+}
+
+model RuleCardRevisionRecord {
+  id          String                 @id @db.Uuid
+  cardId      String                 @db.Uuid
+  card        RuleCardRecord         @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  revision    Int
+  contentHash String                 @unique
+  payload     Json
+  createdAt   DateTime               @db.Timestamptz(6)
+  audit       RuleCardAuditRecord[]
+
+  @@unique([cardId, revision])
+  @@index([cardId])
+  @@map("rule_card_revisions")
+}
+
+model RuleCardAuditRecord {
+  id         String                 @id @db.Uuid
+  revisionId String                 @db.Uuid
+  revision   RuleCardRevisionRecord @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  sequence   Int
+  kind       String
+  actorId    String                 @db.Uuid
+  payload    Json
+  createdAt  DateTime               @db.Timestamptz(6)
+
+  @@unique([revisionId, sequence])
+  @@index([revisionId])
+  @@map("rule_card_audit")
+}
+
+model RulePackDraftRecord {
+  id          String   @id @db.Uuid
+  packId      String   @db.Uuid
+  revision    Int
+  contentHash String
+  payload     Json
+  updatedAt   DateTime @db.Timestamptz(6)
+  createdAt   DateTime @db.Timestamptz(6) @default(now())
+
+  @@index([packId])
+  @@map("rule_pack_drafts")
+}
+
+model RulePackDraftContributorRecord {
+  draftId String @db.Uuid
+  actorId String @db.Uuid
+
+  @@id([draftId, actorId])
+  @@index([draftId])
+  @@map("rule_pack_draft_contributors")
+}
+
+model RulePackVersionRecord {
+  id          String   @id @db.Uuid
+  packId      String   @db.Uuid
+  semver      String
+  contentHash String   @unique
+  payload     Json
+  publishedAt DateTime @db.Timestamptz(6)
+  createdAt   DateTime @db.Timestamptz(6) @default(now())
+
+  @@unique([packId, semver])
+  @@index([packId])
+  @@map("rule_pack_versions")
+}
+
+model RulePackVersionExcludedActivatorRecord {
+  versionId String @db.Uuid
+  actorId   String @db.Uuid
+
+  @@id([versionId, actorId])
+  @@index([versionId])
+  @@map("rule_pack_version_excluded_activators")
+}
+
+model RulePackDraftPublicationRecord {
+  draftId           String @id @db.Uuid
+  publishedVersionId String @db.Uuid @unique
+
+  @@map("rule_pack_draft_publications")
+}
+
+model ActivationEventRecord {
+  id                String   @id @db.Uuid
+  packId            String   @db.Uuid
+  sequence          Int
+  type              String
+  versionId         String   @db.Uuid
+  contentHash       String   @unique
+  previousEventHash String?
+  payload           Json
+  recordedAt        DateTime @db.Timestamptz(6)
+
+  @@unique([packId, sequence])
+  @@index([packId])
+  @@map("activation_events")
+}
+
+model RuleTestRunRecord {
+  id                      String   @id @db.Uuid
+  requestId               String   @unique
+  rulePackVersionId       String   @db.Uuid
+  rulePackVersionContentHash String
+  contentHash             String   @unique
+  passed                  Boolean
+  validationScope         String
+  payload                 Json
+  createdAt               DateTime @db.Timestamptz(6) @default(now())
+
+  @@index([rulePackVersionId])
+  @@map("rule_test_runs")
+}
+
+model RulePackImpactReportRecord {
+  id               String   @id @db.Uuid
+  contentHash      String   @unique
+  validationScope  String
+  payload          Json
+  createdAt        DateTime @db.Timestamptz(6) @default(now())
+
+  @@map("rule_pack_impact_reports")
+}

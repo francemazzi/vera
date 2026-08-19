@@ -84,7 +84,8 @@ export function scanContents(
 
   for (const target of targets) {
     const normalizedPath = target.path.replaceAll("\\", "/");
-    if (!allowPaths.has(normalizedPath)) {
+    const pathAllowed = allowPaths.has(normalizedPath);
+    if (!pathAllowed) {
       for (const segment of config.forbiddenPathSegments) {
         const index = normalizedPath.indexOf(segment);
         if (index >= 0)
@@ -92,12 +93,16 @@ export function scanContents(
       }
     }
 
-    TOKEN_PATTERN.lastIndex = 0;
-    for (const match of target.content.matchAll(TOKEN_PATTERN)) {
-      const token = match[0];
-      const tokenHash = hashToken(token);
-      if (forbiddenHashes.has(tokenHash)) {
-        addFinding(findings, target, "FORBIDDEN_TOKEN", `token:${tokenHash}`, match.index);
+    // Allowlisted paths may document private-domain terms (for example the
+    // private LABEL runner) without failing the publishable-tree gate.
+    if (!pathAllowed) {
+      TOKEN_PATTERN.lastIndex = 0;
+      for (const match of target.content.matchAll(TOKEN_PATTERN)) {
+        const token = match[0];
+        const tokenHash = hashToken(token);
+        if (forbiddenHashes.has(tokenHash)) {
+          addFinding(findings, target, "FORBIDDEN_TOKEN", `token:${tokenHash}`, match.index);
+        }
       }
     }
 

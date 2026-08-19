@@ -56,9 +56,10 @@ locali restano sotto percorsi ignorati come `datasets/`, `reports/private/` e `.
 public-boundary scanner viene eseguito su working tree, indice e cronologia raggiungibile.
 
 L'API, il database, RAG e la UI hanno test d'integrazione propri. Il percorso composto verificato
-collega l'MVP sintetico all'API e a PostgreSQL; la UI usa ancora uno store locale e RAG non è
-orchestrato dall'API. Fonti, Rule Card, Rule Pack, attivazioni e test-run non hanno ancora
-persistenza PostgreSQL, e lo storage espone export canonico ma non restore.
+collega l'MVP sintetico all'API e a PostgreSQL. Fonti, Rule Card, Rule Pack, attivazioni e test-run
+hanno persistenza PostgreSQL durable con backup/restore `v3`. L’API può orchestrare il RAG
+editoriale (`/v1/rag/*` e index su versioni `APPROVED`); la UI di revisione usa ancora uno store
+locale e non è ancora collegata all’API.
 
 ## Limiti della release sperimentale
 

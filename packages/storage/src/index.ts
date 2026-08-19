@@ -1,5 +1,11 @@
 export { ContentAddressedBlobStore, type BlobDescriptor } from "./blob-store.js";
-export { canonicalizeStorageBackup, exportStorageBackup, type StorageBackup } from "./backup.js";
+export {
+  canonicalizeStorageBackup,
+  exportStorageBackup,
+  restoreStorageBackup,
+  type RestoreStorageBackupOptions,
+  type StorageBackup,
+} from "./backup.js";
 export {
   createPrismaClient,
   type CreatePrismaClientOptions,
@@ -45,3 +51,8 @@ export {
   type PrivateLabelSourceArchive,
   type PrivateLabelSourceSyncInput,
 } from "./private-label-source-sync.js";
+export { DurableRuleCardRepository } from "./rule-card-repository.js";
+export { DurableRulePackRepository } from "./rule-pack-repository.js";
+export { DurableRulePackActivationLedger } from "./rule-pack-activation-repository.js";
+export { DurableRuleTestRunRepository } from "./rule-test-run-repository.js";
+export { DurableComplianceSourceRepository } from "./compliance-source-repository.js";

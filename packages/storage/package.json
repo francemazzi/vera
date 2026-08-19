@@ -23,13 +23,13 @@
     "@prisma/adapter-pg": "catalog:",
     "@prisma/client": "catalog:",
     "@vera/contracts": "workspace:*",
+    "@vera/rules-core": "workspace:*",
     "pg": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
-    "@vera/rules-core": "workspace:*",
     "prisma": "catalog:",
     "testcontainers": "catalog:",
     "tsx": "catalog:",

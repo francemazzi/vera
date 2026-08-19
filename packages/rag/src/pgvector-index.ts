@@ -14,12 +14,13 @@ import type {
 } from "./types.js";
 
 type Queryable = Pick<Pool | PoolClient, "query">;
+type PgVectorDatabase = Pool | PoolClient;
 
 const DEFAULT_TABLE_NAME = "rag_chunks";
 const IDENTIFIER_PATTERN = /^[a-z_][a-z0-9_]*$/u;
 
 export interface PgVectorRagIndexOptions {
-  readonly db: Queryable;
+  readonly db: PgVectorDatabase;
   readonly embeddingProvider: EmbeddingProvider;
   readonly dimensions: number;
   readonly tableName?: string;
@@ -114,8 +115,12 @@ function sourceVersionIds(chunks: readonly RagChunk[]): readonly string[] {
   return [...new Set(chunks.map((chunk) => chunk.sourceVersionId))].sort();
 }
 
+function hasConnect(db: PgVectorDatabase): db is Pool {
+  return typeof (db as { readonly connect?: unknown }).connect === "function";
+}
+
 export class PgVectorRagIndex {
-  readonly #db: Queryable;
+  readonly #db: PgVectorDatabase;
   readonly #embeddingProvider: EmbeddingProvider;
   readonly #dimensions: number;
   readonly #tableName: string;
@@ -188,15 +193,48 @@ export class PgVectorRagIndex {
       });
     }
 
+    const embeddingsByChunkId = new Map<string, string>();
     for (const [index, chunk] of chunks.entries()) {
       const embedding = embeddings[index];
       if (embedding === undefined) {
         throw new RagError("DIMENSION_MISMATCH", "Embedding provider omitted a vector");
       }
-      await this.#insertChunk(chunk, vectorLiteral(embedding, this.#dimensions));
+      embeddingsByChunkId.set(chunk.chunkId, vectorLiteral(embedding, this.#dimensions));
+    }
+
+    const chunksBySourceVersionId = new Map<string, RagChunk[]>();
+    for (const chunk of chunks) {
+      const bucket = chunksBySourceVersionId.get(chunk.sourceVersionId) ?? [];
+      bucket.push(chunk);
+      chunksBySourceVersionId.set(chunk.sourceVersionId, bucket);
+    }
+
+    for (const sourceVersionId of [...chunksBySourceVersionId.keys()].sort()) {
+      const versionChunks = chunksBySourceVersionId.get(sourceVersionId);
+      if (versionChunks === undefined) continue;
+      await this.#withTransaction(async (client) => {
+        await client.query(`DELETE FROM ${this.#quotedTableName} WHERE source_version_id = $1`, [
+          sourceVersionId,
+        ]);
+        for (const chunk of versionChunks) {
+          const embedding = embeddingsByChunkId.get(chunk.chunkId);
+          if (embedding === undefined) {
+            throw new RagError("DIMENSION_MISMATCH", "Embedding provider omitted a vector");
+          }
+          await this.#insertChunk(client, chunk, embedding);
+        }
+      });
     }
 
     return { chunksIndexed: chunks.length, sourceVersionIds: sourceVersionIds(chunks) };
+  }
+
+  public async deleteBySourceVersionId(sourceVersionId: string): Promise<number> {
+    const result = await this.#db.query(
+      `DELETE FROM ${this.#quotedTableName} WHERE source_version_id = $1`,
+      [sourceVersionId],
+    );
+    return result.rowCount ?? 0;
   }
 
   public async retrieve(query: RagRetrievalQuery): Promise<readonly RagRetrievedChunk[]> {
@@ -229,8 +267,36 @@ export class PgVectorRagIndex {
     }
   }
 
-  async #insertChunk(chunk: RagChunk, embedding: string): Promise<void> {
-    await this.#db.query(
+  async #withTransaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
+    if (hasConnect(this.#db)) {
+      const client = await this.#db.connect();
+      try {
+        await client.query("BEGIN");
+        const result = await operation(client);
+        await client.query("COMMIT");
+        return result;
+      } catch (error) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    const client = this.#db;
+    try {
+      await client.query("BEGIN");
+      const result = await operation(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async #insertChunk(client: Queryable, chunk: RagChunk, embedding: string): Promise<void> {
+    await client.query(
       `
         INSERT INTO ${this.#quotedTableName} (
           chunk_id,

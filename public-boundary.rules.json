@@ -17,9 +17,10 @@
   ],
   "forbiddenPathSegments": ["datasets", "reports/private", ".vera-private"],
   "allowPaths": [
-    ".gitignore",
     ".dockerignore",
+    ".gitignore",
     "README.md",
-    "docs/adr/0001-public-core-boundary.md"
+    "docs/adr/0001-public-core-boundary.md",
+    "docs/label-runner.md"
   ]
 }

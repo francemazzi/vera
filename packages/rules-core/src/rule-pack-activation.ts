@@ -202,6 +202,37 @@ function compareStrings(left: string, right: string): -1 | 0 | 1 {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+export type ActivationHistoryInput =
+  | Map<string, readonly ActivationEvent[]>
+  | Readonly<Record<string, readonly ActivationEvent[]>>
+  | readonly ActivationEvent[];
+
+function activationHistoryEntries(
+  input: ActivationHistoryInput,
+): ReadonlyArray<readonly [string, readonly ActivationEvent[]]> {
+  if (input instanceof Map) {
+    return [...input.entries()];
+  }
+  if (Array.isArray(input)) {
+    const byPack = new Map<string, ActivationEvent[]>();
+    for (const eventInput of input) {
+      const parsed = ActivationEventSchema.safeParse(eventInput);
+      if (!parsed.success) {
+        throw new RulePackActivationValidationError(
+          "INVALID_ACTIVATION_EVENT",
+          "Activation event does not satisfy its strict, hash-verified public contract",
+          { issueCount: parsed.error.issues.length },
+        );
+      }
+      const bucket = byPack.get(parsed.data.packId) ?? [];
+      bucket.push(parsed.data);
+      byPack.set(parsed.data.packId, bucket);
+    }
+    return [...byPack.entries()];
+  }
+  return Object.entries(input);
+}
+
 /** In-memory append-only activation ledger and deterministic temporal resolver. */
 export class InMemoryRulePackActivationLedger {
   readonly #versionReader: RulePackActivationVersionReader;
@@ -211,6 +242,119 @@ export class InMemoryRulePackActivationLedger {
 
   public constructor(versionReader: RulePackActivationVersionReader) {
     this.#versionReader = versionReader;
+  }
+
+  /**
+   * Hydrates a trusted durable activation ledger without re-running eligibility authorization.
+   * Events are Zod-validated and inserted directly; version snapshots are loaded via getVersion.
+   */
+  public static fromHistory(
+    eventsByPackId: ActivationHistoryInput,
+    versionReader: RulePackActivationVersionReader,
+  ): InMemoryRulePackActivationLedger {
+    const ledger = new InMemoryRulePackActivationLedger(versionReader);
+    const grouped = new Map<string, ActivationEvent[]>();
+
+    for (const [packId, history] of activationHistoryEntries(eventsByPackId)) {
+      grouped.set(packId, [...history]);
+    }
+
+    for (const [packId, history] of grouped) {
+      const parsedHistory: ActivationEvent[] = [];
+      for (const eventInput of history) {
+        const parsed = ActivationEventSchema.safeParse(eventInput);
+        if (!parsed.success) {
+          throw new RulePackActivationValidationError(
+            "INVALID_ACTIVATION_EVENT",
+            "Activation event does not satisfy its strict, hash-verified public contract",
+            { issueCount: parsed.error.issues.length },
+          );
+        }
+        if (parsed.data.packId !== packId) {
+          throw new RulePackActivationInvariantError(
+            "ACTIVATION_VERSION_MISMATCH",
+            "Hydrated activation event packId does not match its history bucket",
+            {
+              eventId: parsed.data.id,
+              expectedPackId: packId,
+              packId: parsed.data.packId,
+            },
+          );
+        }
+        parsedHistory.push(immutableClone(parsed.data));
+      }
+      parsedHistory.sort((left, right) => left.sequence - right.sequence);
+
+      const storedHistory: ActivationEvent[] = [];
+      for (const event of parsedHistory) {
+        if (ledger.#eventsById.has(event.id)) {
+          throw new RulePackActivationConflictError(
+            "ACTIVATION_EVENT_ALREADY_EXISTS",
+            `Activation event ${event.id} already exists`,
+            { eventId: event.id },
+          );
+        }
+        const previous = storedHistory.at(-1);
+        const expectedSequence = (previous?.sequence ?? 0) + 1;
+        if (event.sequence !== expectedSequence) {
+          throw new RulePackActivationInvariantError(
+            "ACTIVATION_SEQUENCE_MISMATCH",
+            "Hydrated activation event does not continue the stored sequence",
+            { eventId: event.id, packId, sequence: event.sequence },
+          );
+        }
+        if (event.previousEventHash !== (previous?.contentHash ?? null)) {
+          throw new RulePackActivationInvariantError(
+            "ACTIVATION_SEQUENCE_MISMATCH",
+            "Hydrated activation event does not continue the stored hash chain",
+            { eventId: event.id, packId, sequence: event.sequence },
+          );
+        }
+        if (event.versionId !== null) {
+          try {
+            const version = RulePackVersionSchema.parse(versionReader.getVersion(event.versionId));
+            if (version.packId !== event.packId) {
+              throw new RulePackActivationInvariantError(
+                "ACTIVATION_VERSION_MISMATCH",
+                "Hydrated activation target belongs to another pack",
+                { eventId: event.id, packId: event.packId, versionId: version.id },
+              );
+            }
+            const cached = ledger.#versionSnapshots.get(version.id);
+            if (
+              cached !== undefined &&
+              (cached.contentHash !== version.contentHash ||
+                canonicalizeJson(cached) !== canonicalizeJson(version))
+            ) {
+              throw new RulePackActivationInvariantError(
+                "ACTIVATION_VERSION_MISMATCH",
+                "Hydrated activation attempted to replace a cached immutable version snapshot",
+                { versionId: version.id },
+              );
+            }
+            if (cached === undefined) {
+              ledger.#versionSnapshots.set(version.id, immutableClone(version));
+            }
+          } catch (error) {
+            if (error instanceof RulePackNotFoundError) {
+              throw new RulePackActivationNotFoundError(
+                "ACTIVATION_VERSION_NOT_FOUND",
+                `Activation target version ${event.versionId} does not exist`,
+                { versionId: event.versionId },
+              );
+            }
+            throw error;
+          }
+        }
+        storedHistory.push(event);
+        ledger.#eventsById.set(event.id, event);
+      }
+      if (storedHistory.length > 0) {
+        ledger.#eventsByPack.set(packId, storedHistory);
+      }
+    }
+
+    return ledger;
   }
 
   /**

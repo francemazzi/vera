@@ -732,3 +732,84 @@ describe("error class identities", () => {
     expect(() => repository.getVersion(IDS.versionA2)).toThrow(ComplianceSourceNotFoundError);
   });
 });
+
+describe("InMemoryComplianceSourceRepository.fromHistory", () => {
+  it("hydrates trusted history and continues OCC appends without re-authorizing replay", () => {
+    const seeded = repositoryWithVersion();
+    upload(seeded);
+    review(seeded);
+    const history = seeded.getSourceHistory(IDS.sourceA);
+
+    const hydrated = InMemoryComplianceSourceRepository.fromHistory(history);
+    expect(hydrated.getVersionState(IDS.versionA1)).toBe("REVIEWED");
+    expect(hydrated.getTransitionHistory(IDS.versionA1)).toHaveLength(2);
+
+    hydrated.appendTransition(
+      makeEvent({
+        id: IDS.event3,
+        sequence: 3,
+        from: "REVIEWED",
+        to: "APPROVED",
+        actorId: IDS.approver,
+        exercisedRole: "APPROVER",
+        at: TIMES.approved,
+      }),
+      { actor: ACTORS.approver },
+      { sequence: 2, state: "REVIEWED" },
+    );
+    expect(hydrated.getVersionState(IDS.versionA1)).toBe("APPROVED");
+
+    expect(() =>
+      hydrated.appendTransition(
+        makeEvent({
+          id: IDS.event4,
+          sequence: 3,
+          from: "REVIEWED",
+          to: "APPROVED",
+          actorId: IDS.approver,
+          exercisedRole: "APPROVER",
+          at: TIMES.approved,
+        }),
+        { actor: ACTORS.approver },
+        { sequence: 2, state: "REVIEWED" },
+      ),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_CONCURRENCY_CONFLICT" }));
+  });
+
+  it("rejects invalid hydrated payloads and mismatched projected state", () => {
+    const malformedSource = { ...makeSource(), unexpected: true };
+    expect(() =>
+      InMemoryComplianceSourceRepository.fromHistory({
+        source: malformedSource,
+        versions: [],
+      }),
+    ).toThrow(expect.objectContaining({ code: "INVALID_SOURCE_PAYLOAD" }));
+
+    expect(() =>
+      InMemoryComplianceSourceRepository.fromHistory({
+        source: makeSource(),
+        versions: [
+          {
+            version: makeVersion(),
+            state: "APPROVED",
+            transitions: [makeEvent()],
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: "TRANSITION_EVENT_MISMATCH" }));
+
+    const malformedTransition = { ...makeEvent(), contentHash: "not-a-hash" };
+    expect(() =>
+      InMemoryComplianceSourceRepository.fromHistory({
+        source: makeSource(),
+        versions: [
+          {
+            version: makeVersion(),
+            state: "UPLOADED",
+            transitions: [malformedTransition],
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION_PAYLOAD" }));
+  });
+});

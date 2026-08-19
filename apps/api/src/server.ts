@@ -8,9 +8,15 @@ import {
   sha256Bytes,
   sha256CanonicalJson,
 } from "@vera/contracts";
+import type { EmbeddingProvider, PgVectorRagIndex, RuleDraftProvider } from "@vera/rag";
 import {
   PrivateLabelEuCountryCodeSchema,
   PrivateLabelRulePackSnapshotSchema,
+  type DurableComplianceSourceRepository,
+  type DurableRuleCardRepository,
+  type DurableRulePackActivationLedger,
+  type DurableRulePackRepository,
+  type DurableRuleTestRunRepository,
   type PrivateLabelGovernanceRepository,
   type VeraStorageRepository,
 } from "@vera/storage";
@@ -20,8 +26,10 @@ import { z } from "zod";
 
 import { assertRole, createAuthService } from "./auth.js";
 import type { AuthenticatedAccount, AuthService } from "./auth.js";
+import { registerDomainRoutes } from "./domain-routes.js";
 import { assertLocalEgressAllowed } from "./egress.js";
 import { ApiProblem, installProblemHandler } from "./errors.js";
+import { registerRagRoutes, retireRagSourceVersion } from "./rag-routes.js";
 
 const ActorRoleSchema = z.enum(["AUTHOR", "REVIEWER", "APPROVER", "ADMIN"]);
 const Sha256DigestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -88,6 +96,14 @@ export interface CreateApiServerOptions {
   readonly repository: VeraStorageRepository;
   /** Optional because the technical-demo API can be embedded without Label governance. */
   readonly privateLabelGovernance?: PrivateLabelGovernanceRepository;
+  readonly complianceSources?: DurableComplianceSourceRepository;
+  readonly ruleCards?: DurableRuleCardRepository;
+  readonly rulePacks?: DurableRulePackRepository;
+  readonly activations?: DurableRulePackActivationLedger;
+  readonly ruleTestRuns?: DurableRuleTestRunRepository;
+  readonly ragIndex?: PgVectorRagIndex;
+  readonly ragEmbeddingProvider?: EmbeddingProvider;
+  readonly ragDraftProvider?: RuleDraftProvider;
   readonly auth?: AuthService;
   readonly bootstrapTokenHash?: string;
   readonly logger?: boolean;
@@ -255,6 +271,14 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
     return reply.send({ evaluationRun: await options.repository.getEvaluationRun(id) });
   });
 
+  server.get("/v1/evaluation-runs/:id/review-decisions", async (request, reply) => {
+    await authenticated(request, auth, now);
+    const id = z.object({ id: z.uuid() }).parse(request.params).id;
+    return reply.send({
+      reviewDecisions: await options.repository.listReviewDecisions(id),
+    });
+  });
+
   server.patch("/v1/evaluation-runs/:id", () => {
     throw new ApiProblem(405, "Method Not Allowed", "EvaluationRun records are immutable");
   });
@@ -309,6 +333,30 @@ export async function createApiServer(options: CreateApiServerOptions): Promise<
     const body = z.object({ url: z.url() }).strict().parse(request.body);
     const url = assertLocalEgressAllowed(body.url);
     return reply.send({ allowed: true, origin: url.origin, hash: sha256CanonicalJson(url.origin) });
+  });
+
+  registerDomainRoutes(server, {
+    repository: options.repository,
+    complianceSources: options.complianceSources,
+    ruleCards: options.ruleCards,
+    rulePacks: options.rulePacks,
+    activations: options.activations,
+    ruleTestRuns: options.ruleTestRuns,
+    auth,
+    now,
+    onComplianceSourceRetired: async (sourceVersionId) => {
+      await retireRagSourceVersion(options.ragIndex, sourceVersionId);
+    },
+  });
+
+  registerRagRoutes(server, {
+    repository: options.repository,
+    complianceSources: options.complianceSources,
+    ragIndex: options.ragIndex,
+    embeddingProvider: options.ragEmbeddingProvider,
+    draftProvider: options.ragDraftProvider,
+    auth,
+    now,
   });
 
   // Food Consulting back-office. These routes keep source bodies private: callers
