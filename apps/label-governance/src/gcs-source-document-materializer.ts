@@ -201,10 +201,15 @@ function splitPageText(pageNumber: number, text: string): readonly SourceTextSec
   return result;
 }
 
+const HTML_CONTROL_CHAR_PATTERN = new RegExp(
+  `[${String.fromCharCode(0)}-${String.fromCharCode(8)}${String.fromCharCode(11)}${String.fromCharCode(12)}${String.fromCharCode(14)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
+  "gu",
+);
+
 function normalizeExtractedHtmlText(value: string): string {
   return decodeHtmlEntities(value)
     .replace(/\u00a0/gu, " ")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, " ")
+    .replace(HTML_CONTROL_CHAR_PATTERN, " ")
     .replace(/\s+/gu, " ")
     .trim();
 }
@@ -311,8 +316,9 @@ function extractHtmlBlocks(markup: string): readonly HtmlTextBlock[] {
       index = commentEnd === -1 ? markup.length : commentEnd + 3;
       continue;
     }
-    if (markup[index] !== "<") {
-      if (suppressed === null) buffer += markup[index];
+    const character = markup[index];
+    if (character !== "<") {
+      if (suppressed === null && character !== undefined) buffer += character;
       index += 1;
       continue;
     }
@@ -529,13 +535,14 @@ async function readBoundedResponse(response: Response): Promise<Uint8Array> {
       "PDF_TOO_LARGE",
     );
   }
-  const reader = response.body.getReader();
+  const reader = response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    for (;;) {
+      const result = await reader.read();
+      if (result.done) break;
+      const value = result.value;
       size += value.byteLength;
       if (size > MAX_PDF_BYTES) {
         await reader.cancel("PDF exceeds governance size limit");
@@ -881,7 +888,8 @@ export function createGcsSourceDocumentMaterializer(options: {
         const extracted = await loadOrExtractText({
           source: input,
           digest,
-          extract: async () => extractHtmlSections(source.bytes, input.sourceTitle),
+          extract: async () =>
+            await Promise.resolve(extractHtmlSections(source.bytes, input.sourceTitle)),
         });
         return MaterializedSourceDocumentSchema.parse({
           artifacts: {
@@ -914,7 +922,7 @@ export function createGcsSourceDocumentMaterializer(options: {
       const extracted = await loadOrExtractText({
         source: input,
         digest,
-        extract: async () => extractPdfPages(source.bytes),
+        extract: async () => await extractPdfPages(source.bytes),
       });
       return MaterializedSourceDocumentSchema.parse({
         artifacts: {

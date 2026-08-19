@@ -35,6 +35,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isUnknownArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
 function requireNonEmptyString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new RagError("VECTOR_STORE_INVALID", `Chroma response is missing ${field}`);
@@ -99,8 +103,7 @@ function isMetadataValue(value: unknown): value is ChromaMetadataValue {
   const type = typeof value[0];
   if (!["string", "number", "boolean"].includes(type)) return false;
   return value.every(
-    (entry) =>
-      typeof entry === type && (typeof entry !== "number" || Number.isFinite(entry)),
+    (entry) => typeof entry === type && (typeof entry !== "number" || Number.isFinite(entry)),
   );
 }
 
@@ -115,21 +118,22 @@ function parseMetadata(value: unknown): ChromaMetadata | null {
 }
 
 function parseMatches(value: unknown): readonly ChromaVectorMatch[] {
-  if (!isRecord(value)) throw new RagError("VECTOR_STORE_INVALID", "Chroma query response is invalid");
+  if (!isRecord(value))
+    throw new RagError("VECTOR_STORE_INVALID", "Chroma query response is invalid");
   const ids = value["ids"];
-  if (!Array.isArray(ids) || !Array.isArray(ids[0])) {
+  if (!isUnknownArray(ids) || !isUnknownArray(ids[0])) {
     throw new RagError("VECTOR_STORE_INVALID", "Chroma query response is missing ids");
   }
   const firstIds = ids[0];
-  const documents = Array.isArray(value["documents"]) && Array.isArray(value["documents"][0])
-    ? value["documents"][0]
-    : [];
-  const metadatas = Array.isArray(value["metadatas"]) && Array.isArray(value["metadatas"][0])
-    ? value["metadatas"][0]
-    : [];
-  const distances = Array.isArray(value["distances"]) && Array.isArray(value["distances"][0])
-    ? value["distances"][0]
-    : [];
+  const documentsValue = value["documents"];
+  const documents =
+    isUnknownArray(documentsValue) && isUnknownArray(documentsValue[0]) ? documentsValue[0] : [];
+  const metadatasValue = value["metadatas"];
+  const metadatas =
+    isUnknownArray(metadatasValue) && isUnknownArray(metadatasValue[0]) ? metadatasValue[0] : [];
+  const distancesValue = value["distances"];
+  const distances =
+    isUnknownArray(distancesValue) && isUnknownArray(distancesValue[0]) ? distancesValue[0] : [];
 
   return firstIds.map((id, index) => {
     const document = documents[index];
@@ -137,7 +141,8 @@ function parseMatches(value: unknown): readonly ChromaVectorMatch[] {
     if (
       typeof id !== "string" ||
       (document !== undefined && document !== null && typeof document !== "string") ||
-      (distance !== undefined && distance !== null &&
+      (distance !== undefined &&
+        distance !== null &&
         (typeof distance !== "number" || !Number.isFinite(distance)))
     ) {
       throw new RagError("VECTOR_STORE_INVALID", "Chroma query record is invalid");
@@ -168,17 +173,14 @@ export class ChromaHttpVectorStore implements ChromaVectorStore {
     readonly metadata: ChromaMetadata;
   }): Promise<ChromaCollection> {
     const name = normalizeName(input.name, "collection name", "");
-    const response = await this.#requestJson(
-      `collections`,
-      "POST",
-      {
-        name,
-        get_or_create: true,
-        metadata: input.metadata,
-        configuration: { hnsw: { space: "cosine" } },
-      },
-    );
-    if (!isRecord(response)) throw new RagError("VECTOR_STORE_INVALID", "Chroma collection is invalid");
+    const response = await this.#requestJson(`collections`, "POST", {
+      name,
+      get_or_create: true,
+      metadata: input.metadata,
+      configuration: { hnsw: { space: "cosine" } },
+    });
+    if (!isRecord(response))
+      throw new RagError("VECTOR_STORE_INVALID", "Chroma collection is invalid");
     return Object.freeze({
       id: requireNonEmptyString(response["id"], "collection id"),
       name: requireNonEmptyString(response["name"], "collection name"),
@@ -195,21 +197,29 @@ export class ChromaHttpVectorStore implements ChromaVectorStore {
     }[];
   }): Promise<void> {
     if (input.records.length === 0) return;
-    await this.#requestVoid(`collections/${encodeURIComponent(input.collection.id)}/upsert`, "POST", {
-      ids: input.records.map(({ id }) => id),
-      embeddings: input.records.map(({ embedding }) => embedding),
-      documents: input.records.map(({ document }) => document),
-      metadatas: input.records.map(({ metadata }) => metadata),
-    });
+    await this.#requestVoid(
+      `collections/${encodeURIComponent(input.collection.id)}/upsert`,
+      "POST",
+      {
+        ids: input.records.map(({ id }) => id),
+        embeddings: input.records.map(({ embedding }) => embedding),
+        documents: input.records.map(({ document }) => document),
+        metadatas: input.records.map(({ metadata }) => metadata),
+      },
+    );
   }
 
   public async delete(input: {
     readonly collection: ChromaCollection;
     readonly where: Readonly<Record<string, unknown>>;
   }): Promise<void> {
-    await this.#requestVoid(`collections/${encodeURIComponent(input.collection.id)}/delete`, "POST", {
-      where: input.where,
-    });
+    await this.#requestVoid(
+      `collections/${encodeURIComponent(input.collection.id)}/delete`,
+      "POST",
+      {
+        where: input.where,
+      },
+    );
   }
 
   public async query(input: {
@@ -237,7 +247,11 @@ export class ChromaHttpVectorStore implements ChromaVectorStore {
     await this.#requestAbsoluteVoid(`${this.#options.endpoint}/api/v2/heartbeat`);
   }
 
-  async #requestJson(path: string, method: "POST", body: Readonly<Record<string, unknown>>): Promise<unknown> {
+  async #requestJson(
+    path: string,
+    method: "POST",
+    body: Readonly<Record<string, unknown>>,
+  ): Promise<unknown> {
     const response = await this.#request(path, method, body);
     const text = await this.#readResponse(response);
     try {
@@ -247,14 +261,20 @@ export class ChromaHttpVectorStore implements ChromaVectorStore {
     }
   }
 
-  async #requestVoid(path: string, method: "GET" | "POST", body?: Readonly<Record<string, unknown>>): Promise<void> {
+  async #requestVoid(
+    path: string,
+    method: "GET" | "POST",
+    body?: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
     const response = await this.#request(path, method, body);
     await response.body?.cancel();
   }
 
   async #requestAbsoluteVoid(url: string): Promise<void> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.#options.timeoutMs);
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, this.#options.timeoutMs);
     try {
       const response = await this.#options.fetch(url, {
         method: "GET",
@@ -286,7 +306,9 @@ export class ChromaHttpVectorStore implements ChromaVectorStore {
     body?: Readonly<Record<string, unknown>>,
   ): Promise<Response> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.#options.timeoutMs);
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, this.#options.timeoutMs);
     try {
       const headers: Record<string, string> = { Accept: "application/json" };
       if (body !== undefined) headers["Content-Type"] = "application/json";

@@ -12,6 +12,7 @@ export function createLocalBearerAuthorizer(token: string): BackendOidcAuthorize
   if (expected.byteLength < 24) throw new Error("Local governance token is too short");
   return {
     async authorize(authorization) {
+      await Promise.resolve();
       const actual = authorization?.startsWith("Bearer ")
         ? Buffer.from(authorization.slice("Bearer ".length))
         : Buffer.alloc(0);

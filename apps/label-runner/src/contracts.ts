@@ -44,7 +44,7 @@ export const RegulatoryScopeSchema = z
     regulatoryAreas: z.array(z.string().trim().min(1).max(40)).min(1).max(8),
     jurisdictions: z.array(z.string().trim().min(1).max(120)).min(1).max(8),
     language: z.string().trim().min(2).max(35),
-    evaluationDate: z.string().datetime({ offset: true }),
+    evaluationDate: z.iso.datetime({ offset: true }),
   })
   .strict();
 export type RegulatoryScope = z.infer<typeof RegulatoryScopeSchema>;
@@ -149,9 +149,9 @@ export const RunnerInputSchema = z
         pages.forEach((entry, index) => {
           if (entry.page !== index + 1) {
             context.addIssue({
-              code: 'custom',
-              message: 'Normalized pages must be sorted and contiguous',
-              path: [index, 'page'],
+              code: "custom",
+              message: "Normalized pages must be sorted and contiguous",
+              path: [index, "page"],
             });
           }
         });

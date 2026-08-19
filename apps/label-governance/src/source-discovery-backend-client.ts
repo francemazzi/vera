@@ -176,7 +176,7 @@ export function createSourceDiscoveryBackendClient(options: {
         if (!response.ok) {
           throw new Error(`Source discovery backend returned HTTP ${String(response.status)}`);
         }
-        return response.json();
+        return await response.json();
       }
       const response = await (
         await idTokenClient()

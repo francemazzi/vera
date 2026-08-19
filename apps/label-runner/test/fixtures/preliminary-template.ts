@@ -9,7 +9,12 @@ export const preliminaryTemplate: PreliminaryTemplate = {
   promptVersion: "label-preliminary-eu-it-v1",
   sourceSnapshot,
   citations: [
-    { id: "eu-1169", label: "EU 1169", url: "https://example.test/eu-1169", reference: "Food information" },
+    {
+      id: "eu-1169",
+      label: "EU 1169",
+      url: "https://example.test/eu-1169",
+      reference: "Food information",
+    },
     { id: "eu-lot-2011-91", label: "EU lot", url: "https://example.test/lot", reference: "Lot" },
     { id: "it-231-2017", label: "IT 231", url: "https://example.test/it", reference: "Italy" },
   ],

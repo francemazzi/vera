@@ -100,9 +100,7 @@ export {
   type SourceDiscoveryCompletion,
   type SourceDiscoveryFailure,
 } from "./source-discovery-backend-client.js";
-export {
-  createSourceDiscoveryJobProcessor,
-} from "./source-discovery-processor.js";
+export { createSourceDiscoveryJobProcessor } from "./source-discovery-processor.js";
 export {
   createUnavailableSourceDiscoveryJobProcessor,
   SourceDiscoveryJobError,

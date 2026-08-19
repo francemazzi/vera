@@ -44,7 +44,7 @@ describe("private Label source sync", () => {
     expect(archive.persist).toHaveBeenCalledWith(
       expect.objectContaining({
         mediaType: "application/pdf",
-        sha256: expect.stringMatching(/^[0-9a-f]{64}$/u),
+        sha256: expect.stringMatching(/^[0-9a-f]{64}$/u) as unknown as string,
       }),
     );
   });

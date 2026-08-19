@@ -1,11 +1,6 @@
 /** Values supported by Chroma record metadata. */
 export type ChromaMetadataValue =
-  | boolean
-  | number
-  | string
-  | readonly boolean[]
-  | readonly number[]
-  | readonly string[];
+  boolean | number | string | readonly boolean[] | readonly number[] | readonly string[];
 
 /** Metadata is deliberately limited to Chroma's primitive and homogeneous-array types. */
 export type ChromaMetadata = Readonly<Record<string, ChromaMetadataValue>>;

@@ -41,23 +41,27 @@ function systemPrompt(): string {
   ].join("\n");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function responseContent(value: unknown): string {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new SourceClassificationError("OpenRouter returned an invalid response", false);
   }
-  const rawChoices = (value as Record<string, unknown>)["choices"];
+  const rawChoices: unknown = value["choices"];
   if (!Array.isArray(rawChoices) || rawChoices.length !== 1) {
     throw new SourceClassificationError("OpenRouter returned no single completion", false);
   }
-  const choice = rawChoices[0];
-  if (typeof choice !== "object" || choice === null || Array.isArray(choice)) {
+  const choice: unknown = rawChoices[0];
+  if (!isRecord(choice)) {
     throw new SourceClassificationError("OpenRouter completion is invalid", false);
   }
-  const message = (choice as Record<string, unknown>)["message"];
-  if (typeof message !== "object" || message === null || Array.isArray(message)) {
+  const message: unknown = choice["message"];
+  if (!isRecord(message)) {
     throw new SourceClassificationError("OpenRouter completion message is invalid", false);
   }
-  const content = (message as Record<string, unknown>)["content"];
+  const content: unknown = message["content"];
   if (typeof content !== "string" || content.length === 0 || content.length > 200_000) {
     throw new SourceClassificationError("OpenRouter completion content is invalid", false);
   }
@@ -65,8 +69,8 @@ function responseContent(value: unknown): string {
 }
 
 function responseModel(value: unknown): void {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return;
-  const model = (value as Record<string, unknown>)["model"];
+  if (!isRecord(value)) return;
+  const model: unknown = value["model"];
   if (typeof model === "string" && model !== SOURCE_CLASSIFICATION_MODEL) {
     throw new SourceClassificationError(
       "OpenRouter returned a model outside the pinned policy",
@@ -94,7 +98,9 @@ export function createOpenRouterSourceClassifier(options: {
   return {
     async classify(input) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+      const timeout = setTimeout(() => {
+        controller.abort();
+      }, options.timeoutMs);
       try {
         const response = await fetchImplementation(OPENROUTER_URL, {
           method: "POST",

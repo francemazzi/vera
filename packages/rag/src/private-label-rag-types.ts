@@ -20,10 +20,7 @@ export const PRIVATE_LABEL_PRELIMINARY_COLLECTION = PRIVATE_LABEL_VERIFIED_COLLE
 export const PRIVATE_LABEL_APPROVED_COLLECTION = "silto-label-approved-v1" as const;
 export const PRIVATE_LABEL_RAG_EMBEDDING_DIMENSIONS = 1_536 as const;
 
-export const PrivateLabelRagSourceStateSchema = z.enum([
-  "VERIFIED",
-  "APPROVED",
-]);
+export const PrivateLabelRagSourceStateSchema = z.enum(["VERIFIED", "APPROVED"]);
 
 export type PrivateLabelRagSourceState = z.infer<typeof PrivateLabelRagSourceStateSchema>;
 
@@ -164,10 +161,17 @@ export const PrivateLabelRagQuerySchema = z
       });
     }
   })
-  .transform((value) => ({
-    ...value,
-    jurisdictions: [...new Set(value.jurisdictions ?? [value.jurisdiction!])],
-  }));
+  .transform((value) => {
+    const jurisdictions = value.jurisdictions;
+    if (jurisdictions !== undefined) {
+      return { ...value, jurisdictions: [...new Set(jurisdictions)] };
+    }
+    const jurisdiction = value.jurisdiction;
+    return {
+      ...value,
+      jurisdictions: jurisdiction === undefined ? [] : [jurisdiction],
+    };
+  });
 
 export type PrivateLabelRagQuery = z.input<typeof PrivateLabelRagQuerySchema>;
 export type ParsedPrivateLabelRagQuery = z.output<typeof PrivateLabelRagQuerySchema>;

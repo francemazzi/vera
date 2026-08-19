@@ -21,6 +21,41 @@ produce findings deterministici.
 | UI             | `@vera/web`             | Audit desk React/Vite, coda revisione, Playwright                     |
 | Audit locale   | `@vera/dataset-harness` | Controllo strutturale privato con astensione obbligatoria             |
 
+## Confine dei package npm
+
+Soltanto `@vera/contracts` e `@vera/rules-core` sono candidati per la futura pubblicazione manuale
+`0.2.0`; non sono ancora disponibili nel registry npm. Tutti gli altri package e gli esempi del
+workspace restano privati.
+
+Lo sviluppo nel monorepo continua a risolvere gli export TypeScript da `src`. I tarball destinati al
+registry espongono invece soltanto l’entrypoint ESM e i tipi generati in `dist`, oltre a manifest,
+README e licenza. `@vera/rules-core` dipende dalla stessa versione pubblicata di `@vera/contracts`.
+Non sono supportati deep import, CommonJS o dipendenze da file interni del workspace; il runtime
+richiesto è Node.js `>=22.22.1 <23`.
+
+Il flusso pubblico minimo mantiene separati validazione e decisione:
+
+```text
+JSON esterno
+  → RulePackVersionSchema / FactSchema / EvidenceSchema
+  → evaluateRulePackVersion(version, facts, evidence, evaluationDate)
+  → RulePackEvaluationSnapshot
+  → evaluationResult.aggregateOutcome + evaluationResult.findings
+```
+
+La data di valutazione è input esplicito e ogni snapshot conserva `validationScope=TECHNICAL_DEMO`.
+
+## Portale documentale
+
+La documentazione Markdown è anche sorgente di un portale statico VitePress in italiano. Il build
+usa `base=/vera/`, ricerca locale e asset inclusi nel repository; non carica font, analytics, cookie
+o altre risorse remote. Un workflow GitHub Actions con solo `workflow_dispatch` prepara e
+distribuisce l’artefatto Pages quando un operatore lo avvia.
+
+La presenza del workflow non abilita GitHub Pages e non modifica la visibilità: il repository resta
+privato, l’attivazione della sorgente GitHub Actions è manuale e l’URL previsto non viene presentato
+come attivo finché quel passaggio non è stato completato.
+
 ## Flusso dati
 
 ```text
@@ -61,9 +96,11 @@ hanno persistenza PostgreSQL durable con backup/restore `v3`. L’API può orche
 editoriale (`/v1/rag/*` e index su versioni `APPROVED`); la UI di revisione usa ancora uno store
 locale e non è ancora collegata all’API.
 
-## Limiti della release sperimentale
+## Stato di rilascio e limiti
 
-- Nessuna pubblicazione npm.
+- `v0.1.0` resta la release storica source-only e non includeva pubblicazione npm.
+- `@vera/contracts` e `@vera/rules-core` `0.2.0` sono candidati non ancora pubblicati.
+- GitHub Pages è predisposto per un deploy manuale ma non è attivato da questa fase.
 - Nessun identity provider esterno.
 - Nessun claim di accuratezza reale.
 - Ogni asset dimostrativo usa `validationScope=TECHNICAL_DEMO`.

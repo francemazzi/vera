@@ -10,6 +10,11 @@ import type { SourceBackendClient, SourceWorkerInput } from "../../src/source-ba
 const candidateId = "00000000-0000-4000-8000-000000000401";
 const classificationRunId = "00000000-0000-4000-8000-000000000402";
 
+function containing<T extends Record<string, unknown>>(expected: T): T {
+  const matcher: unknown = expect.objectContaining(expected as never);
+  return matcher as T;
+}
+
 function proposal(): SourceClassificationProposal {
   return {
     authority: "European Union",
@@ -133,14 +138,14 @@ describe("backend source governance job processor", () => {
 
     expect(result).toMatchObject({ classificationStatus: "COMPLETED" });
     expect(classifier.classify).toHaveBeenCalledWith(
-      expect.objectContaining({ canonicalUrl: null, sourceText: "Regulation (EU) 1169/2011" }),
+      containing({ canonicalUrl: null, sourceText: "Regulation (EU) 1169/2011" }),
     );
     expect(ragIndex.indexPreliminarySections).not.toHaveBeenCalled();
     expect(ragIndex.indexApprovedSections).not.toHaveBeenCalled();
     expect(client.complete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
-          classification: expect.objectContaining({
+      containing({
+        callback: containing({
+          classification: containing({
             model: "google/gemini-2.5-pro",
             authority: "European Union",
           }),
@@ -186,9 +191,7 @@ describe("backend source governance job processor", () => {
       processor.process({ candidateId, classificationRunId, kind: "FETCH_AND_CLASSIFY" }),
     ).resolves.toMatchObject({ classificationStatus: "COMPLETED" });
     expect(document.materialize).toHaveBeenCalledWith(input);
-    expect(classifier.classify).toHaveBeenCalledWith(
-      expect.objectContaining({ canonicalUrl: null }),
-    );
+    expect(classifier.classify).toHaveBeenCalledWith(containing({ canonicalUrl: null }));
     expect(ragIndex.indexPreliminarySections).not.toHaveBeenCalled();
     expect(ragIndex.indexApprovedSections).not.toHaveBeenCalled();
   });
@@ -244,8 +247,8 @@ describe("backend source governance job processor", () => {
 
   it("stops before OpenRouter and Chroma when the backend reserves a duplicate hash", async () => {
     const input = candidate({ kind: "FETCH_AND_CLASSIFY" });
-    const client = backend(input);
-    client.reserveArtifacts = vi.fn().mockResolvedValue({ replayed: false, duplicate: true });
+    const reserveArtifacts = vi.fn().mockResolvedValue({ replayed: false, duplicate: true });
+    const client = { ...backend(input), reserveArtifacts };
     const document = materializer();
     const classifier = { classify: vi.fn() };
     const ragIndex = {
@@ -272,7 +275,7 @@ describe("backend source governance job processor", () => {
     ).resolves.toMatchObject({ duplicate: true });
     expect(document.materialize).toHaveBeenCalledWith(input);
     expect(client.reserveArtifacts).toHaveBeenCalledWith(
-      expect.objectContaining({ callback: expect.objectContaining({ status: "PROCESSING" }) }),
+      containing({ callback: containing({ status: "PROCESSING" }) }),
     );
     expect(classifier.classify).not.toHaveBeenCalled();
     expect(ragIndex.indexPreliminarySections).not.toHaveBeenCalled();
@@ -321,13 +324,13 @@ describe("backend source governance job processor", () => {
     expect(result).toMatchObject({ ragStatus: "INDEXED" });
     expect(classifier.classify).not.toHaveBeenCalled();
     expect(ragIndex.indexPreliminarySections).toHaveBeenCalledWith([
-      expect.objectContaining({ sourceState: "VERIFIED", validityStatus: "ADMIN_CONFIRMED" }),
+      containing({ sourceState: "VERIFIED", validityStatus: "ADMIN_CONFIRMED" }),
     ]);
     expect(ragIndex.indexApprovedSections).not.toHaveBeenCalled();
     expect(client.complete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
-          rag: expect.objectContaining({ collection: "silto-label-verified-v1" }),
+      containing({
+        callback: containing({
+          rag: containing({ collection: "silto-label-verified-v1" }),
         }),
       }),
     );
@@ -373,8 +376,8 @@ describe("backend source governance job processor", () => {
     expect(ragIndex.indexPreliminarySections).not.toHaveBeenCalled();
     expect(ragIndex.indexApprovedSections).not.toHaveBeenCalled();
     expect(client.fail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
+      containing({
+        callback: containing({
           failure: { code: "SOURCE_NOT_VERIFIED", retryable: false },
         }),
       }),
@@ -422,8 +425,8 @@ describe("backend source governance job processor", () => {
     expect(document.materialize).not.toHaveBeenCalled();
     expect(ragIndex.indexPreliminarySections).not.toHaveBeenCalled();
     expect(client.fail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
+      containing({
+        callback: containing({
           failure: { code: "SOURCE_WORKSPACE_SCOPE_UNAVAILABLE", retryable: false },
         }),
       }),
@@ -470,12 +473,12 @@ describe("backend source governance job processor", () => {
     expect(result).toMatchObject({ ragStatus: "INDEXED" });
     expect(classifier.classify).not.toHaveBeenCalled();
     expect(ragIndex.indexApprovedSections).toHaveBeenCalledWith([
-      expect.objectContaining({ sourceState: "APPROVED", validityStatus: "ADMIN_CONFIRMED" }),
+      containing({ sourceState: "APPROVED", validityStatus: "ADMIN_CONFIRMED" }),
     ]);
     expect(client.complete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
-          rag: expect.objectContaining({ collection: "silto-label-approved-v1" }),
+      containing({
+        callback: containing({
+          rag: containing({ collection: "silto-label-approved-v1" }),
         }),
       }),
     );
@@ -503,13 +506,11 @@ describe("backend source governance job processor", () => {
       indexPreliminarySections: vi
         .fn()
         .mockResolvedValue({ chunksIndexed: 1, sourceVersionIds: [candidateId] }),
-      indexApprovedSections: vi
-        .fn()
-        .mockRejectedValue(
-          new RagError("VECTOR_STORE_UNAVAILABLE", "approved collection unavailable", {
-            retryable: false,
-          }),
-        ),
+      indexApprovedSections: vi.fn().mockRejectedValue(
+        new RagError("VECTOR_STORE_UNAVAILABLE", "approved collection unavailable", {
+          retryable: false,
+        }),
+      ),
       retrievePreliminary: vi.fn(),
       retrieveApproved: vi.fn(),
       retrievePreliminarySafely: vi.fn(),
@@ -532,8 +533,8 @@ describe("backend source governance job processor", () => {
     expect(ragIndex.removePreliminarySourceVersion).not.toHaveBeenCalled();
     expect(ragIndex.removeApprovedSourceVersion).not.toHaveBeenCalled();
     expect(client.fail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
+      containing({
+        callback: containing({
           failure: { code: "RAG_VECTOR_STORE_UNAVAILABLE", retryable: false },
         }),
       }),
@@ -579,8 +580,8 @@ describe("backend source governance job processor", () => {
     expect(document.materialize).not.toHaveBeenCalled();
     expect(ragIndex.indexApprovedSections).not.toHaveBeenCalled();
     expect(client.fail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
+      containing({
+        callback: containing({
           failure: { code: "SOURCE_VALIDITY_NOT_CONFIRMED", retryable: false },
         }),
       }),
@@ -616,8 +617,8 @@ describe("backend source governance job processor", () => {
       processor.process({ candidateId, classificationRunId, kind: "CLASSIFY" }),
     ).rejects.toBeInstanceOf(SourceGovernanceJobError);
     expect(client.fail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        callback: expect.objectContaining({
+      containing({
+        callback: containing({
           failure: { code: "SOURCE_WORKER_FAILED", retryable: true },
         }),
       }),

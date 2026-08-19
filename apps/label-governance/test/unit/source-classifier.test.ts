@@ -44,33 +44,54 @@ function proposal(): Record<string, unknown> {
   };
 }
 
+function requestUrlString(value: Parameters<typeof globalThis.fetch>[0]): string {
+  if (typeof value === "string") return value;
+  if (value instanceof URL) return value.href;
+  return value.url;
+}
+
+function requestBodyString(body: unknown): string {
+  if (typeof body === "string") return body;
+  throw new Error("expected a JSON string request body");
+}
+
+function recordFromJson(value: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("expected a JSON object request body");
+  }
+  return parsed as Record<string, unknown>;
+}
+
 describe("OpenRouter source classifier", () => {
   it("pins Gemini Pro and requests strict structured output without exposing the server key", async () => {
-    let requestUrl: Parameters<typeof globalThis.fetch>[0] | undefined;
+    let requestUrl: string | undefined;
     let requestInit: RequestInit | undefined;
     const classifier = createOpenRouterSourceClassifier({
       apiKey: "synthetic-openrouter-key-1234",
       timeoutMs: 1_000,
-      fetch: async (input, init) => {
-        requestUrl = input;
+      fetch: (input, init) => {
+        requestUrl = requestUrlString(input);
         requestInit = init;
-        return new Response(
-          JSON.stringify({
-            model: SOURCE_CLASSIFICATION_MODEL,
-            choices: [{ message: { content: JSON.stringify(proposal()) } }],
-          }),
-          { status: 200 },
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              model: SOURCE_CLASSIFICATION_MODEL,
+              choices: [{ message: { content: JSON.stringify(proposal()) } }],
+            }),
+            { status: 200 },
+          ),
         );
       },
     });
 
     const result = await classifier.classify(source);
 
-    expect(String(requestUrl)).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(requestUrl).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect(requestInit?.headers).toMatchObject({
       Authorization: "Bearer synthetic-openrouter-key-1234",
     });
-    const request = JSON.parse(String(requestInit?.body)) as Record<string, unknown>;
+    const request = recordFromJson(requestBodyString(requestInit?.body));
     expect(request).toMatchObject({
       model: SOURCE_CLASSIFICATION_MODEL,
       temperature: 0,
@@ -101,13 +122,15 @@ describe("OpenRouter source classifier", () => {
     const classifier = createOpenRouterSourceClassifier({
       apiKey: "key",
       timeoutMs: 1_000,
-      fetch: async () =>
-        new Response(
-          JSON.stringify({
-            model: "other/model",
-            choices: [{ message: { content: JSON.stringify(proposal()) } }],
-          }),
-          { status: 200 },
+      fetch: () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              model: "other/model",
+              choices: [{ message: { content: JSON.stringify(proposal()) } }],
+            }),
+            { status: 200 },
+          ),
         ),
     });
 
@@ -118,7 +141,7 @@ describe("OpenRouter source classifier", () => {
     const classifier = createOpenRouterSourceClassifier({
       apiKey: "key",
       timeoutMs: 1_000,
-      fetch: async () => new Response("never expose this body", { status: 429 }),
+      fetch: () => Promise.resolve(new Response("never expose this body", { status: 429 })),
     });
 
     await expect(classifier.classify(source)).rejects.toMatchObject({

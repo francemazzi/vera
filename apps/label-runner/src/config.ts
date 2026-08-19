@@ -29,10 +29,7 @@ export interface LabelRunnerConfig {
   readonly openRouterApiKey: string;
   readonly openRouterModel: "google/gemini-2.5-flash";
   readonly promptVersion: "label-preliminary-eu-it-v1" | "label-preliminary-rag-v1" | null;
-  readonly rulePackVersion:
-    | "eu-it-preliminary-v1@1"
-    | "global-food-label-preliminary-v1@1"
-    | null;
+  readonly rulePackVersion: "eu-it-preliminary-v1@1" | "global-food-label-preliminary-v1@1" | null;
   readonly sourceSnapshot: string;
   readonly openRouterTimeoutMs: number;
   /** Private Chroma configuration. This endpoint is never exposed to a browser. */
@@ -52,12 +49,15 @@ export function readLabelRunnerConfig(
   }
   const backendUrl = requiredEnvironment("LABEL_BACKEND_URL", environment).replace(/\/+$/u, "");
   const backendAudience = environment["LABEL_BACKEND_AUDIENCE"]?.trim() || backendUrl;
-  const localMode = environment["NODE_ENV"] === "development" && environment["LABEL_RUNNER_LOCAL_MODE"] === "true";
+  const localMode =
+    environment["NODE_ENV"] === "development" && environment["LABEL_RUNNER_LOCAL_MODE"] === "true";
   const localToken = environment["LABEL_RUNNER_LOCAL_TOKEN"]?.trim() || null;
   if (localMode && (!localToken || localToken.length < 24)) {
     throw new Error("LABEL_RUNNER_LOCAL_TOKEN must be configured in local development mode");
   }
-  const taskAudience = localMode ? "local" : requiredEnvironment("LABEL_RUNNER_AUDIENCE", environment);
+  const taskAudience = localMode
+    ? "local"
+    : requiredEnvironment("LABEL_RUNNER_AUDIENCE", environment);
   const sourceSnapshot = requiredEnvironment("LABEL_SOURCE_SNAPSHOT", environment);
   if (!/^[0-9a-f]{64}$/u.test(sourceSnapshot)) {
     throw new Error("LABEL_SOURCE_SNAPSHOT must be a SHA-256 digest");
@@ -70,12 +70,17 @@ export function readLabelRunnerConfig(
   }
   if (!localMode && !promptVersion) throw new Error("LABEL_PROMPT_VERSION must be configured");
   if (!localMode && !rulePackVersion) throw new Error("LABEL_RULE_PACK_VERSION must be configured");
-  if (promptVersion !== null && promptVersion !== "label-preliminary-eu-it-v1" && promptVersion !== "label-preliminary-rag-v1") {
+  if (
+    promptVersion !== null &&
+    promptVersion !== "label-preliminary-eu-it-v1" &&
+    promptVersion !== "label-preliminary-rag-v1"
+  ) {
     throw new Error(
       "LABEL_PROMPT_VERSION must be label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
     );
   }
-  if (rulePackVersion !== null &&
+  if (
+    rulePackVersion !== null &&
     rulePackVersion !== "eu-it-preliminary-v1@1" &&
     rulePackVersion !== "global-food-label-preliminary-v1@1"
   ) {
@@ -94,8 +99,8 @@ export function readLabelRunnerConfig(
       : requiredEnvironment("LABEL_TASKS_INVOKER_SERVICE_ACCOUNT_EMAIL", environment),
     openRouterApiKey: requiredEnvironment("OPENROUTER_API_KEY", environment),
     openRouterModel,
-    promptVersion: promptVersion as LabelRunnerConfig["promptVersion"],
-    rulePackVersion: rulePackVersion as LabelRunnerConfig["rulePackVersion"],
+    promptVersion: promptVersion,
+    rulePackVersion: rulePackVersion,
     sourceSnapshot,
     openRouterTimeoutMs: optionalPositiveInteger(
       "LABEL_OPENROUTER_TIMEOUT_MS",

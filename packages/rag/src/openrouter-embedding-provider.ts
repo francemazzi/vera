@@ -51,6 +51,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isUnknownArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function normalizeOptions(options: OpenRouterEmbeddingProviderOptions): NormalizedOptions {
   const apiKey = options.apiKey.trim();
   if (apiKey.length < 16 || apiKey.length > 512 || /\s/u.test(apiKey)) {
@@ -70,10 +78,20 @@ function normalizeOptions(options: OpenRouterEmbeddingProviderOptions): Normaliz
 }
 
 function isRetryableStatus(status: number): boolean {
-  return status === 408 || status === 409 || status === 429 || status === 524 || status === 529 || status >= 500;
+  return (
+    status === 408 ||
+    status === 409 ||
+    status === 429 ||
+    status === 524 ||
+    status === 529 ||
+    status >= 500
+  );
 }
 
-function parseEmbeddingItems(value: unknown, expectedCount: number): readonly (readonly number[])[] {
+function parseEmbeddingItems(
+  value: unknown,
+  expectedCount: number,
+): readonly (readonly number[])[] {
   if (!isRecord(value) || value["model"] !== OPENROUTER_GEMINI_EMBEDDING_RESPONSE_MODEL) {
     throw new RagError("EGRESS_UNAVAILABLE", "OpenRouter returned an unexpected embedding model");
   }
@@ -82,7 +100,7 @@ function parseEmbeddingItems(value: unknown, expectedCount: number): readonly (r
     throw new RagError("EGRESS_UNAVAILABLE", "OpenRouter returned an unexpected embedding count");
   }
   const parsed: EmbeddingResponseItem[] = data.map((entry) => {
-    if (!isRecord(entry) || !Array.isArray(entry["embedding"])) {
+    if (!isRecord(entry) || !isUnknownArray(entry["embedding"])) {
       throw new RagError("EGRESS_UNAVAILABLE", "OpenRouter returned an invalid embedding item");
     }
     const index = entry["index"];
@@ -92,11 +110,11 @@ function parseEmbeddingItems(value: unknown, expectedCount: number): readonly (r
     const embedding = entry["embedding"];
     if (
       embedding.length !== OPENROUTER_GEMINI_EMBEDDING_DIMENSIONS ||
-      embedding.some((component) => typeof component !== "number" || !Number.isFinite(component))
+      !embedding.every(isFiniteNumber)
     ) {
       throw new RagError("DIMENSION_MISMATCH", "OpenRouter embedding dimensions do not match 1536");
     }
-    return { index, embedding: [...embedding] as readonly number[] };
+    return { index, embedding: [...embedding] };
   });
   const ordered = [...parsed].sort((left, right) => left.index - right.index);
   if (ordered.some((entry, index) => entry.index !== index)) {
@@ -161,7 +179,9 @@ export class OpenRouterEmbeddingProvider implements PrivateLabelEmbeddingProvide
     inputType: "search_document" | "search_query",
   ): Promise<readonly (readonly number[])[]> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.#options.timeoutMs);
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, this.#options.timeoutMs);
     try {
       const response = await this.#options.fetch(OPENROUTER_EMBEDDINGS_URL, {
         method: "POST",
@@ -189,15 +209,22 @@ export class OpenRouterEmbeddingProvider implements PrivateLabelEmbeddingProvide
       }
       const rawResponse = await response.text();
       if (rawResponse.length > MAX_RESPONSE_BYTES) {
-        throw new RagError("EGRESS_UNAVAILABLE", "OpenRouter embeddings response exceeds the limit");
+        throw new RagError(
+          "EGRESS_UNAVAILABLE",
+          "OpenRouter embeddings response exceeds the limit",
+        );
       }
       try {
         return parseEmbeddingItems(JSON.parse(rawResponse) as unknown, texts.length);
       } catch (error) {
         if (error instanceof RagError) throw error;
-        throw new RagError("EGRESS_UNAVAILABLE", "OpenRouter embeddings response is not valid JSON", {
-          cause: error,
-        });
+        throw new RagError(
+          "EGRESS_UNAVAILABLE",
+          "OpenRouter embeddings response is not valid JSON",
+          {
+            cause: error,
+          },
+        );
       }
     } catch (error) {
       if (error instanceof RagError) throw error;

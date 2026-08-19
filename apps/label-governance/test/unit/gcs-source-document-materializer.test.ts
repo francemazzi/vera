@@ -20,32 +20,38 @@ function digest(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function including(value: string): string {
+  const matcher: unknown = expect.stringContaining(value);
+  return matcher as string;
+}
+
 function createFakeStorage(objects: Map<string, StoredObject>): Storage {
   return {
     bucket: vi.fn(() => ({
       file: vi.fn((objectKey: string) => ({
-        exists: vi.fn(async () => [objects.has(objectKey)]),
-        getMetadata: vi.fn(async () => {
+        exists: vi.fn(() => Promise.resolve([objects.has(objectKey)])),
+        getMetadata: vi.fn(() => {
           const object = objects.get(objectKey);
-          if (!object) throw new Error(`missing ${objectKey}`);
-          return [
+          if (!object) return Promise.reject(new Error(`missing ${objectKey}`));
+          return Promise.resolve([
             {
               size: String(object.body.byteLength),
               contentType: object.contentType,
               metadata: object.metadata ?? {},
             },
-          ];
+          ]);
         }),
-        download: vi.fn(async () => {
+        download: vi.fn(() => {
           const object = objects.get(objectKey);
-          if (!object) throw new Error(`missing ${objectKey}`);
-          return [Buffer.from(object.body)];
+          if (!object) return Promise.reject(new Error(`missing ${objectKey}`));
+          return Promise.resolve([Buffer.from(object.body)]);
         }),
-        save: vi.fn(async (contents: Uint8Array, options: { contentType?: string }) => {
+        save: vi.fn((contents: Uint8Array, options: { contentType?: string }) => {
           objects.set(objectKey, {
             body: Buffer.from(contents),
             contentType: options.contentType ?? "application/octet-stream",
           });
+          return Promise.resolve();
         }),
       })),
     })),
@@ -148,7 +154,7 @@ describe("GCS source document materializer", () => {
       expect.arrayContaining([
         expect.objectContaining({
           pageNumber: 1,
-          text: expect.stringContaining("Regulation 1169/2011"),
+          text: including("Regulation 1169/2011"),
         }),
       ]),
     );
@@ -190,12 +196,12 @@ describe("GCS source document materializer", () => {
         expect.objectContaining({
           title: "Disciplina delle etichette",
           pageNumber: null,
-          text: expect.stringContaining("Art. 1 & obblighi informativi."),
+          text: including("Art. 1 & obblighi informativi."),
         }),
         expect.objectContaining({
           title: "Campo di applicazione",
           pageNumber: null,
-          text: expect.stringContaining("Prodotti preimballati."),
+          text: including("Prodotti preimballati."),
         }),
       ]),
     );
@@ -209,7 +215,10 @@ describe("GCS source document materializer", () => {
   });
 
   it("accepts an exact backend-verified discovery snapshot without applying the static host allowlist", async () => {
-    const body = Buffer.from("<h1>Lege oficială</h1><p>Etichetarea produselor lactate.</p>", "utf8");
+    const body = Buffer.from(
+      "<h1>Lege oficială</h1><p>Etichetarea produselor lactate.</p>",
+      "utf8",
+    );
     const sourceSha256 = digest(body);
     const storageObjectKey =
       "label-governance/source-discovery/00000000-0000-4000-8000-000000000804/" +

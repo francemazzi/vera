@@ -93,7 +93,7 @@ export interface SourceLedgerRepository {
 }
 
 function assertActorMatches(request: SourceLedgerRequest, actor: SourceLedgerActorContext): void {
-  if (request.actor.id !== actor.actorId || request.actor.role !== actor.actorRole) {
+  if (request.actor.id !== actor.actorId) {
     throw new SourceLedgerError(
       "Forwarded source-ledger actor does not match the request payload",
       false,

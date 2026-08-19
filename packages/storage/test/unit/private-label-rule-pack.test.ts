@@ -7,12 +7,16 @@ import {
   privateLabelSourceBindings,
   resolvePrivateLabelRulePack,
 } from "../../src/index.js";
+import type { PrivateLabelFieldCode, PrivateLabelRulePackSnapshot } from "../../src/index.js";
 
 function uuid(value: number): string {
   return `00000000-0000-4000-8000-${value.toString().padStart(12, "0")}`;
 }
 
-function rule(fieldCode: (typeof PRIVATE_LABEL_FIELD_CODES)[number], source = 1) {
+function rule(
+  fieldCode: PrivateLabelFieldCode,
+  source = 1,
+): PrivateLabelRulePackSnapshot["baseline"][number] {
   return {
     fieldCode,
     source: {
@@ -24,7 +28,7 @@ function rule(fieldCode: (typeof PRIVATE_LABEL_FIELD_CODES)[number], source = 1)
   };
 }
 
-function snapshot() {
+function snapshot(): PrivateLabelRulePackSnapshot {
   return {
     schemaVersion: "silto-label-rule-pack/v1" as const,
     baseline: PRIVATE_LABEL_FIELD_CODES.filter(
@@ -89,19 +93,17 @@ describe("private Label rule-pack snapshot", () => {
   });
 
   it("uses the same EU Greece code as the public Label API", () => {
-    expect(
-      () =>
-        PrivateLabelRulePackSnapshotSchema.parse({
-          ...snapshot(),
-          countryOverlays: [{ countryCode: "EL", controls: [] }],
-        }),
+    expect(() =>
+      PrivateLabelRulePackSnapshotSchema.parse({
+        ...snapshot(),
+        countryOverlays: [{ countryCode: "EL", controls: [] }],
+      }),
     ).not.toThrow();
-    expect(
-      () =>
-        PrivateLabelRulePackSnapshotSchema.parse({
-          ...snapshot(),
-          countryOverlays: [{ countryCode: "GR", controls: [] }],
-        }),
+    expect(() =>
+      PrivateLabelRulePackSnapshotSchema.parse({
+        ...snapshot(),
+        countryOverlays: [{ countryCode: "GR", controls: [] }],
+      }),
     ).toThrow();
   });
 });

@@ -61,6 +61,7 @@ export interface SourceGovernanceJobProcessor {
 export function createUnavailableSourceGovernanceJobProcessor(): SourceGovernanceJobProcessor {
   return {
     async process() {
+      await Promise.resolve();
       throw new SourceGovernanceJobError("Source job processor is not configured", true);
     },
   };

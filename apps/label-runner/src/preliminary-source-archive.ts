@@ -106,7 +106,8 @@ async function saveImmutableObject(input: {
     });
     return;
   } catch (error: unknown) {
-    const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
+    const code =
+      typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
     if (code !== 412) throw error;
   }
 
@@ -143,8 +144,13 @@ export async function archivePinnedPreliminarySources(input: {
       throw new Error("The private preliminary source manifest is invalid");
     }
     const manifest = parsed as { sourceSnapshot?: unknown; sources?: unknown };
-    if (manifest.sourceSnapshot !== input.config.sourceSnapshot || !Array.isArray(manifest.sources)) {
-      throw new Error("The private preliminary source manifest does not match its template snapshot");
+    if (
+      manifest.sourceSnapshot !== input.config.sourceSnapshot ||
+      !Array.isArray(manifest.sources)
+    ) {
+      throw new Error(
+        "The private preliminary source manifest does not match its template snapshot",
+      );
     }
     const sources = manifest.sources.map((source): ArchivedPreliminarySource => {
       if (!source || typeof source !== "object" || Array.isArray(source)) {

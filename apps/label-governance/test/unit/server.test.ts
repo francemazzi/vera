@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createLabelGovernanceServer } from "../../src/server.js";
+import type { SourceClassifier } from "../../src/source-classifier.js";
 
 const sourceRequest = {
   sourceId: "00000000-0000-4000-8000-000000000201",
@@ -40,7 +41,7 @@ const ledgerRequest = {
   createdAt: "2026-07-19T00:00:00.000Z",
 } as const;
 
-function classifierResult() {
+function classifierResult(): Awaited<ReturnType<SourceClassifier["classify"]>> {
   return {
     model: "google/gemini-2.5-pro" as const,
     promptVersion: "label-source-classification-v1" as const,

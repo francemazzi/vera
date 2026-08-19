@@ -64,7 +64,7 @@ import {
   exportStorageBackup,
   restoreStorageBackup,
 } from "../../src/index.js";
-import type { VeraPrismaClient } from "../../src/index.js";
+import type { PrivateLabelRulePackSnapshot, VeraPrismaClient } from "../../src/index.js";
 import { makeEvaluationRun, makeReviewDecision, uuid } from "../fixtures/evaluation.js";
 
 const packageRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -72,7 +72,10 @@ const BackupIdempotencySchema = z.object({
   requestHash: z.string().regex(/^[0-9a-f]{64}$/u),
 });
 
-function privateRulePackSnapshot(sourceVersionId: string, sourceContentHash: string) {
+function privateRulePackSnapshot(
+  sourceVersionId: string,
+  sourceContentHash: string,
+): PrivateLabelRulePackSnapshot {
   return {
     schemaVersion: "silto-label-rule-pack/v1" as const,
     baseline: PRIVATE_LABEL_FIELD_CODES.filter(

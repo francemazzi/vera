@@ -19,7 +19,7 @@ e verificabile, in un unico repository TypeScript.
 
 Le fasi vengono eseguite nell’ordine seguente:
 
-`0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 13 → 14 → 11 → 12 → 15 → 16`
+`0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 13 → 14 → 11 → 12 → 15 → 16 → 17`
 
 Provenienza e persistenza precedono RAG e UI per evitare di aggiungere audit, immutabilità e
 sicurezza a posteriori.
@@ -43,6 +43,7 @@ sicurezza a posteriori.
 |     15 |   12 | UI di revisione               | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico    | `[x]` |
 |     17 |   16 | Apertura e release            | `[~]` |
+|     18 |   17 | Readiness npm e GitHub Pages  | `[~]` |
 
 ## Invarianti trasversali
 
@@ -455,6 +456,48 @@ i ref.
 - [x] La release contiene soltanto asset sintetici e documentazione coerente.
 - [ ] `main` è pulita, sincronizzata e tutte le fasi risultano `[x]`.
 - [x] `docs/verification/phase-16.md` registra la verifica finale.
+
+---
+
+## [~] Fase 17 — Readiness npm e GitHub Pages
+
+**Obiettivo:** preparare due package pubblici e un portale documentale distribuibile manualmente,
+senza pubblicare su npm, attivare GitHub Pages o modificare la visibilità del repository.
+
+- [x] Preparare `@vera/contracts` e `@vera/rules-core` `0.2.0` con metadata, licenza, README,
+      tarball minimali, build `prepack` ed export runtime/tipi da `dist` nel pacchetto pubblicato.
+- [x] Garantire che `@vera/rules-core` usi la corrispondente versione packed di `@vera/contracts`,
+      senza riferimenti `workspace:` o `catalog:` nei tarball.
+- [x] Documentare nel README lo stato non pubblicato, i requisiti Node/ESM, l’installazione futura,
+      il quickstart e i limiti `TECHNICAL_DEMO`.
+- [x] Aggiungere la guida canonica `docs/npm-integration.md` e un esempio sintetico privato,
+      compilato ed eseguito dai controlli di readiness.
+- [x] Creare il portale VitePress italiano con ricerca locale, navigazione, tema accessibile e base
+      path `/vera/`, senza analytics o asset remoti.
+- [x] Aggiungere un workflow GitHub Pages avviabile esclusivamente con `workflow_dispatch`.
+- [x] Rigenerare `docs/sbom.cdx.json` includendo VitePress e validare inventario e licenze.
+- [x] Preservare `v0.1.0` come release storica source-only, senza alterarne tag o contenuto.
+
+### Gate di fase
+
+- [x] `pnpm npm:verify` valida contenuto dei tarball, installazione npm esterna, typecheck ed
+      esecuzione deterministica sotto Node `22.22.1`.
+- [x] `pnpm docs:build` renderizza il portale, rifiuta link interni rotti e genera asset con
+      prefisso `/vera/`.
+- [x] `pnpm verify`, `pnpm security:check` e la scansione completa del confine pubblico terminano
+      con successo dopo le modifiche.
+- [x] Home, guida npm, navigazione mobile, tema scuro, focus da tastiera e blocchi di codice sono
+      verificati senza regressioni visive o overflow.
+- [x] `docs/verification/phase-17.md` registra implementazione, comandi, risultati e operazioni
+      esterne non eseguite.
+
+### Operazioni esterne manuali — non eseguite
+
+- [ ] Verificare la proprietà dello scope npm `@vera` e pubblicare nell’ordine `@vera/contracts` →
+      `@vera/rules-core`.
+- [ ] Abilitare GitHub Pages con sorgente GitHub Actions e avviare manualmente il workflow.
+- [ ] Valutare separatamente un eventuale cambio di visibilità del repository; il repository resta
+      privato e questa fase non lo modifica.
 
 ---
 

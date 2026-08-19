@@ -53,7 +53,7 @@ export class SourceDocumentMaterializationError extends Error {
  * the worker. The processor never accepts raw document bytes from Cloud Tasks.
  */
 export interface SourceDocumentMaterializer {
-  materialize(input: SourceWorkerInput): Promise<MaterializedSourceDocument>;
+  readonly materialize: (input: SourceWorkerInput) => Promise<MaterializedSourceDocument>;
 }
 
 export function sourceWorkerArtifacts(

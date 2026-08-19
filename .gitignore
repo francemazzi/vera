@@ -6,6 +6,9 @@ coverage/
 generated/
 **/generated/
 .turbo/
+docs/.vitepress/.temp/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 
 .env
 .env.*

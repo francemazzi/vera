@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  ChromaPrivateLabelRagIndex,
-  RagError,
-} from "../../src/index.js";
+import { ChromaPrivateLabelRagIndex, RagError, labelingTopicQueryValues } from "../../src/index.js";
 import type {
   ChromaCollection,
   ChromaMetadata,
@@ -78,7 +75,10 @@ class FakeChromaStore implements ChromaVectorStore {
   public readonly records: ChromaVectorRecord[] = [];
   public nextMatches: readonly ChromaVectorMatch[] = [];
   public lastQuery: ChromaVectorQuery | null = null;
-  public readonly deletes: { readonly collection: ChromaCollection; readonly where: Record<string, unknown> }[] = [];
+  public readonly deletes: {
+    readonly collection: ChromaCollection;
+    readonly where: Record<string, unknown>;
+  }[] = [];
 
   public ensureCollection(input: {
     readonly name: string;
@@ -127,19 +127,15 @@ describe("ChromaPrivateLabelRagIndex", () => {
     const result = await index.indexPreliminarySections([section()]);
 
     expect(result).toMatchObject({ chunksIndexed: 1, sourceVersionIds: [uuid(101)] });
-    expect(chroma.collections).toEqual([
-      expect.objectContaining({ name: "silto-label-verified-v1" }),
-    ]);
-    expect(chroma.records[0]).toMatchObject({
-      document: section().text,
-      metadata: expect.objectContaining({
-        source_state: "VERIFIED",
-        validity_status: "ADMIN_DECLARED",
-        source_content_hash: "a".repeat(64),
-        page_number: 12,
-        product_categories: ["food"],
-        workspace_scope: uuid(102),
-      }),
+    expect(chroma.collections.map(({ name }) => name)).toEqual(["silto-label-verified-v1"]);
+    expect(chroma.records[0]?.document).toBe(section().text);
+    expect(chroma.records[0]?.metadata).toMatchObject({
+      source_state: "VERIFIED",
+      validity_status: "ADMIN_DECLARED",
+      source_content_hash: "a".repeat(64),
+      page_number: 12,
+      product_categories: ["food"],
+      workspace_scope: uuid(102),
     });
     expect(chroma.records[0]?.embedding).toHaveLength(1_536);
     expect(embeddings.documents).toEqual([section().text]);
@@ -155,9 +151,11 @@ describe("ChromaPrivateLabelRagIndex", () => {
     await index.indexPreliminarySections([section({ sourceContentHash: "b".repeat(64) })]);
 
     expect(chroma.records).toHaveLength(1);
-    expect(chroma.deletes).toEqual([
+    expect(
+      chroma.deletes.map(({ collection, where }) => ({ name: collection.name, where })),
+    ).toEqual([
       {
-        collection: expect.objectContaining({ name: "silto-label-verified-v1" }),
+        name: "silto-label-verified-v1",
         where: {
           $and: [
             { source_version_id: { $eq: uuid(101) } },
@@ -177,7 +175,9 @@ describe("ChromaPrivateLabelRagIndex", () => {
     await expect(index.indexApprovedSections([section()])).rejects.toMatchObject({
       code: "INDEX_REJECTED",
     } satisfies Partial<RagError>);
-    await expect(index.indexPreliminarySections([section({ sourceState: "APPROVED" })])).resolves.toMatchObject({
+    await expect(
+      index.indexPreliminarySections([section({ sourceState: "APPROVED" })]),
+    ).resolves.toMatchObject({
       chunksIndexed: 1,
     });
     await expect(
@@ -202,13 +202,15 @@ describe("ChromaPrivateLabelRagIndex", () => {
     await index.removePreliminarySourceVersion(uuid(101));
     await index.removeApprovedSourceVersion(uuid(101));
 
-    expect(chroma.deletes).toEqual([
+    expect(
+      chroma.deletes.map(({ collection, where }) => ({ name: collection.name, where })),
+    ).toEqual([
       {
-        collection: expect.objectContaining({ name: "silto-label-verified-v1" }),
+        name: "silto-label-verified-v1",
         where: { source_version_id: { $eq: uuid(101) } },
       },
       {
-        collection: expect.objectContaining({ name: "silto-label-approved-v1" }),
+        name: "silto-label-approved-v1",
         where: { source_version_id: { $eq: uuid(101) } },
       },
     ]);
@@ -240,7 +242,11 @@ describe("ChromaPrivateLabelRagIndex", () => {
       productCategory: "food",
     });
 
-    expect(result).toMatchObject({ status: "AVAILABLE", scope: "PRELIMINARY", requiresReview: true });
+    expect(result).toMatchObject({
+      status: "AVAILABLE",
+      scope: "PRELIMINARY",
+      requiresReview: true,
+    });
     if (result.status !== "AVAILABLE") throw new Error("expected retrieval result");
     expect(result.chunks[0]).toMatchObject({
       sourceState: "VERIFIED",
@@ -248,20 +254,17 @@ describe("ChromaPrivateLabelRagIndex", () => {
       citation: { canonicalReference: "https://eur-lex.europa.eu/synthetic.pdf" },
     });
     expect(chroma.lastQuery?.where).toEqual({
-      $and: expect.arrayContaining([
+      $and: [
         { source_state: { $in: ["VERIFIED", "APPROVED"] } },
         { validity_status: { $in: ["ADMIN_DECLARED", "ADMIN_CONFIRMED", "AI_PROPOSED"] } },
         { jurisdiction: { $in: ["IT"] } },
         {
-          $or: [
-            { workspace_scope: { $eq: uuid(102) } },
-            { workspace_scope: { $eq: "GLOBAL" } },
-          ],
+          $or: [{ workspace_scope: { $eq: uuid(102) } }, { workspace_scope: { $eq: "GLOBAL" } }],
         },
         { valid_from_epoch: { $lte: Date.parse("2026-07-19T00:00:00.000Z") } },
         { valid_to_epoch: { $gt: Date.parse("2026-07-19T00:00:00.000Z") } },
         { product_categories: { $contains: "food" } },
-      ]),
+      ],
     });
   });
 
@@ -282,15 +285,23 @@ describe("ChromaPrivateLabelRagIndex", () => {
       labelingTopics: ["allergens", "ingredients"],
     });
     expect(chroma.lastQuery?.where).toEqual({
-      $and: expect.arrayContaining([
+      $and: [
+        { source_state: { $in: ["VERIFIED", "APPROVED"] } },
+        { validity_status: { $in: ["ADMIN_DECLARED", "ADMIN_CONFIRMED", "AI_PROPOSED"] } },
+        { jurisdiction: { $in: ["IT"] } },
         {
-          $or: expect.arrayContaining([
-            { labeling_topics: { $contains: "allergens" } },
-            { labeling_topics: { $contains: "ALLERGENS" } },
-            { labeling_topics: { $contains: "ingredients" } },
-          ]),
+          $or: [{ workspace_scope: { $eq: uuid(102) } }, { workspace_scope: { $eq: "GLOBAL" } }],
         },
-      ]),
+        { valid_from_epoch: { $lte: Date.parse("2026-07-19T00:00:00.000Z") } },
+        { valid_to_epoch: { $gt: Date.parse("2026-07-19T00:00:00.000Z") } },
+        {
+          $or: ["allergens", "ingredients"].flatMap((topic) =>
+            labelingTopicQueryValues(topic).map((value) => ({
+              labeling_topics: { $contains: value },
+            })),
+          ),
+        },
+      ],
     });
   });
 
@@ -313,9 +324,16 @@ describe("ChromaPrivateLabelRagIndex", () => {
       evaluationDate: "2026-07-19T00:00:00.000Z",
     });
     expect(chroma.lastQuery?.where).toEqual({
-      $and: expect.arrayContaining([
+      $and: [
+        { source_state: { $in: ["VERIFIED", "APPROVED"] } },
         { validity_status: { $in: ["ADMIN_DECLARED", "ADMIN_CONFIRMED", "AI_PROPOSED"] } },
-      ]),
+        { jurisdiction: { $in: ["IT"] } },
+        {
+          $or: [{ workspace_scope: { $eq: uuid(102) } }, { workspace_scope: { $eq: "GLOBAL" } }],
+        },
+        { valid_from_epoch: { $lte: Date.parse("2026-07-19T00:00:00.000Z") } },
+        { valid_to_epoch: { $gt: Date.parse("2026-07-19T00:00:00.000Z") } },
+      ],
     });
   });
 

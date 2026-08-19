@@ -94,6 +94,61 @@ runner riceve soltanto identificativi via Cloud Tasks/OIDC, legge la pagina norm
 privato e registra provider, modello, prompt, snapshot fonti e rule pack per ogni run. Vedi
 [runner privato SILTO-LABEL](docs/label-runner.md).
 
+## Integrazione npm — in preparazione
+
+> **Non ancora disponibile nel registry:** `@vera/contracts` e `@vera/rules-core` sono in
+> preparazione per una futura pubblicazione manuale `0.2.0`. I comandi `npm install` riportati qui
+> sotto saranno validi soltanto dopo quel rilascio e oggi non devono essere usati come prova di
+> disponibilità dei package.
+
+| Package            | Uso previsto                                                       | Stato          |
+| ------------------ | ------------------------------------------------------------------ | -------------- |
+| `@vera/contracts`  | Schemi Zod, tipi, hash e contratti JSON pubblici                   | Non pubblicato |
+| `@vera/rules-core` | Valutazione deterministica di Rule Pack e risoluzione dei findings | Non pubblicato |
+
+L’integrazione richiede Node.js `>=22.22.1 <23` ed è esclusivamente ESM. Sono supportati soltanto
+gli import dalla radice dei package; i deep import verso `src`, `dist` o file interni non fanno
+parte dell’interfaccia pubblica.
+
+Dopo la futura pubblicazione, l’installazione prevista sarà:
+
+```bash
+# Valido soltanto dopo la pubblicazione manuale della versione 0.2.0.
+npm install @vera/contracts@0.2.0 @vera/rules-core@0.2.0
+```
+
+Il percorso minimo è `JSON validato → evaluateRulePackVersion → aggregateOutcome/findings`:
+
+```ts
+import { EvidenceSchema, FactSchema, RulePackVersionSchema } from "@vera/contracts";
+import { evaluateRulePackVersion } from "@vera/rules-core";
+
+const rulePack = RulePackVersionSchema.parse(rulePackJson);
+const facts = FactSchema.array().parse(factsJson);
+const evidence = EvidenceSchema.array().parse(evidenceJson);
+
+const snapshot = evaluateRulePackVersion(rulePack, facts, evidence, "2026-01-15T00:00:00.000Z");
+
+console.log(snapshot.evaluationResult.aggregateOutcome);
+console.log(snapshot.evaluationResult.findings);
+```
+
+Nello snippet, `rulePackJson`, `factsJson` ed `evidenceJson` rappresentano JSON caricati
+dall’applicazione; la guida completa include un esempio sintetico eseguibile. La data di valutazione
+è esplicita per conservare determinismo e corretta risoluzione temporale.
+
+| Esito            | Significato sintetico                                                   |
+| ---------------- | ----------------------------------------------------------------------- |
+| `PASS`           | Il requisito applicabile è soddisfatto da input ed evidenze valide      |
+| `FAIL`           | Il requisito applicabile non è soddisfatto                              |
+| `REVIEW`         | Input, applicabilità o evidenze sono mancanti, incerti o contraddittori |
+| `NOT_APPLICABLE` | La regola non si applica al caso valutato                               |
+
+Ogni snapshot prodotto da questa integrazione mantiene `validationScope=TECHNICAL_DEMO`: l’esito
+dimostra il funzionamento tecnico del kernel e non è una certificazione, una validazione
+professionale o una consulenza. Per input completi, errori di parsing, validità temporale e
+compatibilità delle versioni, vedere la [guida all’integrazione npm](docs/npm-integration.md).
+
 ## Struttura del repository
 
 VERA usa un solo repository. I confini sono applicati tramite struttura, `.gitignore`, controlli
@@ -118,6 +173,7 @@ vera/
 │   └── storage/
 ├── examples/                 # solo scenari sintetici pubblicabili
 ├── docs/
+│   ├── npm-integration.md
 │   ├── roadmap.md
 │   └── verification/         # evidenze dei gate per fase
 ├── datasets/                 # materiale locale ignorato da Git
@@ -179,6 +235,7 @@ roadmap, creato un commit dedicato e verificata la CI prima di iniziare la fase 
 |     15 |   12 | UI di revisione                 | `[x]` |
 |     16 |   15 | MVP dimostrativo sintetico      | `[x]` |
 |     17 |   16 | Apertura e release sperimentale | `[~]` |
+|     18 |   17 | Readiness npm e GitHub Pages    | `[~]` |
 
 L’ordine intenzionale porta audit e persistenza prima di RAG e UI, così queste funzionalità nascono
 già sopra contratti stabili e tracciabili.
@@ -212,9 +269,11 @@ già sopra contratti stabili e tracciabili.
 - [MVP dimostrativo sintetico](docs/demo-mvp.md)
 - [Runner privato SILTO-LABEL](docs/label-runner.md)
 - [Release sperimentale](docs/release.md)
+- [Integrazione npm](docs/npm-integration.md)
 - [Security policy](SECURITY.md)
 
 ## Licenza
 
 VERA è distribuito con licenza [Apache-2.0](LICENSE). La release `v0.1.0` è sperimentale e non
-include pubblicazione npm.
+include pubblicazione npm: resta la release storica source-only. Anche i package candidati per la
+versione `0.2.0` non sono ancora pubblicati.

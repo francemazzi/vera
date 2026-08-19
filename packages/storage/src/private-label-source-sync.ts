@@ -70,13 +70,14 @@ async function readBoundedResponse(response: Response): Promise<Uint8Array> {
   if (!response.ok || response.body === null) {
     throw new Error("Private Label source download failed");
   }
-  const reader = response.body.getReader();
+  const reader = response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
   const chunks: Uint8Array[] = [];
   let total = 0;
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    for (;;) {
+      const result = await reader.read();
+      if (result.done) break;
+      const value = result.value;
       total += value.byteLength;
       if (total > MAX_SOURCE_BYTES) {
         await reader.cancel("Private Label source exceeds the bounded download size");

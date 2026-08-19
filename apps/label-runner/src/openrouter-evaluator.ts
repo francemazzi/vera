@@ -303,7 +303,7 @@ export function createOpenRouterLabelEvaluator(options: {
   const fetchImplementation = options.fetch ?? fetch;
   return {
     async evaluate(input) {
-      const rulePackVersion = `${input.template.id}@${input.template.version}` as "eu-it-preliminary-v1@1" | "global-food-label-preliminary-v1@1";
+      const rulePackVersion = `${input.template.id}@${input.template.version}`;
       if (
         (options.promptVersion && input.template.promptVersion !== options.promptVersion) ||
         (options.rulePackVersion && rulePackVersion !== options.rulePackVersion)

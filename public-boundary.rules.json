@@ -20,7 +20,26 @@
     ".dockerignore",
     ".gitignore",
     "README.md",
+    "apps/api/src/server.ts",
+    "apps/label-governance/src/official-source-policy.ts",
+    "apps/label-governance/test/integration/source-governance-flow.test.ts",
+    "apps/label-governance/test/unit/backend-source-job-processor.test.ts",
+    "apps/label-governance/test/unit/gcs-source-document-materializer.test.ts",
+    "apps/label-governance/test/unit/official-authority-search-tool.test.ts",
+    "apps/label-governance/test/unit/official-source-acquirer.test.ts",
+    "apps/label-governance/test/unit/source-classifier.test.ts",
+    "apps/label-governance/test/unit/source-discovery-backend-client.test.ts",
+    "apps/label-governance/test/unit/source-discovery-processor.test.ts",
+    "apps/label-governance/test/unit/source-discovery-ranker.test.ts",
+    "apps/label-runner/test/fixtures/preliminary-template.ts",
+    "apps/label-runner/test/unit/openrouter-evaluator.test.ts",
+    "apps/label-runner/test/unit/source-retriever.test.ts",
     "docs/adr/0001-public-core-boundary.md",
-    "docs/label-runner.md"
+    "docs/label-runner.md",
+    "infra/governance/catalog-sync.tf",
+    "packages/rag/src/private-label-rag-types.ts",
+    "packages/rag/test/unit/labeling-topic.test.ts",
+    "packages/rag/test/unit/private-label-chroma-index.test.ts",
+    "packages/storage/src/private-label-source-sync.ts"
   ]
 }

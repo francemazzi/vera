@@ -18,6 +18,11 @@ type PrivateBackendRequest = Readonly<{
   data?: unknown;
 }>;
 
+function containing<T extends Record<string, unknown>>(expected: T): T {
+  const matcher: unknown = expect.objectContaining(expected as never);
+  return matcher as T;
+}
+
 describe("source discovery backend client", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -143,7 +148,9 @@ describe("source discovery backend client", () => {
     const completionRequest = request.mock.calls[2]?.[0];
     const failureRequest = request.mock.calls[3]?.[0];
     if (!inputRequest || !claimRequest || !completionRequest || !failureRequest) {
-      throw new Error("Expected the discovery worker to issue input, claim, and terminal callbacks");
+      throw new Error(
+        "Expected the discovery worker to issue input, claim, and terminal callbacks",
+      );
     }
     expect(inputRequest).toEqual({
       method: "GET",
@@ -219,9 +226,9 @@ describe("source discovery backend client", () => {
     expect(getIdTokenClient).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       `http://127.0.0.1:8084/internal/label/source-discovery/${runId}/worker-input`,
-      expect.objectContaining({
+      containing({
         method: "GET",
-        headers: expect.objectContaining({
+        headers: containing({
           Authorization: "Bearer local-governance-token",
         }),
       }),

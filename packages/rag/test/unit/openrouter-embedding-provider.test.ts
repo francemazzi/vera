@@ -7,6 +7,17 @@ import {
 } from "../../src/index.js";
 import type { RagError } from "../../src/index.js";
 
+function requestUrl(input: Parameters<typeof globalThis.fetch>[0]): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return String(input);
+  return input.url;
+}
+
+function requestBodyText(body: unknown): string {
+  if (typeof body === "string") return body;
+  throw new Error("expected string request body");
+}
+
 const API_KEY = "synthetic-openrouter-key-123456";
 
 function embedding(value = 0.25): readonly number[] {
@@ -31,6 +42,7 @@ describe("OpenRouterEmbeddingProvider", () => {
     let capturedInput: Parameters<typeof globalThis.fetch>[0] | undefined;
     let capturedInit: RequestInit | undefined;
     const fetch: typeof globalThis.fetch = async (input, init) => {
+      await Promise.resolve();
       capturedInput = input;
       capturedInit = init;
       return responseFor([embedding()]);
@@ -39,9 +51,10 @@ describe("OpenRouterEmbeddingProvider", () => {
 
     const vectors = await provider.embedDocuments(["Synthetic official source text."]);
 
-    expect(String(capturedInput)).toBe("https://openrouter.ai/api/v1/embeddings");
+    if (capturedInput === undefined) throw new Error("expected OpenRouter request");
+    expect(requestUrl(capturedInput)).toBe("https://openrouter.ai/api/v1/embeddings");
     expect(capturedInit?.headers).toMatchObject({ Authorization: `Bearer ${API_KEY}` });
-    expect(JSON.parse(String(capturedInit?.body))).toMatchObject({
+    expect(JSON.parse(requestBodyText(capturedInit?.body))).toMatchObject({
       model: OPENROUTER_GEMINI_EMBEDDING_MODEL,
       dimensions: 1_536,
       input_type: "search_document",
@@ -55,7 +68,10 @@ describe("OpenRouterEmbeddingProvider", () => {
     const provider = new OpenRouterEmbeddingProvider({
       apiKey: API_KEY,
       fetch: async (_input, init) => {
-        expect(JSON.parse(String(init?.body))).toMatchObject({ input_type: "search_query" });
+        await Promise.resolve();
+        expect(JSON.parse(requestBodyText(init?.body))).toMatchObject({
+          input_type: "search_query",
+        });
         return responseFor([embedding().slice(0, 10)]);
       },
     });
@@ -68,10 +84,15 @@ describe("OpenRouterEmbeddingProvider", () => {
   it("fails closed when OpenRouter attributes a vector to another model", async () => {
     const provider = new OpenRouterEmbeddingProvider({
       apiKey: API_KEY,
-      fetch: async () => responseFor([embedding()], "different/model"),
+      fetch: async () => {
+        await Promise.resolve();
+        return responseFor([embedding()], "different/model");
+      },
     });
 
-    await expect(provider.embedDocuments(["Synthetic official source text."])).rejects.toMatchObject({
+    await expect(
+      provider.embedDocuments(["Synthetic official source text."]),
+    ).rejects.toMatchObject({
       code: "EGRESS_UNAVAILABLE",
       retryable: false,
     } satisfies Partial<RagError>);

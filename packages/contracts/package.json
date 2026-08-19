@@ -1,18 +1,60 @@
 {
   "name": "@vera/contracts",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.2.0",
+  "description": "Runtime schemas, immutable snapshots, and public TypeScript contracts for VERA.",
+  "license": "Apache-2.0",
+  "author": "VERA contributors",
   "type": "module",
+  "sideEffects": false,
+  "types": "./src/index.ts",
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "development": "./src/index.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/francemazzi/vera.git",
+    "directory": "packages/contracts"
+  },
+  "homepage": "https://github.com/francemazzi/vera#readme",
+  "bugs": {
+    "url": "https://github.com/francemazzi/vera/issues"
+  },
+  "keywords": [
+    "compliance",
+    "deterministic",
+    "schemas",
+    "typescript",
+    "vera",
+    "zod"
+  ],
+  "engines": {
+    "node": ">=22.22.1 <23"
+  },
+  "publishConfig": {
+    "access": "public",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
+    "prepack": "node ../../scripts/require-pnpm-pack.mjs && pnpm run clean && pnpm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run test",
     "test:unit": "vitest run test/unit",

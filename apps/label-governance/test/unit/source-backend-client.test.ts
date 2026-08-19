@@ -6,6 +6,21 @@ const candidateId = "00000000-0000-4000-8000-000000000701";
 const classificationRunId = "00000000-0000-4000-8000-000000000702";
 const invocationId = "00000000-0000-4000-8000-000000000703";
 
+function containing<T extends Record<string, unknown>>(expected: T): T {
+  const matcher: unknown = expect.objectContaining(expected as never);
+  return matcher as T;
+}
+
+function including(value: string): string {
+  const matcher: unknown = expect.stringContaining(value);
+  return matcher as string;
+}
+
+function anyObject(): object {
+  const matcher: unknown = expect.any(Object);
+  return matcher as object;
+}
+
 describe("source backend client artifact reservation", () => {
   it("preserves the curated official-HTML format from the private worker input", async () => {
     const request = vi.fn().mockResolvedValue({
@@ -51,7 +66,7 @@ describe("source backend client artifact reservation", () => {
     const client = createSourceBackendClient({
       backendUrl: "https://silto-gfsi-be.internal.example",
       audience: "https://silto-gfsi-be.internal.example",
-      auth: { getIdTokenClient } as never,
+      auth: { getIdTokenClient },
     });
 
     await expect(
@@ -60,7 +75,7 @@ describe("source backend client artifact reservation", () => {
       sourceFormat: "OFFICIAL_HTML",
       stageStatus: "DISCOVERED",
       verifiedRagStatus: "NOT_REQUESTED",
-      storageObjectKey: expect.stringContaining("/source.html"),
+      storageObjectKey: including("/source.html"),
     });
   });
 
@@ -84,7 +99,7 @@ describe("source backend client artifact reservation", () => {
     const client = createSourceBackendClient({
       backendUrl: "https://silto-gfsi-be.internal.example",
       audience: "https://silto-gfsi-be.internal.example",
-      auth: { getIdTokenClient: vi.fn().mockResolvedValue({ request }) } as never,
+      auth: { getIdTokenClient: vi.fn().mockResolvedValue({ request }) },
     });
 
     await expect(
@@ -109,7 +124,7 @@ describe("source backend client artifact reservation", () => {
     const client = createSourceBackendClient({
       backendUrl: "https://silto-gfsi-be.internal.example",
       audience: "https://silto-gfsi-be.internal.example",
-      auth: { getIdTokenClient } as never,
+      auth: { getIdTokenClient },
     });
 
     await expect(
@@ -132,10 +147,10 @@ describe("source backend client artifact reservation", () => {
 
     expect(getIdTokenClient).toHaveBeenCalledWith("https://silto-gfsi-be.internal.example");
     expect(request).toHaveBeenCalledWith(
-      expect.objectContaining({
+      containing({
         method: "POST",
         url: `https://silto-gfsi-be.internal.example/internal/label/sources/${candidateId}/worker-callback`,
-        data: expect.objectContaining({ status: "PROCESSING", artifacts: expect.any(Object) }),
+        data: containing({ status: "PROCESSING", artifacts: anyObject() }),
       }),
     );
   });

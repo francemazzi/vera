@@ -101,7 +101,7 @@ export async function createLabelGovernanceServer(options: {
     }
     try {
       const result = await options.sourceJobProcessor.process(job);
-      return reply.code(200).send({ status: "success", meta: result });
+      return await reply.code(200).send({ status: "success", meta: result });
     } catch (error) {
       if (error instanceof SourceGovernanceJobError) {
         request.log.warn({ err: error }, "Source governance job failed");
@@ -142,7 +142,7 @@ export async function createLabelGovernanceServer(options: {
     }
     try {
       const result = await options.sourceDiscoveryJobProcessor.process(job);
-      return reply.code(200).send({ status: "success", meta: result });
+      return await reply.code(200).send({ status: "success", meta: result });
     } catch (error) {
       if (error instanceof SourceDiscoveryJobError) {
         request.log.warn({ err: error }, "Source discovery job failed");
@@ -182,7 +182,9 @@ export async function createLabelGovernanceServer(options: {
       // asynchronous job path may classify a private PDF in staging, but it
       // can never promote or index that candidate without this reference.
       if (body.canonicalUrl === null) {
-        return reply.code(400).send({ status: "error", code: "OFFICIAL_SOURCE_URL_REQUIRED" });
+        return await reply
+          .code(400)
+          .send({ status: "error", code: "OFFICIAL_SOURCE_URL_REQUIRED" });
       }
       assertOfficialSourceUrl(
         body.canonicalUrl,
@@ -208,7 +210,7 @@ export async function createLabelGovernanceServer(options: {
         promptVersion: classification.promptVersion,
         responseSchemaHash: classification.responseSchemaHash,
       });
-      return reply.code(200).send({
+      return await reply.code(200).send({
         status: "success",
         classification,
         audit: {
@@ -262,7 +264,7 @@ export async function createLabelGovernanceServer(options: {
         sequence: result.sequence,
         actorId: actor.actorId,
       });
-      return reply.code(200).send({ status: "success", data: result });
+      return await reply.code(200).send({ status: "success", data: result });
     } catch (error) {
       if (error instanceof SourceLedgerError) {
         return reply.code(error.retryable ? 503 : 409).send({

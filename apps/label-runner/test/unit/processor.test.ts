@@ -80,9 +80,8 @@ describe("LabelJobProcessor", () => {
         Promise.resolve([{ page: 1, bytes: new Uint8Array([137, 80, 78, 71]) }]),
       ),
     };
-    const evaluator: LabelEvaluator = {
-      evaluate: vi.fn<LabelEvaluator["evaluate"]>(() => Promise.resolve(evaluation())),
-    };
+    const evaluate = vi.fn<LabelEvaluator["evaluate"]>(() => Promise.resolve(evaluation()));
+    const evaluator: LabelEvaluator = { evaluate };
     const processor = createLabelJobProcessor({
       backend,
       pageStore,
@@ -97,7 +96,7 @@ describe("LabelJobProcessor", () => {
       runnerInvocationId: "runner-invocation-0001",
     });
     expect(complete).toHaveBeenCalledTimes(1);
-    expect(evaluator.evaluate).toHaveBeenCalledWith(
+    expect(evaluate).toHaveBeenCalledWith(
       expect.objectContaining({ countryCodes: ["IT"], template: preliminaryTemplate }),
     );
   });
@@ -143,7 +142,9 @@ describe("LabelJobProcessor", () => {
     const complete = vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve());
     const backend: LabelBackendClient = {
       getInput: vi.fn<LabelBackendClient["getInput"]>(() => Promise.resolve(globalInput)),
-      claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
+      claim: vi.fn<LabelBackendClient["claim"]>(() =>
+        Promise.resolve({ acquired: true, version: 3 }),
+      ),
       complete,
       fail: vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve()),
     };
@@ -209,7 +210,9 @@ describe("LabelJobProcessor", () => {
     const processor = createLabelJobProcessor({
       backend: {
         getInput: vi.fn<LabelBackendClient["getInput"]>(() => Promise.resolve(input())),
-        claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
+        claim: vi.fn<LabelBackendClient["claim"]>(() =>
+          Promise.resolve({ acquired: true, version: 3 }),
+        ),
         complete,
         fail: vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve()),
       },
@@ -249,7 +252,9 @@ describe("LabelJobProcessor", () => {
     const processor = createLabelJobProcessor({
       backend: {
         getInput: vi.fn<LabelBackendClient["getInput"]>(() => Promise.resolve(globalInput)),
-        claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
+        claim: vi.fn<LabelBackendClient["claim"]>(() =>
+          Promise.resolve({ acquired: true, version: 3 }),
+        ),
         complete: vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve()),
         fail,
       },
@@ -271,7 +276,11 @@ describe("LabelJobProcessor", () => {
     await expect(processor.process(analysisId)).resolves.toEqual({ replayed: false });
     expect(evaluate).not.toHaveBeenCalled();
     expect(fail).toHaveBeenCalledWith(
-      expect.objectContaining({ analysisId, expectedVersion: 3, failureCode: "SOURCE_READINESS_BLOCKED" }),
+      expect.objectContaining({
+        analysisId,
+        expectedVersion: 3,
+        failureCode: "SOURCE_READINESS_BLOCKED",
+      }),
     );
   });
 
@@ -312,7 +321,9 @@ describe("LabelJobProcessor", () => {
             },
           }),
         ),
-        claim: vi.fn<LabelBackendClient["claim"]>(() => Promise.resolve({ acquired: true, version: 3 })),
+        claim: vi.fn<LabelBackendClient["claim"]>(() =>
+          Promise.resolve({ acquired: true, version: 3 }),
+        ),
         complete,
         fail: vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve()),
       },

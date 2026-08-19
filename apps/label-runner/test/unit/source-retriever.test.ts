@@ -21,30 +21,32 @@ const citation = {
 
 describe("Chroma label source retriever", () => {
   it("queries only the frozen EU+market scope and returns auditable citations", async () => {
-    const retrievePreliminarySafely = vi.fn(async () => ({
-      status: "AVAILABLE" as const,
-      scope: "PRELIMINARY" as const,
-      requiresReview: true as const,
-      chunks: [
-        {
-          ...citation,
-          sourceId: "00000000-0000-4000-8000-000000000202",
-          workspaceScope: "00000000-0000-4000-8000-000000000203",
-          sourceState: "VERIFIED" as const,
-          validityStatus: "ADMIN_DECLARED" as const,
-          jurisdiction: "EU",
-          language: "it",
-          revisionLabel: "2026-01",
-          validity: { validFrom: "2020-01-01T00:00:00.000Z", validTo: null },
-          productCategories: ["generic-prepacked"],
-          chunkOrdinal: 0,
-          text: citation.quote,
-          contentHash: "b".repeat(64),
-          score: 0.9,
-          citation,
-        },
-      ],
-    }));
+    const retrievePreliminarySafely = vi.fn(() =>
+      Promise.resolve({
+        status: "AVAILABLE" as const,
+        scope: "PRELIMINARY" as const,
+        requiresReview: true as const,
+        chunks: [
+          {
+            ...citation,
+            sourceId: "00000000-0000-4000-8000-000000000202",
+            workspaceScope: "00000000-0000-4000-8000-000000000203",
+            sourceState: "VERIFIED" as const,
+            validityStatus: "ADMIN_DECLARED" as const,
+            jurisdiction: "EU",
+            language: "it",
+            revisionLabel: "2026-01",
+            validity: { validFrom: "2020-01-01T00:00:00.000Z", validTo: null },
+            productCategories: ["generic-prepacked"],
+            chunkOrdinal: 0,
+            text: citation.quote,
+            contentHash: "b".repeat(64),
+            score: 0.9,
+            citation,
+          },
+        ],
+      }),
+    );
     const retriever = createChromaLabelSourceRetriever({ ragIndex: { retrievePreliminarySafely } });
 
     const result = await retriever.retrieve({
@@ -77,12 +79,13 @@ describe("Chroma label source retriever", () => {
   it("turns a RAG outage into an empty evidence set, never an invented citation", async () => {
     const retriever = createChromaLabelSourceRetriever({
       ragIndex: {
-        retrievePreliminarySafely: async () => ({
-          status: "UNAVAILABLE" as const,
-          scope: "PRELIMINARY" as const,
-          requiresReview: true as const,
-          reason: "PROVIDER_UNAVAILABLE: offline",
-        }),
+        retrievePreliminarySafely: () =>
+          Promise.resolve({
+            status: "UNAVAILABLE" as const,
+            scope: "PRELIMINARY" as const,
+            requiresReview: true as const,
+            reason: "PROVIDER_UNAVAILABLE: offline",
+          }),
       },
     });
 

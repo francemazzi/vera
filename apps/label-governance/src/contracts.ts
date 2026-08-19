@@ -86,7 +86,7 @@ export const SOURCE_CLASSIFICATION_JSON_SCHEMA = (() => {
   const schema = SourceClassificationProposalSchema.toJSONSchema({ target: "draft-07" });
   const clone = providerCompatibleSchema(structuredClone(schema)) as Record<string, unknown>;
   delete clone["$schema"];
-  return Object.freeze(clone) as Readonly<Record<string, unknown>>;
+  return Object.freeze(clone);
 })();
 
 export const SOURCE_CLASSIFICATION_SCHEMA_HASH = sha256CanonicalJson(

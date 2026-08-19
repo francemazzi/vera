@@ -39,7 +39,9 @@ describe("preliminary source archive", () => {
           }),
         ),
       }),
-    ).rejects.toThrow(`Private source ${PRELIMINARY_SOURCE_ARCHIVES[0].id} returned an unexpected media type`);
+    ).rejects.toThrow(
+      `Private source ${PRELIMINARY_SOURCE_ARCHIVES[0].id} returned an unexpected media type`,
+    );
     expect(storage.bucket).toHaveBeenCalledTimes(1);
   });
 });

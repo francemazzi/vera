@@ -9,6 +9,7 @@ export interface TaskOidcAuthorizer {
 export function createLocalTaskAuthorizer(token: string): TaskOidcAuthorizer {
   return {
     async authorize(authorization) {
+      await Promise.resolve();
       if (authorization !== `Bearer ${token}`) throw new Error("Invalid local label runner token");
     },
   };

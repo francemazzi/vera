@@ -3,7 +3,9 @@ import { Storage } from "@google-cloud/storage";
 import type { RunnerInput } from "./contracts.js";
 
 export interface LabelPageStore {
-  loadNormalizedPages(input: RunnerInput): Promise<readonly Readonly<{ page: number; bytes: Uint8Array }>[]>;
+  loadNormalizedPages(
+    input: RunnerInput,
+  ): Promise<readonly Readonly<{ page: number; bytes: Uint8Array }>[]>;
 }
 
 function createEmulatorAwareStorage(projectId: string): Storage {

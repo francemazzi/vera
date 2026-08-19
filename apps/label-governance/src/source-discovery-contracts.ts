@@ -33,10 +33,7 @@ const QueryTemplateSchema = z
   );
 
 /** A result-host allowlist may only narrow an authority profile's host set. */
-function hostPatternIsCoveredBy(
-  resultHost: string,
-  allowedHosts: readonly string[],
-): boolean {
+function hostPatternIsCoveredBy(resultHost: string, allowedHosts: readonly string[]): boolean {
   return allowedHosts.some((allowedHost) => {
     if (resultHost.startsWith(".")) {
       return allowedHost.startsWith(".") && resultHost.endsWith(allowedHost);

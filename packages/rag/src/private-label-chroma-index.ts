@@ -3,7 +3,12 @@ import { sha256CanonicalJson } from "@vera/contracts";
 import { splitRagText } from "./chunking.js";
 import { RagError } from "./errors.js";
 import { labelingTopicQueryValues, normalizeLabelingTopic } from "./labeling-topic.js";
-import type { ChromaCollection, ChromaMetadata, ChromaVectorMatch, ChromaVectorStore } from "./chroma-client.js";
+import type {
+  ChromaCollection,
+  ChromaMetadata,
+  ChromaVectorMatch,
+  ChromaVectorStore,
+} from "./chroma-client.js";
 import type { PrivateLabelEmbeddingProvider } from "./providers.js";
 import {
   PRIVATE_LABEL_APPROVED_COLLECTION,
@@ -26,6 +31,7 @@ import type {
   PrivateLabelRagSafeRetrievalResult,
   PrivateLabelRagScope,
   PrivateLabelRagSection,
+  PrivateLabelRagSourceState,
 } from "./private-label-rag-types.js";
 
 const OPEN_ENDED_VALID_TO_EPOCH = Number.MAX_SAFE_INTEGER;
@@ -45,9 +51,13 @@ export interface PrivateLabelRagIndex {
   ): Promise<PrivateLabelRagIndexResult>;
   removePreliminarySourceVersion(sourceVersionId: string): Promise<void>;
   removeApprovedSourceVersion(sourceVersionId: string): Promise<void>;
-  retrievePreliminary(query: PrivateLabelRagQuery): Promise<readonly PrivateLabelRagRetrievedChunk[]>;
+  retrievePreliminary(
+    query: PrivateLabelRagQuery,
+  ): Promise<readonly PrivateLabelRagRetrievedChunk[]>;
   retrieveApproved(query: PrivateLabelRagQuery): Promise<readonly PrivateLabelRagRetrievedChunk[]>;
-  retrievePreliminarySafely(query: PrivateLabelRagQuery): Promise<PrivateLabelRagSafeRetrievalResult>;
+  retrievePreliminarySafely(
+    query: PrivateLabelRagQuery,
+  ): Promise<PrivateLabelRagSafeRetrievalResult>;
   retrieveApprovedSafely(query: PrivateLabelRagQuery): Promise<PrivateLabelRagSafeRetrievalResult>;
 }
 
@@ -62,7 +72,11 @@ function epoch(value: string): number {
   return parsed;
 }
 
-function chunkId(section: PrivateLabelRagSection, chunkOrdinal: number, contentHash: string): string {
+function chunkId(
+  section: PrivateLabelRagSection,
+  chunkOrdinal: number,
+  contentHash: string,
+): string {
   return `${section.sourceVersionId}:${section.sectionId}:${String(chunkOrdinal)}:${contentHash.slice(0, 16)}`;
 }
 
@@ -86,15 +100,23 @@ function buildChunks(sections: readonly PrivateLabelRagSection[]): readonly Priv
   );
 }
 
-function assertScope(sections: readonly PrivateLabelRagSection[], scope: PrivateLabelRagScope): void {
-  const invalid = sections.find(({ sourceState }) =>
-    scope === "APPROVED"
-      ? sourceState !== "APPROVED"
-      : sourceState !== "VERIFIED" && sourceState !== "APPROVED",
-  );
+function allowedSourceStates(scope: PrivateLabelRagScope): readonly PrivateLabelRagSourceState[] {
+  return scope === "APPROVED" ? ["APPROVED"] : ["VERIFIED", "APPROVED"];
+}
+
+function assertScope(
+  sections: readonly PrivateLabelRagSection[],
+  scope: PrivateLabelRagScope,
+): void {
+  const permittedStates = allowedSourceStates(scope);
+  const invalid = sections.find(({ sourceState }) => !permittedStates.includes(sourceState));
   if (invalid !== undefined) {
     throw new RagError("INDEX_REJECTED", "Source state does not belong to the selected RAG scope", {
-      details: { scope, sourceState: invalid.sourceState, sourceVersionId: invalid.sourceVersionId },
+      details: {
+        scope,
+        sourceState: invalid.sourceState,
+        sourceVersionId: invalid.sourceVersionId,
+      },
     });
   }
   if (scope === "APPROVED") {
@@ -166,7 +188,9 @@ function chunkMetadata(chunk: PrivateLabelRagChunk): ChromaMetadata {
   if (chunk.productCategories.length > 0) metadata["product_categories"] = chunk.productCategories;
   if ((chunk.labelingTopics?.length ?? 0) > 0) {
     metadata["labeling_topics"] = [
-      ...new Set((chunk.labelingTopics ?? []).map((topic) => normalizeLabelingTopic(topic)).filter(Boolean)),
+      ...new Set(
+        (chunk.labelingTopics ?? []).map((topic) => normalizeLabelingTopic(topic)).filter(Boolean),
+      ),
     ];
   }
   return Object.freeze(metadata);
@@ -187,11 +211,13 @@ function sourceVersionIds(chunks: readonly PrivateLabelRagChunk[]): readonly str
   return [...new Set(chunks.map(({ sourceVersionId }) => sourceVersionId))].sort();
 }
 
-function queryFilter(query: ParsedPrivateLabelRagQuery, scope: PrivateLabelRagScope): Readonly<Record<string, unknown>> {
+function queryFilter(
+  query: ParsedPrivateLabelRagQuery,
+  scope: PrivateLabelRagScope,
+): Readonly<Record<string, unknown>> {
   const filters: Readonly<Record<string, unknown>>[] = [
     {
-    source_state:
-        scope === "APPROVED" ? { $eq: "APPROVED" } : { $in: ["VERIFIED", "APPROVED"] },
+      source_state: scope === "APPROVED" ? { $eq: "APPROVED" } : { $in: ["VERIFIED", "APPROVED"] },
     },
     {
       validity_status:
@@ -255,10 +281,14 @@ function metadataInteger(metadata: ChromaMetadata, key: string): number {
   return value;
 }
 
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
 function metadataCategories(metadata: ChromaMetadata): readonly string[] {
   const value = metadata["product_categories"];
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+  if (!isStringArray(value)) {
     throw new RagError("VECTOR_STORE_INVALID", "Chroma product_categories metadata is invalid");
   }
   return value;
@@ -267,7 +297,7 @@ function metadataCategories(metadata: ChromaMetadata): readonly string[] {
 function metadataTopics(metadata: ChromaMetadata): readonly string[] {
   const value = metadata["labeling_topics"];
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+  if (!isStringArray(value)) {
     throw new RagError("VECTOR_STORE_INVALID", "Chroma labeling_topics metadata is invalid");
   }
   return value;
@@ -499,7 +529,10 @@ export class ChromaPrivateLabelRagIndex implements PrivateLabelRagIndex {
         chunks: await this.#retrieve(query, scope),
       };
     } catch (error) {
-      const reason = error instanceof RagError ? `${error.code}: ${error.message}` : "UNKNOWN: RAG retrieval failed";
+      const reason =
+        error instanceof RagError
+          ? `${error.code}: ${error.message}`
+          : "UNKNOWN: RAG retrieval failed";
       return { status: "UNAVAILABLE", scope, requiresReview: true, reason };
     }
   }

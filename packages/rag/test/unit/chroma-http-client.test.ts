@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { ChromaHttpVectorStore } from "../../src/index.js";
 
+function requestUrl(input: Parameters<typeof globalThis.fetch>[0]): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return String(input);
+  return input.url;
+}
+
+function requestBodyText(body: unknown): string {
+  if (typeof body === "string") return body;
+  throw new Error("expected string request body");
+}
+
 describe("ChromaHttpVectorStore", () => {
   it("uses Chroma v2 collections with caller-provided embeddings and metadata filters", async () => {
     const calls: { readonly input: string; readonly init: RequestInit | undefined }[] = [];
@@ -23,7 +34,8 @@ describe("ChromaHttpVectorStore", () => {
       new Response("ok", { status: 200 }),
     ];
     const fetch: typeof globalThis.fetch = async (input, init) => {
-      calls.push({ input: String(input), init });
+      await Promise.resolve();
+      calls.push({ input: requestUrl(input), init });
       const response = responses.shift();
       if (response === undefined) throw new Error("unexpected Chroma request");
       return response;
@@ -69,19 +81,19 @@ describe("ChromaHttpVectorStore", () => {
       "http://10.90.0.10:8000/api/v2/tenants/silto/databases/label/collections/collection-1/delete",
       "http://10.90.0.10:8000/api/v2/heartbeat",
     ]);
-    expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({
+    expect(JSON.parse(requestBodyText(calls[0]?.init?.body))).toMatchObject({
       get_or_create: true,
       configuration: { hnsw: { space: "cosine" } },
     });
-    expect(JSON.parse(String(calls[1]?.init?.body))).toMatchObject({
+    expect(JSON.parse(requestBodyText(calls[1]?.init?.body))).toMatchObject({
       ids: ["chunk-1"],
       embeddings: [[0.1, 0.2]],
     });
-    expect(JSON.parse(String(calls[2]?.init?.body))).toMatchObject({
+    expect(JSON.parse(requestBodyText(calls[2]?.init?.body))).toMatchObject({
       query_embeddings: [[0.1, 0.2]],
       where: { $and: [{ jurisdiction: { $eq: "IT" } }] },
     });
-    expect(JSON.parse(String(calls[3]?.init?.body))).toEqual({
+    expect(JSON.parse(requestBodyText(calls[3]?.init?.body))).toEqual({
       where: { source_version_id: { $eq: "source-version" } },
     });
     expect(matches).toEqual([

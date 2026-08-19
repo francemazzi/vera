@@ -2,7 +2,6 @@ import { GoogleAuth } from "google-auth-library";
 import { z } from "zod";
 
 import { SourceClassificationProposalSchema } from "./contracts.js";
-import type { SourceClassificationProposal } from "./contracts.js";
 import { SourceGovernanceJobSchema } from "./source-jobs.js";
 import type { SourceGovernanceJob } from "./source-jobs.js";
 
@@ -265,29 +264,29 @@ export class SourceBackendClientError extends Error {
 }
 
 export interface SourceBackendClient {
-  getInput(job: SourceGovernanceJob): Promise<SourceWorkerInput>;
-  claim(input: {
+  readonly getInput: (job: SourceGovernanceJob) => Promise<SourceWorkerInput>;
+  readonly claim: (input: {
     readonly candidateId: string;
     readonly kind: SourceGovernanceJob["kind"];
     readonly classificationRunId: string | null;
     readonly workerInvocationId: string;
-  }): Promise<{
+  }) => Promise<{
     readonly acquired: boolean;
     readonly replayed: boolean;
     readonly input?: SourceWorkerInput;
   }>;
-  reserveArtifacts(input: {
+  readonly reserveArtifacts: (input: {
     readonly candidateId: string;
     readonly callback: SourceWorkerProcessing;
-  }): Promise<{ readonly replayed: boolean; readonly duplicate: boolean }>;
-  complete(input: {
+  }) => Promise<{ readonly replayed: boolean; readonly duplicate: boolean }>;
+  readonly complete: (input: {
     readonly candidateId: string;
     readonly callback: SourceWorkerCompletion;
-  }): Promise<void>;
-  fail(input: {
+  }) => Promise<void>;
+  readonly fail: (input: {
     readonly candidateId: string;
     readonly callback: SourceWorkerFailure;
-  }): Promise<void>;
+  }) => Promise<void>;
 }
 
 interface IdTokenClient {
@@ -362,7 +361,7 @@ export function createSourceBackendClient(options: {
         });
         if (!response.ok)
           throw new Error(`Governance backend returned HTTP ${String(response.status)}`);
-        return response.json();
+        return await response.json();
       }
       const response = await (
         await idTokenClient()

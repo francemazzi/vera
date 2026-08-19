@@ -100,7 +100,6 @@ export type {
 } from "./types.js";
 export {
   PRIVATE_LABEL_APPROVED_COLLECTION,
-  PRIVATE_LABEL_PRELIMINARY_COLLECTION,
   PRIVATE_LABEL_SHARED_CATALOG_WORKSPACE_SCOPE,
   PRIVATE_LABEL_VERIFIED_COLLECTION,
   PRIVATE_LABEL_RAG_EMBEDDING_DIMENSIONS,
@@ -113,6 +112,8 @@ export {
   PrivateLabelRagSourceStateSchema,
   PrivateLabelRagWorkspaceScopeSchema,
 } from "./private-label-rag-types.js";
+/** Compatibility alias; prefer PRIVATE_LABEL_VERIFIED_COLLECTION. */
+export { PRIVATE_LABEL_VERIFIED_COLLECTION as PRIVATE_LABEL_PRELIMINARY_COLLECTION } from "./private-label-rag-types.js";
 export type {
   ParsedPrivateLabelRagQuery,
   PrivateLabelRagChunk,

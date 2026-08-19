@@ -1,11 +1,11 @@
 import { sha256CanonicalJson } from "@vera/contracts";
-import { normalizeLabelingTopic, type PrivateLabelRagIndex, type PrivateLabelRagRetrievedChunk } from "@vera/rag";
+import {
+  normalizeLabelingTopic,
+  type PrivateLabelRagIndex,
+  type PrivateLabelRagRetrievedChunk,
+} from "@vera/rag";
 
-import type {
-  PreliminaryTemplate,
-  RegulatoryScope,
-  RunnerSourceCitation,
-} from "./contracts.js";
+import type { PreliminaryTemplate, RegulatoryScope, RunnerSourceCitation } from "./contracts.js";
 
 export type LabelControlSourceContext = Readonly<{
   fieldCode: string;
@@ -45,7 +45,9 @@ function citation(chunk: PrivateLabelRagRetrievedChunk): RunnerSourceCitation {
   };
 }
 
-function distinctCitations(chunks: readonly PrivateLabelRagRetrievedChunk[]): readonly RunnerSourceCitation[] {
+function distinctCitations(
+  chunks: readonly PrivateLabelRagRetrievedChunk[],
+): readonly RunnerSourceCitation[] {
   const seen = new Set<string>();
   return chunks
     .map(citation)
@@ -80,7 +82,11 @@ export function createChromaLabelSourceRetriever(options: {
             productCategory: input.productCategory,
             labelingTopics:
               control.topics.length > 0
-                ? [...new Set(control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean))]
+                ? [
+                    ...new Set(
+                      control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean),
+                    ),
+                  ]
                 : undefined,
             topK: 3,
           });
@@ -115,8 +121,33 @@ export function fallbackRegulatoryScope(input: {
 }): RegulatoryScope {
   const countryCode = input.countryCodes[0] ?? "IT";
   const euCountries = new Set([
-    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "EL", "HU", "IE",
-    "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+    "AT",
+    "BE",
+    "BG",
+    "HR",
+    "CY",
+    "CZ",
+    "DK",
+    "EE",
+    "FI",
+    "FR",
+    "DE",
+    "EL",
+    "HU",
+    "IE",
+    "IT",
+    "LV",
+    "LT",
+    "LU",
+    "MT",
+    "NL",
+    "PL",
+    "PT",
+    "RO",
+    "SK",
+    "SI",
+    "ES",
+    "SE",
   ]);
   const isEu = euCountries.has(countryCode);
   return {

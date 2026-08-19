@@ -34,7 +34,9 @@ function isSourceReadinessBlocked(
   // The IT pilot degrades uncovered non-sector controls to REVIEW_REQUIRED.
   if (template.id === "eu-it-preliminary-v1") return false;
   const sectorSpecific = new Set<string>(
-    template.controls.filter((control) => control.sectorSpecific === true).map((control) => control.fieldCode),
+    template.controls
+      .filter((control) => control.sectorSpecific === true)
+      .map((control) => control.fieldCode),
   );
   return sources.controls.some(
     (control) => control.citations.length === 0 && !sectorSpecific.has(control.fieldCode),
@@ -64,7 +66,8 @@ export function createLabelJobProcessor(options: {
 
       try {
         const pages = await options.pageStore.loadNormalizedPages(input);
-        const scope = input.regulatoryScope ?? fallbackRegulatoryScope({ countryCodes: input.countryCodes });
+        const scope =
+          input.regulatoryScope ?? fallbackRegulatoryScope({ countryCodes: input.countryCodes });
         const sources = options.sourceRetriever
           ? await options.sourceRetriever.retrieve({
               workspaceId: input.workspaceId,
