@@ -36,7 +36,7 @@ fi
 
 export NODE_ENV=development
 export PORT=8080
-export LABEL_RUNNER_MODE=preliminary
+export LABEL_RUNNER_MODE=evaluation
 export LABEL_RUNNER_LOCAL_MODE=true
 export LABEL_RUNNER_LOCAL_TOKEN="$(read_backend_value LABEL_RUNNER_LOCAL_TOKEN)"
 export LABEL_BACKEND_URL=http://127.0.0.1:8084

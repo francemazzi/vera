@@ -14,7 +14,7 @@ function responseForFieldCodes(fieldCodes: readonly string[]): Record<string, un
           content: JSON.stringify({
             controls: fieldCodes.map((fieldCode) => ({
               fieldCode,
-              indicator: "REVIEW_REQUIRED",
+              outcome: "REVIEW",
               rationale: "Synthetic fixture",
               confidence: 0,
             })),
@@ -37,7 +37,7 @@ function responseWithBoundingBox(fieldCode: string, boundingBox: unknown): Recor
           content: JSON.stringify({
             controls: LABEL_FIELD_CODES.map((code) => ({
               code,
-              indicator: "REVIEW_REQUIRED",
+              outcome: "REVIEW",
               rationale: "Synthetic fixture",
               confidence: 0,
               ...(code === fieldCode ? { boundingBox } : {}),
@@ -57,7 +57,7 @@ function evaluatorWith(fetch: typeof globalThis.fetch): LabelEvaluator {
   return createOpenRouterLabelEvaluator({
     apiKey: "synthetic-openrouter-key-1234",
     model: "google/gemini-2.5-flash",
-    promptVersion: "label-preliminary-eu-it-v1",
+    promptVersion: "label-evaluation-v1",
     rulePackVersion: "eu-it-preliminary-v1@1",
     sourceSnapshot,
     timeoutMs: 1_000,
@@ -93,7 +93,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(result).toMatchObject({
       provider: "openrouter",
       model: "google/gemini-2.5-flash",
-      promptVersion: "label-preliminary-eu-it-v1",
+      promptVersion: "label-evaluation-v1",
       rulePackVersion: "eu-it-preliminary-v1@1",
       sourceSnapshot,
     });
@@ -108,6 +108,11 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(request["response_format"]).toEqual({ type: "json_object" });
     expect(request["max_tokens"]).toBe(8192);
     expect(JSON.stringify(request["messages"])).toContain("The root key must be controls");
+    expect(JSON.stringify(request["messages"])).toContain("Never emit COVERAGE_DETECTED");
+    expect(JSON.stringify(request["messages"])).toContain("Return PASS when the required element");
+    expect(JSON.stringify(request["messages"])).not.toContain(
+      "This is not a formal compliance decision",
+    );
     expect(JSON.stringify(request)).not.toContain("synthetic-openrouter-key-1234");
     expect(JSON.stringify(request)).not.toContain("sourceCitation");
   });
@@ -140,7 +145,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(result.controls).toHaveLength(LABEL_FIELD_CODES.length);
     const repaired = result.controls.find((control) => control.fieldCode === "elenco_ingredienti");
     expect(repaired).toMatchObject({
-      indicator: "REVIEW_REQUIRED",
+      outcome: "REVIEW",
       confidence: 0,
       rationale: "Codice controllo non confermato dal modello: esito degradato a revisione.",
     });
@@ -198,7 +203,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(result.controls.every((control) => control.boundingBox === undefined)).toBe(true);
   });
 
-  it("keeps retrieved excerpts on REVIEW_REQUIRED when the model does not cite them", async () => {
+  it("keeps retrieved excerpts on REVIEW when the model does not cite them", async () => {
     const retrieved = {
       chunkId: "00000000-0000-4000-8000-000000000201:art-9:0:aaaaaaaaaaaaaaaa",
       sourceVersionId: "00000000-0000-4000-8000-000000000201",
@@ -229,7 +234,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     const result = await evaluatorWith(fetchReturning(responseForAllPreliminary())).evaluate(input);
     const control = result.controls.find((entry) => entry.fieldCode === "elenco_ingredienti");
     expect(control).toMatchObject({
-      indicator: "REVIEW_REQUIRED",
+      outcome: "REVIEW",
       citations: [retrieved],
     });
   });
@@ -242,7 +247,7 @@ describe("OpenRouter preliminary label evaluator", () => {
             content: JSON.stringify({
               controls: LABEL_FIELD_CODES.map((fieldCode) => ({
                 fieldCode,
-                indicator: "CONFORME",
+                outcome: "CONFORME",
                 rationale: "Ingredienti: farina di FRUMENTO",
                 confidence: 0,
               })),

@@ -47,6 +47,11 @@ questa modalità `/health` è disponibile agli invoker autorizzati, mentre ogni 
 `/internal/label-jobs` risponde `503 RUNNER_STANDBY`: non viene letto alcun file e OpenRouter non
 viene invocato.
 
+Per elaborare le nuove valutazioni impostare `LABEL_RUNNER_MODE=evaluation` e
+`LABEL_PROMPT_VERSION=label-evaluation-v1`. Un gap RAG non deve far fallire il job:
+il controllo senza citazione resta `REVIEW`. `preliminary` resta disponibile solo
+per replay di analisi storiche.
+
 ## Elaborazione e retry
 
 Il runner acquisisce un lease ottimistico prima di valutare un'analisi. Una task duplicata riceve un

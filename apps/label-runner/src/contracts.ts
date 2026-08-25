@@ -27,6 +27,8 @@ export const LABEL_FIELD_CODES = [
   "termine_minimo_conservazione_data_scadenza",
 ] as const;
 
+export const LABEL_OUTCOMES = ["PASS", "FAIL", "REVIEW", "NOT_APPLICABLE"] as const;
+
 export const PRELIMINARY_INDICATORS = [
   "COVERAGE_DETECTED",
   "POSSIBLE_ISSUE",
@@ -56,6 +58,7 @@ const PreliminaryTemplateIdSchema = z.enum([
 const PreliminaryPromptVersionSchema = z.enum([
   "label-preliminary-eu-it-v1",
   "label-preliminary-rag-v1",
+  "label-evaluation-v1",
 ]);
 
 const PreliminaryCitationSchema = z
@@ -158,7 +161,7 @@ export const RunnerInputSchema = z
       }),
     status: z.enum(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"]),
     version: z.int().nonnegative(),
-    assessmentMode: z.literal("PRELIMINARY"),
+    assessmentMode: z.enum(["PRELIMINARY", "APPROVED"]),
     productCategory: z.string().trim().min(1).max(120),
     regulatoryScope: RegulatoryScopeSchema.optional(),
     preliminaryTemplate: PreliminaryTemplateSchema,
@@ -235,6 +238,18 @@ export const RunnerBoundingBoxSchema = z
   });
 export type RunnerBoundingBox = z.infer<typeof RunnerBoundingBoxSchema>;
 
+export const EvaluationRunnerControlSchema = z
+  .object({
+    fieldCode: z.enum(LABEL_FIELD_CODES),
+    outcome: z.enum(LABEL_OUTCOMES),
+    rationale: z.string().min(1).max(8_000),
+    correctiveSuggestion: z.string().min(1).max(500).optional(),
+    confidence: z.number().min(0).max(1),
+    citations: z.array(RunnerSourceCitationSchema).max(3).default([]),
+    boundingBox: RunnerBoundingBoxSchema.optional(),
+  })
+  .strict();
+
 export const PreliminaryRunnerControlSchema = z
   .object({
     fieldCode: z.enum(LABEL_FIELD_CODES),
@@ -264,7 +279,7 @@ export const RunnerEvaluationSchema = z
         latencyMs: z.int().nonnegative().max(600_000),
       })
       .strict(),
-    controls: z.array(PreliminaryRunnerControlSchema).length(LABEL_FIELD_CODES.length),
+    controls: z.array(EvaluationRunnerControlSchema).length(LABEL_FIELD_CODES.length),
   })
   .strict()
   .superRefine((value, context) => {

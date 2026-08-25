@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { LABEL_FIELD_CODES } from "../../src/contracts.js";
 import type { RunnerEvaluation, RunnerInput } from "../../src/contracts.js";
@@ -29,7 +30,7 @@ function input(
     ],
     status,
     version: 2,
-    assessmentMode: "PRELIMINARY",
+    assessmentMode: "APPROVED",
     productCategory: "generic-prepacked",
     preliminaryTemplate,
   };
@@ -39,7 +40,7 @@ function evaluation(): RunnerEvaluation {
   return {
     provider: "openrouter",
     model: "google/gemini-2.5-flash",
-    promptVersion: "label-preliminary-eu-it-v1",
+    promptVersion: "label-evaluation-v1",
     rulePackVersion: "eu-it-preliminary-v1@1",
     sourceSnapshot,
     usage: {
@@ -51,7 +52,7 @@ function evaluation(): RunnerEvaluation {
     },
     controls: LABEL_FIELD_CODES.map((fieldCode) => ({
       fieldCode,
-      indicator: "REVIEW_REQUIRED" as const,
+      outcome: "REVIEW" as const,
       rationale: "Synthetic test fixture",
       confidence: 0,
       citations: [],
@@ -236,8 +237,9 @@ describe("LabelJobProcessor", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
-  it("records source readiness instead of calling the model when a global RAG control is uncovered", async () => {
+  it("evaluates a global RAG gap instead of failing the job", async () => {
     const fail = vi.fn<LabelBackendClient["fail"]>(() => Promise.resolve());
+    const complete = vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve());
     const evaluate = vi.fn<LabelEvaluator["evaluate"]>(() => Promise.resolve(evaluation()));
     const globalInput: RunnerInput = {
       ...input(),
@@ -255,7 +257,7 @@ describe("LabelJobProcessor", () => {
         claim: vi.fn<LabelBackendClient["claim"]>(() =>
           Promise.resolve({ acquired: true, version: 3 }),
         ),
-        complete: vi.fn<LabelBackendClient["complete"]>(() => Promise.resolve()),
+        complete,
         fail,
       },
       pageStore: {
@@ -274,14 +276,9 @@ describe("LabelJobProcessor", () => {
     });
 
     await expect(processor.process(analysisId)).resolves.toEqual({ replayed: false });
-    expect(evaluate).not.toHaveBeenCalled();
-    expect(fail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        analysisId,
-        expectedVersion: 3,
-        failureCode: "SOURCE_READINESS_BLOCKED",
-      }),
-    );
+    expect(evaluate).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(fail).not.toHaveBeenCalled();
   });
 
   it("does not block a global run when only sector-specific controls lack citations", async () => {
@@ -376,5 +373,11 @@ describe("LabelJobProcessor", () => {
 
     await expect(processor.process(analysisId)).rejects.toMatchObject({ retryable: true });
     expect(fail).not.toHaveBeenCalled();
+  });
+
+  it("does not treat a RAG gap as a terminal SOURCE_READINESS_BLOCKED failure", () => {
+    const source = readFileSync(new URL("../../src/processor.ts", import.meta.url), "utf8");
+    expect(source).not.toContain("SOURCE_READINESS_BLOCKED");
+    expect(source).toContain("EVALUATION_PROCESSING_FAILED");
   });
 });

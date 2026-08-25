@@ -20,7 +20,7 @@ describe.skipIf(!ENABLED)("Private preliminary label service OpenRouter smoke", 
     const evaluator = createOpenRouterLabelEvaluator({
       apiKey,
       model: "google/gemini-2.5-flash",
-      promptVersion: "label-preliminary-eu-it-v1",
+      promptVersion: "label-evaluation-v1",
       rulePackVersion: "eu-it-preliminary-v1@1",
       sourceSnapshot,
       timeoutMs: 90_000,

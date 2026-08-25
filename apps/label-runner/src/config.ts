@@ -28,7 +28,11 @@ export interface LabelRunnerConfig {
   readonly taskInvokerServiceAccountEmail: string;
   readonly openRouterApiKey: string;
   readonly openRouterModel: "google/gemini-2.5-flash";
-  readonly promptVersion: "label-preliminary-eu-it-v1" | "label-preliminary-rag-v1" | null;
+  readonly promptVersion:
+    | "label-preliminary-eu-it-v1"
+    | "label-preliminary-rag-v1"
+    | "label-evaluation-v1"
+    | null;
   readonly rulePackVersion: "eu-it-preliminary-v1@1" | "global-food-label-preliminary-v1@1" | null;
   readonly sourceSnapshot: string;
   readonly openRouterTimeoutMs: number;
@@ -44,8 +48,11 @@ export interface LabelRunnerConfig {
 export function readLabelRunnerConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): LabelRunnerConfig {
-  if (environment["LABEL_RUNNER_MODE"] !== "preliminary") {
-    throw new Error("LABEL_RUNNER_MODE must be preliminary");
+  if (
+    environment["LABEL_RUNNER_MODE"] !== "evaluation" &&
+    environment["LABEL_RUNNER_MODE"] !== "preliminary"
+  ) {
+    throw new Error("LABEL_RUNNER_MODE must be evaluation or preliminary");
   }
   const backendUrl = requiredEnvironment("LABEL_BACKEND_URL", environment).replace(/\/+$/u, "");
   const backendAudience = environment["LABEL_BACKEND_AUDIENCE"]?.trim() || backendUrl;
@@ -73,10 +80,11 @@ export function readLabelRunnerConfig(
   if (
     promptVersion !== null &&
     promptVersion !== "label-preliminary-eu-it-v1" &&
-    promptVersion !== "label-preliminary-rag-v1"
+    promptVersion !== "label-preliminary-rag-v1" &&
+    promptVersion !== "label-evaluation-v1"
   ) {
     throw new Error(
-      "LABEL_PROMPT_VERSION must be label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
+      "LABEL_PROMPT_VERSION must be label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
     );
   }
   if (
