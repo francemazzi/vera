@@ -7,7 +7,7 @@ import type {
   RunnerEvaluation,
   RunnerSourceCitation,
 } from "./contracts.js";
-import { overlayInstructionsForCategory } from "./product-category-overlay.js";
+import { overlayInstructionsForEvaluation } from "./merge-control-overlays.js";
 import type { LabelRetrievedSources } from "./source-retriever.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -69,7 +69,10 @@ function prompt(
     rationale: string;
   }>[] = [],
 ): string {
-  const overlays = overlayInstructionsForCategory(productCategory);
+  const overlays = overlayInstructionsForEvaluation({
+    productCategory,
+    countryCode: scope.countryCode,
+  });
   const instructions = template.controls
     .map((control) => {
       const overlay = overlays[control.fieldCode];
