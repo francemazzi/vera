@@ -54,9 +54,11 @@ export function createLabelJobProcessor(options: {
         const evaluated = await options.evaluator.evaluate({
           pages,
           countryCodes: input.countryCodes,
+          productCategory: input.productCategory,
           regulatoryScope: scope,
           sources,
           template: input.preliminaryTemplate,
+          goldExamples: input.goldExamples,
         });
         // `sources.controls` is the canonical retrieval order and evidence
         // set used to derive sources.sourceSnapshot. Pass it through without

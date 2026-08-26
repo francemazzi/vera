@@ -33,6 +33,7 @@ function input(
     assessmentMode: "APPROVED",
     productCategory: "generic-prepacked",
     preliminaryTemplate,
+    goldExamples: [],
   };
 }
 

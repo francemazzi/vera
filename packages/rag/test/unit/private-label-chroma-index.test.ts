@@ -45,7 +45,7 @@ function section(overrides: Partial<PrivateLabelRagSection> = {}): PrivateLabelR
     sectionId: "art-9",
     sectionTitle: "Mandatory particulars",
     pageNumber: 12,
-    text: "Synthetic label text requires a visible product denomination and allergen declaration.",
+    text: "Article 9 of the Regulation requires a visible product denomination and allergen declaration.",
     ...overrides,
   };
 }

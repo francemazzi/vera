@@ -13,7 +13,15 @@ export type {
   ChromaVectorRecord,
   ChromaVectorStore,
 } from "./chroma-client.js";
+export { hasNormativeSignal } from "./normative-chunk-filter.js";
+export {
+  PRIVATE_LABEL_GOLD_COLLECTION,
+  isPrivateLabelGoldCollection,
+  isPrivateLabelLegalCollection,
+} from "./private-label-gold-collection.js";
 export { labelingTopicQueryValues, normalizeLabelingTopic } from "./labeling-topic.js";
+export { ChromaPrivateLabelGoldIndex } from "./private-label-gold-index.js";
+export type { GoldExampleRecord } from "./private-label-gold-index.js";
 export { ChromaPrivateLabelRagIndex } from "./private-label-chroma-index.js";
 export type {
   ChromaPrivateLabelRagIndexOptions,

@@ -29,6 +29,7 @@ describe.skipIf(!ENABLED)("Private preliminary label service OpenRouter smoke", 
     const result = await evaluator.evaluate({
       pages: [{ page: 1, bytes: ONE_PIXEL_PNG }],
       countryCodes: ["IT"],
+      productCategory: "generic-prepacked",
       regulatoryScope: fallbackRegulatoryScope({ countryCodes: ["IT"] }),
       sources: {
         controls: LABEL_FIELD_CODES.map((fieldCode) => ({ fieldCode, citations: [] })),

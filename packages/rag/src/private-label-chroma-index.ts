@@ -1,6 +1,7 @@
 import { sha256CanonicalJson } from "@vera/contracts";
 
 import { splitRagText } from "./chunking.js";
+import { hasNormativeSignal } from "./normative-chunk-filter.js";
 import { RagError } from "./errors.js";
 import { labelingTopicQueryValues, normalizeLabelingTopic } from "./labeling-topic.js";
 import type {
@@ -82,7 +83,9 @@ function chunkId(
 
 function buildChunks(sections: readonly PrivateLabelRagSection[]): readonly PrivateLabelRagChunk[] {
   return sections.flatMap((section) =>
-    splitRagText(section.text).map((text, chunkOrdinal) => {
+    splitRagText(section.text)
+      .filter((text) => hasNormativeSignal(text))
+      .map((text, chunkOrdinal) => {
       const contentHash = sha256CanonicalJson({
         sourceVersionId: section.sourceVersionId,
         sectionId: section.sectionId,

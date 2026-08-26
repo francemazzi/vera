@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { Storage } from "@google-cloud/storage";
 import { z } from "zod";
 
+import { selectOfficialHtmlBody } from "./official-html-body.js";
 import { assertOfficialSourceUrl } from "./official-source-policy.js";
 import { isVerifiedDiscoverySnapshotObjectKey } from "./source-discovery-snapshot.js";
 import {
@@ -36,6 +37,12 @@ const HTML_SUPPRESSED_TAGS = new Set([
   "embed",
   "svg",
   "canvas",
+  "nav",
+  "header",
+  "footer",
+  "aside",
+  "form",
+  "button",
 ]);
 const HTML_BLOCK_TAGS = new Set([
   "address",
@@ -427,7 +434,7 @@ function extractHtmlSections(
       { cause: error },
     );
   }
-  const blocks = extractHtmlBlocks(markup);
+  const blocks = extractHtmlBlocks(selectOfficialHtmlBody(markup));
   const sections: SourceTextSection[] = [];
   let title = fallbackTitle?.slice(0, 300) || "Official source snapshot";
   let buffer: string[] = [];

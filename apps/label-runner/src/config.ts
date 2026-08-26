@@ -32,8 +32,14 @@ export interface LabelRunnerConfig {
     | "label-preliminary-eu-it-v1"
     | "label-preliminary-rag-v1"
     | "label-evaluation-v1"
+    | "label-evaluation-v2"
     | null;
-  readonly rulePackVersion: "eu-it-preliminary-v1@1" | "global-food-label-preliminary-v1@1" | null;
+  readonly rulePackVersion:
+    | "eu-it-preliminary-v1@1"
+    | "eu-it-preliminary-v1@2"
+    | "global-food-label-preliminary-v1@1"
+    | "global-food-label-preliminary-v1@2"
+    | null;
   readonly sourceSnapshot: string;
   readonly openRouterTimeoutMs: number;
   /** Private Chroma configuration. This endpoint is never exposed to a browser. */
@@ -81,19 +87,22 @@ export function readLabelRunnerConfig(
     promptVersion !== null &&
     promptVersion !== "label-preliminary-eu-it-v1" &&
     promptVersion !== "label-preliminary-rag-v1" &&
-    promptVersion !== "label-evaluation-v1"
+    promptVersion !== "label-evaluation-v1" &&
+    promptVersion !== "label-evaluation-v2"
   ) {
     throw new Error(
-      "LABEL_PROMPT_VERSION must be label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
+      "LABEL_PROMPT_VERSION must be label-evaluation-v2, label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
     );
   }
   if (
     rulePackVersion !== null &&
     rulePackVersion !== "eu-it-preliminary-v1@1" &&
-    rulePackVersion !== "global-food-label-preliminary-v1@1"
+    rulePackVersion !== "eu-it-preliminary-v1@2" &&
+    rulePackVersion !== "global-food-label-preliminary-v1@1" &&
+    rulePackVersion !== "global-food-label-preliminary-v1@2"
   ) {
     throw new Error(
-      "LABEL_RULE_PACK_VERSION must be eu-it-preliminary-v1@1 or global-food-label-preliminary-v1@1",
+      "LABEL_RULE_PACK_VERSION must be eu-it-preliminary-v1@1, eu-it-preliminary-v1@2, global-food-label-preliminary-v1@1 or global-food-label-preliminary-v1@2",
     );
   }
   return {

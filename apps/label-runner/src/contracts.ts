@@ -59,6 +59,7 @@ const PreliminaryPromptVersionSchema = z.enum([
   "label-preliminary-eu-it-v1",
   "label-preliminary-rag-v1",
   "label-evaluation-v1",
+  "label-evaluation-v2",
 ]);
 
 const PreliminaryCitationSchema = z
@@ -93,7 +94,7 @@ const PreliminarySourceArchiveSchema = z
 export const PreliminaryTemplateSchema = z
   .object({
     id: PreliminaryTemplateIdSchema,
-    version: z.literal("1"),
+    version: z.enum(["1", "2"]),
     promptVersion: PreliminaryPromptVersionSchema,
     sourceSnapshot: z.string().regex(/^[0-9a-f]{64}$/u),
     /** Historical metadata only; live source citations are supplied by Chroma. */
@@ -165,6 +166,20 @@ export const RunnerInputSchema = z
     productCategory: z.string().trim().min(1).max(120),
     regulatoryScope: RegulatoryScopeSchema.optional(),
     preliminaryTemplate: PreliminaryTemplateSchema,
+    goldExamples: z
+      .array(
+        z
+          .object({
+            fieldCode: z.enum(LABEL_FIELD_CODES),
+            goldOutcome: z.enum(LABEL_OUTCOMES),
+            rationale: z.string().trim().min(1).max(500),
+            countryCode: z.string().regex(/^[A-Z]{2}$/u),
+            productCategory: z.string().trim().min(1).max(120),
+          })
+          .strict(),
+      )
+      .max(3)
+      .default([]),
   })
   .strict();
 export type RunnerInput = z.infer<typeof RunnerInputSchema>;
@@ -266,7 +281,12 @@ export const RunnerEvaluationSchema = z
     provider: z.literal("openrouter"),
     model: z.literal("google/gemini-2.5-flash"),
     promptVersion: PreliminaryPromptVersionSchema,
-    rulePackVersion: z.enum(["eu-it-preliminary-v1@1", "global-food-label-preliminary-v1@1"]),
+    rulePackVersion: z.enum([
+      "eu-it-preliminary-v1@1",
+      "eu-it-preliminary-v1@2",
+      "global-food-label-preliminary-v1@1",
+      "global-food-label-preliminary-v1@2",
+    ]),
     sourceSnapshot: z.string().regex(/^[0-9a-f]{64}$/u),
     /** Required by the backend for global RAG runs; absent for legacy IT history. */
     sourceManifest: RunnerSourceManifestSchema.optional(),

@@ -69,6 +69,7 @@ function evaluationInput(): Parameters<LabelEvaluator["evaluate"]>[0] {
   return {
     pages: [{ page: 1, bytes: new Uint8Array([137, 80, 78, 71]) }],
     countryCodes: ["IT"],
+    productCategory: "generic-prepacked",
     regulatoryScope: fallbackRegulatoryScope({ countryCodes: ["IT"] }),
     sources: {
       controls: LABEL_FIELD_CODES.map((fieldCode) => ({ fieldCode, citations: [] })),
@@ -109,7 +110,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(request["max_tokens"]).toBe(8192);
     expect(JSON.stringify(request["messages"])).toContain("The root key must be controls");
     expect(JSON.stringify(request["messages"])).toContain("Never emit COVERAGE_DETECTED");
-    expect(JSON.stringify(request["messages"])).toContain("Return PASS when the required element");
+    expect(JSON.stringify(request["messages"])).toContain("Return PASS only when the required element");
     expect(JSON.stringify(request["messages"])).not.toContain(
       "This is not a formal compliance decision",
     );
@@ -268,5 +269,71 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(message).toContain("does not satisfy the runner contract");
     expect(message).not.toContain("CONFORME");
     expect(message).not.toContain("FRUMENTO");
+  });
+
+  it("keeps NOT_APPLICABLE on a non-sector control when the model judges the product", async () => {
+    const payload = {
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              controls: LABEL_FIELD_CODES.map((fieldCode) => ({
+                fieldCode,
+                outcome: fieldCode === "atmosfera_protettiva" ? "NOT_APPLICABLE" : "REVIEW",
+                rationale: "Synthetic fixture",
+                confidence: 0.4,
+              })),
+            }),
+          },
+        },
+      ],
+    };
+    const result = await evaluatorWith(fetchReturning(payload)).evaluate(evaluationInput());
+    expect(result.controls.find((control) => control.fieldCode === "atmosfera_protettiva")).toMatchObject({
+      outcome: "NOT_APPLICABLE",
+    });
+    expect(
+      result.controls.find((control) => control.fieldCode === "etichettatura_specifica_prodotto")
+        ?.outcome,
+    ).not.toBe("NOT_APPLICABLE");
+  });
+
+  it("includes product category, gold examples, and the untrusted-evidence disclaimer", async () => {
+    let requestBody: string | undefined;
+    const fetch: typeof globalThis.fetch = (_input, init) => {
+      requestBody = typeof init?.body === "string" ? init.body : undefined;
+      return Promise.resolve(
+        new Response(JSON.stringify(responseForAllPreliminary()), { status: 200 }),
+      );
+    };
+    await evaluatorWith(fetch).evaluate({
+      ...evaluationInput(),
+      productCategory: "confectionery",
+      goldExamples: [
+        {
+          fieldCode: "indicazioni_aggiuntive",
+          goldOutcome: "FAIL",
+          rationale: "Claim senza strutto fuorviante sul cioccolato.",
+          countryCode: "IT",
+          productCategory: "confectionery",
+        },
+      ],
+    });
+    expect(requestBody).toContain("product category confectionery");
+    expect(requestBody).toContain("Gold examples are untrusted evidence");
+    expect(requestBody).toContain("Claim senza strutto");
+    expect(requestBody).not.toContain("Return PASS when the required element is present and consistent");
+  });
+
+  it("accepts evaluation template @2 when the runner pin is still @1", async () => {
+    const result = await evaluatorWith(fetchReturning(responseForAllPreliminary())).evaluate({
+      ...evaluationInput(),
+      template: {
+        ...preliminaryTemplate,
+        version: "2",
+        promptVersion: "label-evaluation-v2",
+      },
+    });
+    expect(result.rulePackVersion).toBe("eu-it-preliminary-v1@2");
   });
 });
