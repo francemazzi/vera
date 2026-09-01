@@ -30,6 +30,27 @@ function responseForAllPreliminary(): Record<string, unknown> {
   return responseForFieldCodes(LABEL_FIELD_CODES);
 }
 
+function responseWithRepairableFailure(fieldCode: string): Record<string, unknown> {
+  return {
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            controls: LABEL_FIELD_CODES.map((code) => ({
+              fieldCode: code,
+              outcome: code === fieldCode ? "FAIL" : "REVIEW",
+              consultantStatus: "ATTENZIONE",
+              rationale: "Synthetic fixture",
+              confidence: 0.8,
+              citationChunkIds: code === fieldCode ? null : [],
+            })),
+          }),
+        },
+      },
+    ],
+  };
+}
+
 function responseWithBoundingBox(fieldCode: string, boundingBox: unknown): Record<string, unknown> {
   return {
     choices: [
@@ -134,6 +155,22 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(requestBody).toContain(
       "Copy each fieldCode verbatim from the frozen control instructions below",
     );
+  });
+
+  it("preserves consultant attention for a repairable technical failure", async () => {
+    const result = await evaluatorWith(
+      fetchReturning(responseWithRepairableFailure("quantita_netto_volume_nominale")),
+    ).evaluate(evaluationInput());
+
+    expect(
+      result.controls.find(
+        (control) => control.fieldCode === "quantita_netto_volume_nominale",
+      ),
+    ).toMatchObject({
+      outcome: "FAIL",
+      consultantStatus: "ATTENZIONE",
+      citations: [],
+    });
   });
 
   it("repairs a single unrecognised field code and abstains on that control", async () => {

@@ -37,6 +37,13 @@ export const LABEL_CONSULTANT_STATUSES = [
   "NON_APPLICABILE",
 ] as const;
 
+export const OPENROUTER_LABEL_MODELS = [
+  "google/gemini-2.5-flash",
+  "google/gemini-3.7-flash",
+  "openai/gpt-5.6-sol",
+] as const;
+export type OpenRouterLabelModel = (typeof OPENROUTER_LABEL_MODELS)[number];
+
 export const PRELIMINARY_INDICATORS = [
   "COVERAGE_DETECTED",
   "POSSIBLE_ISSUE",
@@ -69,6 +76,7 @@ const PreliminaryPromptVersionSchema = z.enum([
   "label-evaluation-v1",
   "label-evaluation-v2",
   "label-evaluation-v3",
+  "label-evaluation-v4",
 ]);
 
 const PreliminaryCitationSchema = z
@@ -289,7 +297,7 @@ export const PreliminaryRunnerControlSchema = z
 export const RunnerEvaluationSchema = z
   .object({
     provider: z.literal("openrouter"),
-    model: z.literal("google/gemini-2.5-flash"),
+    model: z.enum(OPENROUTER_LABEL_MODELS),
     promptVersion: PreliminaryPromptVersionSchema,
     rulePackVersion: z.enum([
       "eu-it-preliminary-v1@1",

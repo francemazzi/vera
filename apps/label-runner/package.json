@@ -10,6 +10,7 @@
     "test:unit": "vitest run --dir test/unit",
     "test:integration": "vitest run --dir test/integration",
     "test:smoke:openrouter": "vitest run test/smoke/openrouter-live.test.ts",
+    "benchmark:openrouter": "node dist/model-benchmark.js",
     "archive:preliminary-sources": "node dist/import-preliminary-sources.js"
   },
   "dependencies": {

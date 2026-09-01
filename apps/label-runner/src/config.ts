@@ -1,3 +1,8 @@
+import {
+  OPENROUTER_LABEL_MODELS,
+  type OpenRouterLabelModel,
+} from "./contracts.js";
+
 function requiredEnvironment(name: string, environment: NodeJS.ProcessEnv): string {
   const value = environment[name]?.trim();
   if (!value) throw new Error(`${name} must be configured`);
@@ -27,13 +32,14 @@ export interface LabelRunnerConfig {
   readonly taskAudience: string;
   readonly taskInvokerServiceAccountEmail: string;
   readonly openRouterApiKey: string;
-  readonly openRouterModel: "google/gemini-2.5-flash";
+  readonly openRouterModel: OpenRouterLabelModel;
   readonly promptVersion:
     | "label-preliminary-eu-it-v1"
     | "label-preliminary-rag-v1"
     | "label-evaluation-v1"
     | "label-evaluation-v2"
     | "label-evaluation-v3"
+    | "label-evaluation-v4"
     | null;
   readonly rulePackVersion:
     | "eu-it-preliminary-v1@1"
@@ -79,8 +85,10 @@ export function readLabelRunnerConfig(
   const openRouterModel = requiredEnvironment("LABEL_OPENROUTER_MODEL", environment);
   const promptVersion = environment["LABEL_PROMPT_VERSION"]?.trim() || null;
   const rulePackVersion = environment["LABEL_RULE_PACK_VERSION"]?.trim() || null;
-  if (openRouterModel !== "google/gemini-2.5-flash") {
-    throw new Error("LABEL_OPENROUTER_MODEL must be google/gemini-2.5-flash");
+  if (!(OPENROUTER_LABEL_MODELS as readonly string[]).includes(openRouterModel)) {
+    throw new Error(
+      `LABEL_OPENROUTER_MODEL must be one of ${OPENROUTER_LABEL_MODELS.join(", ")}`,
+    );
   }
   if (!localMode && !promptVersion) throw new Error("LABEL_PROMPT_VERSION must be configured");
   if (!localMode && !rulePackVersion) throw new Error("LABEL_RULE_PACK_VERSION must be configured");
@@ -90,10 +98,11 @@ export function readLabelRunnerConfig(
     promptVersion !== "label-preliminary-rag-v1" &&
     promptVersion !== "label-evaluation-v1" &&
     promptVersion !== "label-evaluation-v2" &&
-    promptVersion !== "label-evaluation-v3"
+    promptVersion !== "label-evaluation-v3" &&
+    promptVersion !== "label-evaluation-v4"
   ) {
     throw new Error(
-      "LABEL_PROMPT_VERSION must be label-evaluation-v3, label-evaluation-v2, label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
+      "LABEL_PROMPT_VERSION must be label-evaluation-v4, label-evaluation-v3, label-evaluation-v2, label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
     );
   }
   if (
@@ -117,7 +126,7 @@ export function readLabelRunnerConfig(
       ? "local"
       : requiredEnvironment("LABEL_TASKS_INVOKER_SERVICE_ACCOUNT_EMAIL", environment),
     openRouterApiKey: requiredEnvironment("OPENROUTER_API_KEY", environment),
-    openRouterModel,
+    openRouterModel: openRouterModel as OpenRouterLabelModel,
     promptVersion: promptVersion,
     rulePackVersion: rulePackVersion,
     sourceSnapshot,

@@ -30,7 +30,19 @@ const BEVERAGE_OVERLAYS: ControlOverlay = {
     "Return NOT_APPLICABLE only when a retrieved excerpt exempts this beverage. Without an excerpt, REVIEW.",
 };
 
+const BAKERY_OVERLAYS: ControlOverlay = {
+  denominazione_legale_vendita:
+    "For filled biscuits and similar bakery products, a generic name such as “biscotti” can be incomplete. Verify that the filling and characterising flavour are described; use ATTENZIONE and propose a descriptive name when they are omitted.",
+  elenco_ingredienti:
+    "Scrutinise compound ingredients and characterising fillings. Verify their component list and QUID; use NON_CONFORME when a characterising filling percentage or required compound composition is absent.",
+  indicazione_allergeni:
+    "Check that intentionally added allergens are visually distinguished from every surrounding ingredient. If typography is ambiguous in the image, use ATTENZIONE rather than assuming compliance.",
+  indicazioni_aggiuntive:
+    "For “senza glutine” and “senza lattosio” claims, use ATTENZIONE when the label omits the applicable residual-threshold information or the claim needs documentary confirmation.",
+};
+
 const BY_CATEGORY: Readonly<Record<string, ControlOverlay>> = {
+  bakery: BAKERY_OVERLAYS,
   confectionery: CONFECTIONERY_OVERLAYS,
   coffee: COFFEE_OVERLAYS,
   beverages: BEVERAGE_OVERLAYS,

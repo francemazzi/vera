@@ -19,7 +19,7 @@ describe.skipIf(!ENABLED)("Private preliminary label service OpenRouter smoke", 
     if (!apiKey) throw new Error("OPENROUTER_API_KEY is required");
     const evaluator = createOpenRouterLabelEvaluator({
       apiKey,
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3.7-flash",
       promptVersion: "label-evaluation-v1",
       rulePackVersion: "eu-it-preliminary-v1@1",
       sourceSnapshot,
@@ -39,7 +39,7 @@ describe.skipIf(!ENABLED)("Private preliminary label service OpenRouter smoke", 
     });
 
     expect(result.provider).toBe("openrouter");
-    expect(result.model).toBe("google/gemini-2.5-flash");
+    expect(result.model).toBe("google/gemini-3.7-flash");
     expect(result.controls).toHaveLength(24);
     process.stdout.write(
       `LABEL_PRELIMINARY_OPENROUTER_SMOKE=${JSON.stringify({
