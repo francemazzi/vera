@@ -76,9 +76,12 @@ describe("Chroma label source retriever", () => {
     expect(result.sourceSnapshot).toMatch(/^[0-9a-f]{64}$/u);
   });
 
-  it("retries without topic and category filters when the first query is empty", async () => {
+  it("falls back to generic sources without dropping the category boundary", async () => {
     const retrievePreliminarySafely = vi.fn(async (query: { labelingTopics?: unknown; productCategory?: unknown }) => {
-      if (query.labelingTopics !== undefined || query.productCategory !== undefined) {
+      if (
+        query.labelingTopics !== undefined ||
+        query.productCategory !== "generic-prepacked"
+      ) {
         return {
           status: "UNAVAILABLE" as const,
           scope: "PRELIMINARY" as const,
@@ -121,11 +124,15 @@ describe("Chroma label source retriever", () => {
         language: "it",
         evaluationDate: "2026-07-20T00:00:00.000Z",
       },
-      productCategory: "generic-prepacked",
+      productCategory: "bakery",
       template: preliminaryTemplate,
     });
     expect(result.controls[0]?.citations).toEqual([citation]);
-    expect(retrievePreliminarySafely).toHaveBeenCalled();
+    expect(
+      retrievePreliminarySafely.mock.calls.every(
+        ([query]) => query.productCategory !== undefined,
+      ),
+    ).toBe(true);
   });
 
   it("turns a RAG outage into an empty evidence set, never an invented citation", async () => {

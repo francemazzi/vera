@@ -73,9 +73,8 @@ type ControlRetrievalQuery = Readonly<{
 }>;
 
 /**
- * Topic and product-category `$contains` filters are best-effort. Older Chroma
- * servers reject list metadata; retry without them so a verified source remains
- * visible to the IT pilot.
+ * Topic filters are best-effort. Product category is never dropped: generic
+ * prepacked sources are the explicit fallback for category-specific products.
  */
 async function retrieveControlChunks(
   ragIndex: Pick<PrivateLabelRagIndex, "retrievePreliminarySafely">,
@@ -98,7 +97,7 @@ async function retrieveControlChunks(
         : {}),
     },
     { ...scoped, productCategory: query.productCategory },
-    scoped,
+    { ...scoped, productCategory: "generic-prepacked" },
   ];
   for (const attempt of attempts) {
     const result = await ragIndex.retrievePreliminarySafely(attempt);
