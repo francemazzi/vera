@@ -388,8 +388,8 @@ function usageFromResponse(
 }
 
 /**
- * Production pins one pack revision, but preliminary (@1) and evaluation (@2)
- * must share the same runner. Reject only a different pack family.
+ * Preliminary deployments pin one pack revision, but revisions 1 and 2 share
+ * the same runner. Operational evaluation accepts both validated pack families.
  */
 function isCompatibleRulePackPin(pinned: string, actual: string): boolean {
   if (pinned === actual) return true;
@@ -399,6 +399,15 @@ function isCompatibleRulePackPin(pinned: string, actual: string): boolean {
   if (pinned.slice(0, pinnedAt) !== actual.slice(0, actualAt)) return false;
   const allowed = new Set(["1", "2"]);
   return allowed.has(pinned.slice(pinnedAt + 1)) && allowed.has(actual.slice(actualAt + 1));
+}
+
+function isOperationalEvaluationPrompt(promptVersion: string): boolean {
+  return (
+    promptVersion === "label-evaluation-v1" ||
+    promptVersion === "label-evaluation-v2" ||
+    promptVersion === "label-evaluation-v3" ||
+    promptVersion === "label-evaluation-v4"
+  );
 }
 
 export function createOpenRouterLabelEvaluator(options: {
@@ -440,6 +449,7 @@ export function createOpenRouterLabelEvaluator(options: {
       }
       if (
         options.rulePackVersion &&
+        !isOperationalEvaluationPrompt(promptVersion) &&
         !isCompatibleRulePackPin(options.rulePackVersion, rulePackVersion)
       ) {
         throw new OpenRouterLabelEvaluationError("Immutable preliminary template mismatch", false);

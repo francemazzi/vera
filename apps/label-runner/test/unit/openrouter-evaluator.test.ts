@@ -157,6 +157,29 @@ describe("OpenRouter preliminary label evaluator", () => {
     );
   });
 
+  it("accepts the validated global pack in operational evaluation mode", async () => {
+    const input = evaluationInput();
+    const template = {
+      ...input.template,
+      id: "global-food-label-preliminary-v1",
+      version: "2",
+      promptVersion: "label-evaluation-v4",
+    } as const;
+    const evaluator = createOpenRouterLabelEvaluator({
+      apiKey: "synthetic-openrouter-key-1234",
+      model: "google/gemini-3.7-flash",
+      promptVersion: "label-evaluation-v4",
+      rulePackVersion: "eu-it-preliminary-v1@1",
+      sourceSnapshot,
+      timeoutMs: 1_000,
+      fetch: fetchReturning(responseForAllPreliminary()),
+    });
+
+    const result = await evaluator.evaluate({ ...input, template });
+
+    expect(result.rulePackVersion).toBe("global-food-label-preliminary-v1@2");
+  });
+
   it("preserves consultant attention for a repairable technical failure", async () => {
     const result = await evaluatorWith(
       fetchReturning(responseWithRepairableFailure("quantita_netto_volume_nominale")),
