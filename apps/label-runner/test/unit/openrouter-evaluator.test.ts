@@ -139,6 +139,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     );
     expect(JSON.stringify(request)).not.toContain("synthetic-openrouter-key-1234");
     expect(JSON.stringify(request)).not.toContain("sourceCitation");
+    expect(JSON.stringify(request["messages"])).toContain("name the act and article in the rationale");
   });
 
   it("instructs the model to copy field codes verbatim", async () => {
