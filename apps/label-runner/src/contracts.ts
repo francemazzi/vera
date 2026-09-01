@@ -29,6 +29,14 @@ export const LABEL_FIELD_CODES = [
 
 export const LABEL_OUTCOMES = ["PASS", "FAIL", "REVIEW", "NOT_APPLICABLE"] as const;
 
+export const LABEL_CONSULTANT_STATUSES = [
+  "CONFORME",
+  "NON_CONFORME",
+  "ATTENZIONE",
+  "SUGGERIMENTO",
+  "NON_APPLICABILE",
+] as const;
+
 export const PRELIMINARY_INDICATORS = [
   "COVERAGE_DETECTED",
   "POSSIBLE_ISSUE",
@@ -60,6 +68,7 @@ const PreliminaryPromptVersionSchema = z.enum([
   "label-preliminary-rag-v1",
   "label-evaluation-v1",
   "label-evaluation-v2",
+  "label-evaluation-v3",
 ]);
 
 const PreliminaryCitationSchema = z
@@ -257,6 +266,7 @@ export const EvaluationRunnerControlSchema = z
   .object({
     fieldCode: z.enum(LABEL_FIELD_CODES),
     outcome: z.enum(LABEL_OUTCOMES),
+    consultantStatus: z.enum(LABEL_CONSULTANT_STATUSES).optional(),
     rationale: z.string().min(1).max(8_000),
     correctiveSuggestion: z.string().min(1).max(500).optional(),
     confidence: z.number().min(0).max(1),

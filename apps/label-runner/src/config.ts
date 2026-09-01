@@ -33,6 +33,7 @@ export interface LabelRunnerConfig {
     | "label-preliminary-rag-v1"
     | "label-evaluation-v1"
     | "label-evaluation-v2"
+    | "label-evaluation-v3"
     | null;
   readonly rulePackVersion:
     | "eu-it-preliminary-v1@1"
@@ -88,10 +89,11 @@ export function readLabelRunnerConfig(
     promptVersion !== "label-preliminary-eu-it-v1" &&
     promptVersion !== "label-preliminary-rag-v1" &&
     promptVersion !== "label-evaluation-v1" &&
-    promptVersion !== "label-evaluation-v2"
+    promptVersion !== "label-evaluation-v2" &&
+    promptVersion !== "label-evaluation-v3"
   ) {
     throw new Error(
-      "LABEL_PROMPT_VERSION must be label-evaluation-v2, label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
+      "LABEL_PROMPT_VERSION must be label-evaluation-v3, label-evaluation-v2, label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
     );
   }
   if (

@@ -15,6 +15,7 @@ function responseForFieldCodes(fieldCodes: readonly string[]): Record<string, un
             controls: fieldCodes.map((fieldCode) => ({
               fieldCode,
               outcome: "REVIEW",
+              consultantStatus: "ATTENZIONE",
               rationale: "Synthetic fixture",
               confidence: 0,
             })),
@@ -38,6 +39,7 @@ function responseWithBoundingBox(fieldCode: string, boundingBox: unknown): Recor
             controls: LABEL_FIELD_CODES.map((code) => ({
               code,
               outcome: "REVIEW",
+              consultantStatus: "ATTENZIONE",
               rationale: "Synthetic fixture",
               confidence: 0,
               ...(code === fieldCode ? { boundingBox } : {}),
@@ -240,6 +242,29 @@ describe("OpenRouter preliminary label evaluator", () => {
     });
   });
 
+  it("keeps a catalogue-backed PASS when no retrieved excerpt is available", async () => {
+    const payload = responseForAllPreliminary();
+    const message = (
+      (payload["choices"] as Array<{ message: { content: string } }>)[0]?.message
+    );
+    const parsed = JSON.parse(message?.content ?? "{}") as {
+      controls: Array<Record<string, unknown>>;
+    };
+    parsed.controls[0] = {
+      ...parsed.controls[0],
+      outcome: "PASS",
+      consultantStatus: "CONFORME",
+      confidence: 0.8,
+    };
+    if (message) message.content = JSON.stringify(parsed);
+    const result = await evaluatorWith(fetchReturning(payload)).evaluate(evaluationInput());
+    expect(result.controls[0]).toMatchObject({
+      outcome: "PASS",
+      consultantStatus: "CONFORME",
+      citations: [],
+    });
+  });
+
   it("never asks for a paid retry of a deterministic schema violation", async () => {
     const invalid = {
       choices: [
@@ -249,6 +274,7 @@ describe("OpenRouter preliminary label evaluator", () => {
               controls: LABEL_FIELD_CODES.map((fieldCode) => ({
                 fieldCode,
                 outcome: "CONFORME",
+                consultantStatus: "CONFORME",
                 rationale: "Ingredienti: farina di FRUMENTO",
                 confidence: 0,
               })),
@@ -280,6 +306,8 @@ describe("OpenRouter preliminary label evaluator", () => {
               controls: LABEL_FIELD_CODES.map((fieldCode) => ({
                 fieldCode,
                 outcome: fieldCode === "atmosfera_protettiva" ? "NOT_APPLICABLE" : "REVIEW",
+                consultantStatus:
+                  fieldCode === "atmosfera_protettiva" ? "NON_APPLICABILE" : "ATTENZIONE",
                 rationale: "Synthetic fixture",
                 confidence: 0.4,
               })),

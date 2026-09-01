@@ -39,6 +39,14 @@ function lionsweetModelResponse(): Record<string, unknown> {
             controls: LABEL_FIELD_CODES.map((fieldCode) => ({
               fieldCode,
               outcome: outcomeFor(fieldCode),
+              consultantStatus:
+                outcomeFor(fieldCode) === "FAIL"
+                  ? "NON_CONFORME"
+                  : outcomeFor(fieldCode) === "PASS"
+                    ? "CONFORME"
+                    : outcomeFor(fieldCode) === "NOT_APPLICABLE"
+                      ? "NON_APPLICABILE"
+                      : "ATTENZIONE",
               rationale: "Synthetic LionSweet replay",
               confidence: 0.8,
               citationChunkIds:
