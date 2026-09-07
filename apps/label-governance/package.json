@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@google-cloud/storage": "7.19.0",
-    "@langchain/langgraph": "^1.4.8",
+    "@langchain/langgraph": "^1.4.13",
     "@vera/contracts": "workspace:*",
     "@vera/rag": "workspace:*",
     "@vera/storage": "workspace:*",
