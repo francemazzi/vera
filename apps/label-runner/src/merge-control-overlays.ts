@@ -29,10 +29,10 @@ export function mergeControlOverlays(
  */
 export function overlayInstructionsForEvaluation(input: {
   readonly productCategory: string;
-  readonly countryCode: string;
+  readonly countryCode?: string;
 }): ControlOverlay {
   return mergeControlOverlays(
     overlayInstructionsForCategory(input.productCategory),
-    overlayInstructionsForMarket(input.countryCode),
+    input.countryCode ? overlayInstructionsForMarket(input.countryCode) : {},
   );
 }

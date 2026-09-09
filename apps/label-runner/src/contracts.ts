@@ -56,12 +56,14 @@ export type LabelTask = z.infer<typeof LabelTaskSchema>;
 
 export const RegulatoryScopeSchema = z
   .object({
-    countryCode: z.string().regex(/^[A-Z]{2}$/u),
+    countryCode: z.string().regex(/^[A-Z]{2}$/u).optional(),
     /** EU is added only for a market country that belongs to the Union. */
     regulatoryAreas: z.array(z.string().trim().min(1).max(40)).min(1).max(8),
     jurisdictions: z.array(z.string().trim().min(1).max(120)).min(1).max(8),
     language: z.string().trim().min(2).max(35),
     evaluationDate: z.iso.datetime({ offset: true }),
+    customMarketList: z.string().trim().min(1).max(4_000).optional(),
+    customMarketBriefing: z.string().trim().min(1).max(8_000).optional(),
   })
   .strict();
 export type RegulatoryScope = z.infer<typeof RegulatoryScopeSchema>;
@@ -146,8 +148,8 @@ export const RunnerInputSchema = z
     workspaceId: z.uuid(),
     countryCodes: z
       .array(z.string().regex(/^[A-Z]{2}$/u))
-      .min(1)
-      .max(1),
+      .min(0)
+      .max(8),
     inputSha256: z.string().regex(/^[0-9a-f]{64}$/u),
     normalizedPageObjectKey: z
       .string()
@@ -280,6 +282,21 @@ export const EvaluationRunnerControlSchema = z
     confidence: z.number().min(0).max(1),
     citations: z.array(RunnerSourceCitationSchema).max(3).default([]),
     boundingBox: RunnerBoundingBoxSchema.optional(),
+    marketFeedback: z
+      .array(
+        z
+          .object({
+            market: z.string().trim().min(1).max(120),
+            outcome: z.enum(LABEL_OUTCOMES),
+            consultantStatus: z.enum(LABEL_CONSULTANT_STATUSES),
+            rationale: z.string().min(1).max(8_000),
+            correctiveSuggestion: z.string().min(1).max(500).optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(24)
+      .optional(),
   })
   .strict();
 

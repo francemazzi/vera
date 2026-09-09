@@ -161,7 +161,15 @@ export function fallbackRegulatoryScope(input: {
   readonly countryCodes: readonly string[];
   readonly now?: Date;
 }): RegulatoryScope {
-  const countryCode = input.countryCodes[0] ?? "IT";
+  const countryCode = input.countryCodes[0];
+  if (!countryCode) {
+    return {
+      regulatoryAreas: ["WORLD"],
+      jurisdictions: ["CUSTOM"],
+      language: "en",
+      evaluationDate: (input.now ?? new Date()).toISOString(),
+    };
+  }
   const euCountries = new Set([
     "AT",
     "BE",
