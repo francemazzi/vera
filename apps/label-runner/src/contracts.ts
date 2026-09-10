@@ -1,3 +1,5 @@
+import { ControlAssessmentSchema } from "./control-assessment-schema.js";
+import { ProductFactsSchema } from "./product-facts-schema.js";
 import { z } from "zod";
 
 export const LABEL_FIELD_CODES = [
@@ -56,10 +58,27 @@ export type LabelTask = z.infer<typeof LabelTaskSchema>;
 
 export const RegulatoryScopeSchema = z
   .object({
-    countryCode: z.string().regex(/^[A-Z]{2}$/u).optional(),
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/u)
+      .optional(),
     /** EU is added only for a market country that belongs to the Union. */
     regulatoryAreas: z.array(z.string().trim().min(1).max(40)).min(1).max(8),
-    jurisdictions: z.array(z.string().trim().min(1).max(120)).min(1).max(8),
+    jurisdictions: z.array(z.string().trim().min(1).max(120)).min(1).max(16),
+    marketScopes: z
+      .array(
+        z
+          .object({
+            countryCode: z.string().regex(/^[A-Z]{2}$/u),
+            jurisdictions: z.array(z.string()).min(1).max(3),
+            language: z.string().min(2).max(35),
+            evaluationDate: z.iso.datetime({ offset: true }),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(8)
+      .optional(),
     language: z.string().trim().min(2).max(35),
     evaluationDate: z.iso.datetime({ offset: true }),
     customMarketList: z.string().trim().min(1).max(4_000).optional(),
@@ -79,6 +98,7 @@ const PreliminaryPromptVersionSchema = z.enum([
   "label-evaluation-v2",
   "label-evaluation-v3",
   "label-evaluation-v4",
+  "label-evaluation-v5",
 ]);
 
 const PreliminaryCitationSchema = z
@@ -113,7 +133,7 @@ const PreliminarySourceArchiveSchema = z
 export const PreliminaryTemplateSchema = z
   .object({
     id: PreliminaryTemplateIdSchema,
-    version: z.enum(["1", "2"]),
+    version: z.enum(["1", "2", "3"]),
     promptVersion: PreliminaryPromptVersionSchema,
     sourceSnapshot: z.string().regex(/^[0-9a-f]{64}$/u),
     /** Historical metadata only; live source citations are supplied by Chroma. */
@@ -159,6 +179,7 @@ export const RunnerInputSchema = z
         z
           .object({
             page: z.int().min(1).max(100),
+            text: z.string().max(30_000).optional(),
             objectKey: z
               .string()
               .regex(/^label-analyses\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/page-\d+\.png$/u),
@@ -179,6 +200,37 @@ export const RunnerInputSchema = z
           }
         });
       }),
+    supportingDocuments: z
+      .array(
+        z
+          .object({
+            id: z.uuid(),
+            fileName: z.string().max(300),
+            productReference: z.string().max(300),
+            revision: z.string().max(300),
+            sha256: z.string().regex(/^[0-9a-f]{64}$/u),
+            pages: z
+              .array(
+                z
+                  .object({
+                    page: z.int().min(1).max(100),
+                    objectKey: z
+                      .string()
+                      .regex(
+                        /^label-analyses\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/documents\/[A-Za-z0-9_-]+\/page-\d+\.png$/u,
+                      ),
+                    sha256: z.string().regex(/^[0-9a-f]{64}$/u),
+                    text: z.string().max(30_000).optional(),
+                  })
+                  .strict(),
+              )
+              .min(1)
+              .max(100),
+          })
+          .strict(),
+      )
+      .max(12)
+      .optional(),
     status: z.enum(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"]),
     version: z.int().nonnegative(),
     assessmentMode: z.enum(["PRELIMINARY", "APPROVED"]),
@@ -230,7 +282,7 @@ export type RunnerSourceCitation = z.infer<typeof RunnerSourceCitationSchema>;
 export const RunnerSourceManifestControlSchema = z
   .object({
     fieldCode: z.enum(LABEL_FIELD_CODES),
-    citations: z.array(RunnerSourceCitationSchema).max(3),
+    citations: z.array(RunnerSourceCitationSchema).max(192),
   })
   .strict();
 
@@ -278,24 +330,29 @@ export const EvaluationRunnerControlSchema = z
     outcome: z.enum(LABEL_OUTCOMES),
     consultantStatus: z.enum(LABEL_CONSULTANT_STATUSES).optional(),
     rationale: z.string().min(1).max(8_000),
-    correctiveSuggestion: z.string().min(1).max(500).optional(),
+    correctiveSuggestion: z.string().min(1).max(80_000).optional(),
     confidence: z.number().min(0).max(1),
-    citations: z.array(RunnerSourceCitationSchema).max(3).default([]),
+    citations: z.array(RunnerSourceCitationSchema).max(192).default([]),
     boundingBox: RunnerBoundingBoxSchema.optional(),
+    assessment: ControlAssessmentSchema.optional(),
     marketFeedback: z
       .array(
         z
           .object({
             market: z.string().trim().min(1).max(120),
+            productId: z.string().min(1).max(120).optional(),
+            assessment: ControlAssessmentSchema.optional(),
+            boundingBox: RunnerBoundingBoxSchema.optional(),
+            citationChunkIds: z.array(z.string().min(1).max(300)).max(24).optional(),
             outcome: z.enum(LABEL_OUTCOMES),
             consultantStatus: z.enum(LABEL_CONSULTANT_STATUSES),
             rationale: z.string().min(1).max(8_000),
-            correctiveSuggestion: z.string().min(1).max(500).optional(),
+            correctiveSuggestion: z.string().min(1).max(80_000).optional(),
           })
           .strict(),
       )
       .min(1)
-      .max(24)
+      .max(96)
       .optional(),
   })
   .strict();
@@ -306,7 +363,7 @@ export const PreliminaryRunnerControlSchema = z
     indicator: z.enum(PRELIMINARY_INDICATORS),
     rationale: z.string().min(1).max(8_000),
     confidence: z.number().min(0).max(1),
-    citations: z.array(RunnerSourceCitationSchema).max(3).default([]),
+    citations: z.array(RunnerSourceCitationSchema).max(192).default([]),
     boundingBox: RunnerBoundingBoxSchema.optional(),
   })
   .strict();
@@ -321,17 +378,35 @@ export const RunnerEvaluationSchema = z
       "eu-it-preliminary-v1@2",
       "global-food-label-preliminary-v1@1",
       "global-food-label-preliminary-v1@2",
+      "global-food-label-preliminary-v1@3",
     ]),
     sourceSnapshot: z.string().regex(/^[0-9a-f]{64}$/u),
     /** Required by the backend for global RAG runs; absent for legacy IT history. */
     sourceManifest: RunnerSourceManifestSchema.optional(),
+    productFacts: ProductFactsSchema.optional(),
+    extraction: z
+      .object({
+        promptVersion: z.literal("label-facts-v1"),
+        model: z.enum(OPENROUTER_LABEL_MODELS),
+        usage: z
+          .object({
+            inputTokens: z.int().nonnegative().nullable(),
+            outputTokens: z.int().nonnegative().nullable(),
+            totalTokens: z.int().nonnegative().nullable(),
+            estimatedCostUsd: z.number().nonnegative().nullable(),
+            latencyMs: z.int().nonnegative(),
+          })
+          .strict(),
+      })
+      .strict()
+      .optional(),
     usage: z
       .object({
         inputTokens: z.int().nonnegative().nullable(),
         outputTokens: z.int().nonnegative().nullable(),
         totalTokens: z.int().nonnegative().nullable(),
         estimatedCostUsd: z.number().nonnegative().nullable(),
-        latencyMs: z.int().nonnegative().max(600_000),
+        latencyMs: z.int().nonnegative().max(3_600_000),
       })
       .strict(),
     controls: z.array(EvaluationRunnerControlSchema).length(LABEL_FIELD_CODES.length),

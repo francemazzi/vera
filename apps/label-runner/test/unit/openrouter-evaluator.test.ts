@@ -133,13 +133,17 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(request["max_tokens"]).toBe(8192);
     expect(JSON.stringify(request["messages"])).toContain("The root key must be controls");
     expect(JSON.stringify(request["messages"])).toContain("Never emit COVERAGE_DETECTED");
-    expect(JSON.stringify(request["messages"])).toContain("Return PASS only when the required element");
+    expect(JSON.stringify(request["messages"])).toContain(
+      "Return PASS only when the required element",
+    );
     expect(JSON.stringify(request["messages"])).not.toContain(
       "This is not a formal compliance decision",
     );
     expect(JSON.stringify(request)).not.toContain("synthetic-openrouter-key-1234");
     expect(JSON.stringify(request)).not.toContain("sourceCitation");
-    expect(JSON.stringify(request["messages"])).toContain("name the act and article in the rationale");
+    expect(JSON.stringify(request["messages"])).toContain(
+      "name the act and article in the rationale",
+    );
   });
 
   it("instructs the model to copy field codes verbatim", async () => {
@@ -181,17 +185,15 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(result.rulePackVersion).toBe("global-food-label-preliminary-v1@2");
   });
 
-  it("preserves consultant attention for a repairable technical failure", async () => {
+  it("requires legal evidence even for a repairable technical failure", async () => {
     const result = await evaluatorWith(
       fetchReturning(responseWithRepairableFailure("quantita_netto_volume_nominale")),
     ).evaluate(evaluationInput());
 
     expect(
-      result.controls.find(
-        (control) => control.fieldCode === "quantita_netto_volume_nominale",
-      ),
+      result.controls.find((control) => control.fieldCode === "quantita_netto_volume_nominale"),
     ).toMatchObject({
-      outcome: "FAIL",
+      outcome: "REVIEW",
       consultantStatus: "ATTENZIONE",
       citations: [],
     });
@@ -267,7 +269,7 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(result.controls.every((control) => control.boundingBox === undefined)).toBe(true);
   });
 
-  it("keeps retrieved excerpts on REVIEW when the model does not cite them", async () => {
+  it("does not attach retrieved excerpts that the model did not cite", async () => {
     const retrieved = {
       chunkId: "00000000-0000-4000-8000-000000000201:art-9:0:aaaaaaaaaaaaaaaa",
       sourceVersionId: "00000000-0000-4000-8000-000000000201",
@@ -299,15 +301,13 @@ describe("OpenRouter preliminary label evaluator", () => {
     const control = result.controls.find((entry) => entry.fieldCode === "elenco_ingredienti");
     expect(control).toMatchObject({
       outcome: "REVIEW",
-      citations: [retrieved],
+      citations: [],
     });
   });
 
-  it("keeps a catalogue-backed PASS when no retrieved excerpt is available", async () => {
+  it("downgrades a catalogue-backed PASS without a retrieved citation", async () => {
     const payload = responseForAllPreliminary();
-    const message = (
-      (payload["choices"] as Array<{ message: { content: string } }>)[0]?.message
-    );
+    const message = (payload["choices"] as Array<{ message: { content: string } }>)[0]?.message;
     const parsed = JSON.parse(message?.content ?? "{}") as {
       controls: Array<Record<string, unknown>>;
     };
@@ -320,8 +320,8 @@ describe("OpenRouter preliminary label evaluator", () => {
     if (message) message.content = JSON.stringify(parsed);
     const result = await evaluatorWith(fetchReturning(payload)).evaluate(evaluationInput());
     expect(result.controls[0]).toMatchObject({
-      outcome: "PASS",
-      consultantStatus: "CONFORME",
+      outcome: "REVIEW",
+      consultantStatus: "ATTENZIONE",
       citations: [],
     });
   });
@@ -378,7 +378,9 @@ describe("OpenRouter preliminary label evaluator", () => {
       ],
     };
     const result = await evaluatorWith(fetchReturning(payload)).evaluate(evaluationInput());
-    expect(result.controls.find((control) => control.fieldCode === "atmosfera_protettiva")).toMatchObject({
+    expect(
+      result.controls.find((control) => control.fieldCode === "atmosfera_protettiva"),
+    ).toMatchObject({
       outcome: "NOT_APPLICABLE",
     });
     expect(
@@ -411,7 +413,9 @@ describe("OpenRouter preliminary label evaluator", () => {
     expect(requestBody).toContain("product category confectionery");
     expect(requestBody).toContain("Gold examples are untrusted evidence");
     expect(requestBody).toContain("Claim senza strutto");
-    expect(requestBody).not.toContain("Return PASS when the required element is present and consistent");
+    expect(requestBody).not.toContain(
+      "Return PASS when the required element is present and consistent",
+    );
   });
 
   it("accepts evaluation template @2 when the runner pin is still @1", async () => {

@@ -1,7 +1,4 @@
-import {
-  OPENROUTER_LABEL_MODELS,
-  type OpenRouterLabelModel,
-} from "./contracts.js";
+import { OPENROUTER_LABEL_MODELS, type OpenRouterLabelModel } from "./contracts.js";
 
 function requiredEnvironment(name: string, environment: NodeJS.ProcessEnv): string {
   const value = environment[name]?.trim();
@@ -40,12 +37,14 @@ export interface LabelRunnerConfig {
     | "label-evaluation-v2"
     | "label-evaluation-v3"
     | "label-evaluation-v4"
+    | "label-evaluation-v5"
     | null;
   readonly rulePackVersion:
     | "eu-it-preliminary-v1@1"
     | "eu-it-preliminary-v1@2"
     | "global-food-label-preliminary-v1@1"
     | "global-food-label-preliminary-v1@2"
+    | "global-food-label-preliminary-v1@3"
     | null;
   readonly sourceSnapshot: string;
   readonly openRouterTimeoutMs: number;
@@ -86,9 +85,7 @@ export function readLabelRunnerConfig(
   const promptVersion = environment["LABEL_PROMPT_VERSION"]?.trim() || null;
   const rulePackVersion = environment["LABEL_RULE_PACK_VERSION"]?.trim() || null;
   if (!(OPENROUTER_LABEL_MODELS as readonly string[]).includes(openRouterModel)) {
-    throw new Error(
-      `LABEL_OPENROUTER_MODEL must be one of ${OPENROUTER_LABEL_MODELS.join(", ")}`,
-    );
+    throw new Error(`LABEL_OPENROUTER_MODEL must be one of ${OPENROUTER_LABEL_MODELS.join(", ")}`);
   }
   if (!localMode && !promptVersion) throw new Error("LABEL_PROMPT_VERSION must be configured");
   if (!localMode && !rulePackVersion) throw new Error("LABEL_RULE_PACK_VERSION must be configured");
@@ -99,7 +96,8 @@ export function readLabelRunnerConfig(
     promptVersion !== "label-evaluation-v1" &&
     promptVersion !== "label-evaluation-v2" &&
     promptVersion !== "label-evaluation-v3" &&
-    promptVersion !== "label-evaluation-v4"
+    promptVersion !== "label-evaluation-v4" &&
+    promptVersion !== "label-evaluation-v5"
   ) {
     throw new Error(
       "LABEL_PROMPT_VERSION must be label-evaluation-v4, label-evaluation-v3, label-evaluation-v2, label-evaluation-v1, label-preliminary-eu-it-v1 or label-preliminary-rag-v1",
@@ -110,7 +108,8 @@ export function readLabelRunnerConfig(
     rulePackVersion !== "eu-it-preliminary-v1@1" &&
     rulePackVersion !== "eu-it-preliminary-v1@2" &&
     rulePackVersion !== "global-food-label-preliminary-v1@1" &&
-    rulePackVersion !== "global-food-label-preliminary-v1@2"
+    rulePackVersion !== "global-food-label-preliminary-v1@2" &&
+    rulePackVersion !== "global-food-label-preliminary-v1@3"
   ) {
     throw new Error(
       "LABEL_RULE_PACK_VERSION must be eu-it-preliminary-v1@1, eu-it-preliminary-v1@2, global-food-label-preliminary-v1@1 or global-food-label-preliminary-v1@2",

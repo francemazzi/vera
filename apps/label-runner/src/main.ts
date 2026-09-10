@@ -1,3 +1,4 @@
+import { createProductFactExtractor } from "./create-product-fact-extractor.js";
 import { createLabelBackendClient } from "./backend-client.js";
 import {
   ChromaHttpVectorStore,
@@ -59,6 +60,11 @@ async function main(): Promise<void> {
       timeoutMs: config.openRouterTimeoutMs,
     }),
     sourceRetriever,
+    factExtractor: createProductFactExtractor({
+      apiKey: config.openRouterApiKey,
+      model: config.openRouterModel,
+      timeoutMs: config.openRouterTimeoutMs,
+    }),
   });
   const server = await createLabelRunnerServer({
     authorizer: config.localToken

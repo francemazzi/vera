@@ -1,3 +1,4 @@
+import { currentControlChecks } from "./current-control-checks.js";
 import { sha256CanonicalJson } from "@vera/contracts";
 import {
   normalizeLabelingTopic,
@@ -11,12 +12,17 @@ import type { PreliminaryTemplate, RegulatoryScope, RunnerSourceCitation } from 
 export type LabelControlSourceContext = Readonly<{
   fieldCode: string;
   citations: readonly RunnerSourceCitation[];
+  byCategory?: Readonly<Record<string, readonly RunnerSourceCitation[]>>;
 }>;
 
 export type LabelRetrievedSources = Readonly<{
   controls: readonly LabelControlSourceContext[];
   /** Frozen before the image is sent to the model and persisted with the run. */
   sourceSnapshot: string;
+  byMarket?: readonly Readonly<{
+    countryCode: string;
+    controls: readonly LabelControlSourceContext[];
+  }>[];
 }>;
 
 export interface LabelSourceRetriever {
@@ -25,6 +31,7 @@ export interface LabelSourceRetriever {
     readonly workspaceId: string;
     readonly scope: RegulatoryScope;
     readonly productCategory: string;
+    readonly additionalCategories?: readonly string[];
     readonly template: PreliminaryTemplate;
   }): Promise<LabelRetrievedSources>;
 }
@@ -96,14 +103,21 @@ async function retrieveControlChunks(
         ? { labelingTopics: [...query.labelingTopics] }
         : {}),
     },
-    { ...scoped, productCategory: query.productCategory },
-    { ...scoped, productCategory: "generic-prepacked" },
+    {
+      ...scoped,
+      productCategory: "generic-prepacked",
+      ...(query.labelingTopics?.length ? { labelingTopics: [...query.labelingTopics] } : {}),
+    },
   ];
-  for (const attempt of attempts) {
+  const chunks: PrivateLabelRagRetrievedChunk[] = [];
+  for (const attempt of attempts.filter(
+    (value, index) =>
+      attempts.findIndex((other) => JSON.stringify(other) === JSON.stringify(value)) === index,
+  )) {
     const result = await ragIndex.retrievePreliminarySafely(attempt);
-    if (result.status === "AVAILABLE" && result.chunks.length > 0) return result.chunks;
+    if (result.status === "AVAILABLE") chunks.push(...result.chunks);
   }
-  return [];
+  return chunks;
 }
 
 /**
@@ -116,25 +130,96 @@ export function createChromaLabelSourceRetriever(options: {
 }): LabelSourceRetriever {
   return {
     async retrieve(input) {
+      const markets = input.scope.marketScopes;
+      if (markets && markets.length > 0) {
+        const byMarket: Array<{
+          countryCode: string;
+          controls: readonly LabelControlSourceContext[];
+        }> = [];
+        for (const market of markets) {
+          const { marketScopes: _markets, ...base } = input.scope;
+          const retrieved = await this.retrieve({ ...input, scope: { ...base, ...market } });
+          byMarket.push({ countryCode: market.countryCode, controls: retrieved.controls });
+        }
+        const controls = input.template.controls.map(({ fieldCode }) => ({
+          fieldCode,
+          citations: [
+            ...new Map(
+              byMarket
+                .flatMap(
+                  (market) =>
+                    market.controls.find((control) => control.fieldCode === fieldCode)?.citations ??
+                    [],
+                )
+                .map((entry) => [entry.chunkId, entry]),
+            ).values(),
+          ],
+        }));
+        return {
+          controls,
+          byMarket,
+          sourceSnapshot: sha256CanonicalJson({
+            workspaceId: input.workspaceId,
+            scope: input.scope,
+            productCategory: input.productCategory,
+            template: { id: input.template.id, version: input.template.version },
+            controls: controls.map(({ fieldCode, citations }) => ({
+              fieldCode,
+              citations: citations.map(({ chunkId, sourceVersionId, sourceContentHash }) => ({
+                chunkId,
+                sourceVersionId,
+                sourceContentHash,
+              })),
+            })),
+          }),
+        };
+      }
       const controls = await Promise.all(
         input.template.controls.map(async (control): Promise<LabelControlSourceContext> => {
           const labelingTopics = [
-            ...new Set(control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean)),
+            ...new Set(
+              control.topics.map((topic) => normalizeLabelingTopic(topic)).filter(Boolean),
+            ),
           ];
-          const chunks = await retrieveControlChunks(options.ragIndex, {
-            queryText: [control.fieldCode, ...control.topics, control.instruction]
-              .filter(Boolean)
-              .join(" — "),
-            workspaceId: input.workspaceId,
-            jurisdictions: input.scope.jurisdictions,
-            evaluationDate: input.scope.evaluationDate,
-            language: input.scope.language,
-            productCategory: input.productCategory,
-            ...(labelingTopics.length > 0 ? { labelingTopics } : {}),
-          });
+          const categories = [
+            ...new Set([...(input.additionalCategories ?? []), input.productCategory]),
+          ];
+          const byCategory: Record<string, readonly RunnerSourceCitation[]> = {};
+          for (const productCategory of categories)
+            byCategory[productCategory] = distinctCitations(
+              await retrieveControlChunks(options.ragIndex, {
+                queryText: [
+                  control.fieldCode,
+                  ...control.topics,
+                  control.instruction,
+                  ...(input.template.version === "3"
+                    ? [
+                        currentControlChecks(productCategory, input.scope.countryCode)[
+                          control.fieldCode
+                        ],
+                      ]
+                    : []),
+                ]
+                  .filter(Boolean)
+                  .join(" — "),
+                workspaceId: input.workspaceId,
+                jurisdictions: input.scope.jurisdictions,
+                evaluationDate: input.scope.evaluationDate,
+                language: input.scope.language,
+                productCategory,
+                ...(labelingTopics.length > 0 ? { labelingTopics } : {}),
+              }),
+            );
           return {
             fieldCode: control.fieldCode,
-            citations: distinctCitations(chunks),
+            citations: [
+              ...new Map(
+                Object.values(byCategory)
+                  .flat()
+                  .map((entry) => [entry.chunkId, entry]),
+              ).values(),
+            ],
+            ...(categories.length > 1 ? { byCategory } : {}),
           };
         }),
       );

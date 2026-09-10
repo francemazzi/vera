@@ -1,11 +1,21 @@
+import { createHash } from "node:crypto";
 import { Storage } from "@google-cloud/storage";
 
 import type { RunnerInput } from "./contracts.js";
 
 export interface LabelPageStore {
+  loadSupportingDocuments?(input: RunnerInput): Promise<
+    readonly Readonly<{
+      id: string;
+      fileName: string;
+      productReference: string;
+      revision: string;
+      pages: readonly Readonly<{ page: number; bytes: Uint8Array; text?: string }>[];
+    }>[]
+  >;
   loadNormalizedPages(
     input: RunnerInput,
-  ): Promise<readonly Readonly<{ page: number; bytes: Uint8Array }>[]>;
+  ): Promise<readonly Readonly<{ page: number; bytes: Uint8Array; text?: string }>[]>;
 }
 
 function createEmulatorAwareStorage(projectId: string): Storage {
@@ -30,14 +40,36 @@ export function createGcsLabelPageStore(options: {
   const storage = options.storage ?? createEmulatorAwareStorage(options.projectId);
   const bucket = storage.bucket(options.bucketName);
   return {
+    async loadSupportingDocuments(input) {
+      return Promise.all(
+        (input.supportingDocuments ?? []).map(async (document) => ({
+          ...document,
+          pages: await Promise.all(
+            document.pages.map(async (page) => {
+              const [bytes] = await bucket.file(page.objectKey).download();
+              if (createHash("sha256").update(bytes).digest("hex") !== page.sha256)
+                throw new Error("Supporting evidence hash mismatch");
+              if (bytes.byteLength === 0 || bytes.byteLength > 20 * 1024 * 1024)
+                throw new Error("Supporting page has an invalid size");
+              return { page: page.page, bytes, ...(page.text ? { text: page.text } : {}) };
+            }),
+          ),
+        })),
+      );
+    },
     async loadNormalizedPages(input) {
       return Promise.all(
         input.normalizedPages.map(async (page) => {
           const [bytes] = await bucket.file(page.objectKey).download();
+          if (
+            input.preliminaryTemplate.version === "3" &&
+            createHash("sha256").update(bytes).digest("hex") !== page.sha256
+          )
+            throw new Error("Artwork evidence hash mismatch");
           if (bytes.byteLength === 0 || bytes.byteLength > 20 * 1024 * 1024) {
             throw new Error("Normalized label page has an invalid size");
           }
-          return { page: page.page, bytes };
+          return { page: page.page, bytes, ...(page.text ? { text: page.text } : {}) };
         }),
       );
     },

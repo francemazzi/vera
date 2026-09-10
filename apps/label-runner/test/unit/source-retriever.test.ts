@@ -77,43 +77,42 @@ describe("Chroma label source retriever", () => {
   });
 
   it("falls back to generic sources without dropping the category boundary", async () => {
-    const retrievePreliminarySafely = vi.fn(async (query: { labelingTopics?: unknown; productCategory?: unknown }) => {
-      if (
-        query.labelingTopics !== undefined ||
-        query.productCategory !== "generic-prepacked"
-      ) {
+    const retrievePreliminarySafely = vi.fn(
+      async (query: { labelingTopics?: unknown; productCategory?: unknown }) => {
+        if (query.productCategory !== "generic-prepacked") {
+          return {
+            status: "UNAVAILABLE" as const,
+            scope: "PRELIMINARY" as const,
+            requiresReview: true as const,
+            reason: "VECTOR_STORE_INVALID: filter",
+          };
+        }
         return {
-          status: "UNAVAILABLE" as const,
+          status: "AVAILABLE" as const,
           scope: "PRELIMINARY" as const,
           requiresReview: true as const,
-          reason: "VECTOR_STORE_INVALID: filter",
+          chunks: [
+            {
+              ...citation,
+              sourceId: "00000000-0000-4000-8000-000000000202",
+              workspaceScope: "00000000-0000-4000-8000-000000000203",
+              sourceState: "VERIFIED" as const,
+              validityStatus: "ADMIN_DECLARED" as const,
+              jurisdiction: "EU",
+              language: "it",
+              revisionLabel: "2026-01",
+              validity: { validFrom: "2020-01-01T00:00:00.000Z", validTo: null },
+              productCategories: ["generic-prepacked"],
+              chunkOrdinal: 0,
+              text: citation.quote,
+              contentHash: "b".repeat(64),
+              score: 0.9,
+              citation,
+            },
+          ],
         };
-      }
-      return {
-        status: "AVAILABLE" as const,
-        scope: "PRELIMINARY" as const,
-        requiresReview: true as const,
-        chunks: [
-          {
-            ...citation,
-            sourceId: "00000000-0000-4000-8000-000000000202",
-            workspaceScope: "00000000-0000-4000-8000-000000000203",
-            sourceState: "VERIFIED" as const,
-            validityStatus: "ADMIN_DECLARED" as const,
-            jurisdiction: "EU",
-            language: "it",
-            revisionLabel: "2026-01",
-            validity: { validFrom: "2020-01-01T00:00:00.000Z", validTo: null },
-            productCategories: ["generic-prepacked"],
-            chunkOrdinal: 0,
-            text: citation.quote,
-            contentHash: "b".repeat(64),
-            score: 0.9,
-            citation,
-          },
-        ],
-      };
-    });
+      },
+    );
     const retriever = createChromaLabelSourceRetriever({ ragIndex: { retrievePreliminarySafely } });
     const result = await retriever.retrieve({
       workspaceId: "00000000-0000-4000-8000-000000000203",
@@ -129,9 +128,7 @@ describe("Chroma label source retriever", () => {
     });
     expect(result.controls[0]?.citations).toEqual([citation]);
     expect(
-      retrievePreliminarySafely.mock.calls.every(
-        ([query]) => query.productCategory !== undefined,
-      ),
+      retrievePreliminarySafely.mock.calls.every(([query]) => query.productCategory !== undefined),
     ).toBe(true);
   });
 

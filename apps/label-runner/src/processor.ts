@@ -1,3 +1,5 @@
+import type { createProductFactExtractor } from "./create-product-fact-extractor.js";
+import { evaluateMarkets } from "./evaluate-markets.js";
 import { randomUUID } from "node:crypto";
 
 import type { LabelBackendClient } from "./backend-client.js";
@@ -17,6 +19,7 @@ export function createLabelJobProcessor(options: {
   readonly pageStore: LabelPageStore;
   readonly evaluator: LabelEvaluator;
   readonly sourceRetriever?: LabelSourceRetriever;
+  readonly factExtractor?: ReturnType<typeof createProductFactExtractor>;
   readonly createInvocationId?: () => string;
 }): LabelJobProcessor {
   const createInvocationId = options.createInvocationId ?? randomUUID;
@@ -34,7 +37,20 @@ export function createLabelJobProcessor(options: {
       if (!claim.acquired) return { replayed: true };
 
       try {
+        const startedAt: number = Date.now();
+        if (input.preliminaryTemplate.version === "3" && !options.factExtractor)
+          throw new OpenRouterLabelEvaluationError("Product fact extractor is required", false);
         const pages = await options.pageStore.loadNormalizedPages(input);
+        const documents = input.supportingDocuments?.length
+          ? await options.pageStore.loadSupportingDocuments?.(input)
+          : [];
+        if (input.supportingDocuments?.length && !documents)
+          throw new Error("Supporting document store unavailable");
+        const extracted =
+          input.preliminaryTemplate.version === "3" && options.factExtractor
+            ? await options.factExtractor.extract(pages, documents)
+            : undefined;
+        const productFacts = extracted?.facts;
         const scope =
           input.regulatoryScope ?? fallbackRegulatoryScope({ countryCodes: input.countryCodes });
         const sources = options.sourceRetriever
@@ -42,6 +58,13 @@ export function createLabelJobProcessor(options: {
               workspaceId: input.workspaceId,
               scope,
               productCategory: input.productCategory,
+              ...(productFacts
+                ? {
+                    additionalCategories: [
+                      ...new Set(productFacts.products.map((product) => product.category)),
+                    ],
+                  }
+                : {}),
               template: input.preliminaryTemplate,
             })
           : {
@@ -51,7 +74,7 @@ export function createLabelJobProcessor(options: {
               })),
               sourceSnapshot: input.preliminaryTemplate.sourceSnapshot,
             };
-        const evaluated = await options.evaluator.evaluate({
+        const evaluated = await evaluateMarkets(options.evaluator, {
           pages,
           countryCodes: input.countryCodes,
           productCategory: input.productCategory,
@@ -59,6 +82,7 @@ export function createLabelJobProcessor(options: {
           sources,
           template: input.preliminaryTemplate,
           goldExamples: input.goldExamples,
+          ...(productFacts ? { productFacts } : {}),
         });
         // `sources.controls` is the canonical retrieval order and evidence
         // set used to derive sources.sourceSnapshot. Pass it through without
@@ -66,8 +90,38 @@ export function createLabelJobProcessor(options: {
         // the exact frozen manifest for a global analysis.
         const evaluation = RunnerEvaluationSchema.parse({
           ...evaluated,
+          ...(extracted
+            ? {
+                usage: {
+                  ...Object.fromEntries(
+                    (
+                      ["inputTokens", "outputTokens", "totalTokens", "estimatedCostUsd"] as const
+                    ).map((key) => [
+                      key,
+                      evaluated.usage[key] === null || extracted.usage[key] === null
+                        ? null
+                        : evaluated.usage[key]! + extracted.usage[key]!,
+                    ]),
+                  ),
+                  latencyMs: Date.now() - startedAt,
+                },
+                extraction: {
+                  promptVersion: extracted.promptVersion,
+                  model: evaluated.model,
+                  usage: extracted.usage,
+                },
+              }
+            : {}),
+          ...(productFacts ? { productFacts } : {}),
           ...(input.preliminaryTemplate.id === "global-food-label-preliminary-v1"
-            ? { sourceManifest: { controls: sources.controls } }
+            ? {
+                sourceManifest: {
+                  controls: sources.controls.map(({ fieldCode, citations }) => ({
+                    fieldCode,
+                    citations,
+                  })),
+                },
+              }
             : {}),
         });
         await options.backend.complete({
