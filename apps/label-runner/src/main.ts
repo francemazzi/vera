@@ -1,3 +1,6 @@
+import { createBackendRequest } from "./backend-request.js";
+import { createContextResolver } from "./create-context-resolver.js";
+import { createContextProcessor } from "./create-context-processor.js";
 import { createProductFactExtractor } from "./create-product-fact-extractor.js";
 import { createLabelBackendClient } from "./backend-client.js";
 import {
@@ -74,6 +77,19 @@ async function main(): Promise<void> {
           expectedServiceAccountEmail: config.taskInvokerServiceAccountEmail,
         }),
     processor,
+    contextProcessor: createContextProcessor({
+      request: createBackendRequest({
+        backendUrl: config.backendUrl,
+        audience: config.backendAudience,
+        localToken: config.localToken,
+      }),
+      resolve: createContextResolver({
+        apiKey: config.openRouterApiKey,
+        model: config.openRouterModel,
+        timeoutMs: config.openRouterTimeoutMs,
+      }),
+      model: config.openRouterModel,
+    }),
     logger: true,
   });
   await server.listen({ host: "0.0.0.0", port });

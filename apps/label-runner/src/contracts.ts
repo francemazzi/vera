@@ -53,7 +53,16 @@ export const PRELIMINARY_INDICATORS = [
   "NOT_APPLICABLE",
 ] as const;
 
-export const LabelTaskSchema = z.object({ analysisId: z.uuid() }).strict();
+export const LabelTaskSchema = z
+  .object({
+    analysisId: z.uuid(),
+    kind: z.enum(["EVALUATION", "RESOLVE_CONTEXT"]).optional(),
+    contextRevision: z.number().int().nonnegative().optional(),
+  })
+  .strict()
+  .refine((task) => task.kind !== "RESOLVE_CONTEXT" || task.contextRevision !== undefined, {
+    message: "Context revision required",
+  });
 export type LabelTask = z.infer<typeof LabelTaskSchema>;
 
 export const RegulatoryScopeSchema = z
@@ -82,7 +91,7 @@ export const RegulatoryScopeSchema = z
     language: z.string().trim().min(2).max(35),
     evaluationDate: z.iso.datetime({ offset: true }),
     customMarketList: z.string().trim().min(1).max(4_000).optional(),
-    customMarketBriefing: z.string().trim().min(1).max(8_000).optional(),
+    customMarketBriefing: z.string().trim().min(1).max(40_000).optional(),
   })
   .strict();
 export type RegulatoryScope = z.infer<typeof RegulatoryScopeSchema>;
@@ -206,8 +215,8 @@ export const RunnerInputSchema = z
           .object({
             id: z.uuid(),
             fileName: z.string().max(300),
-            productReference: z.string().max(300),
-            revision: z.string().max(300),
+            productReference: z.string().max(300).nullable(),
+            revision: z.string().max(300).nullable(),
             sha256: z.string().regex(/^[0-9a-f]{64}$/u),
             pages: z
               .array(

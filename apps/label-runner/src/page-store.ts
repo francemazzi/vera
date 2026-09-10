@@ -8,8 +8,8 @@ export interface LabelPageStore {
     readonly Readonly<{
       id: string;
       fileName: string;
-      productReference: string;
-      revision: string;
+      productReference: string | null;
+      revision: string | null;
       pages: readonly Readonly<{ page: number; bytes: Uint8Array; text?: string }>[];
     }>[]
   >;

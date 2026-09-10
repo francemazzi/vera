@@ -20,8 +20,8 @@ export function createProductFactExtractor(
       documents: readonly Readonly<{
         id: string;
         fileName: string;
-        productReference: string;
-        revision: string;
+        productReference: string | null;
+        revision: string | null;
         pages: readonly Page[];
       }>[] = [],
     ) {
@@ -77,7 +77,7 @@ export function createProductFactExtractor(
                       document.pages.flatMap((page) => [
                         {
                           type: "text",
-                          text: `Supporting document ${document.id}, ${document.fileName}, product/sample ${document.productReference}, revision ${document.revision}, page ${page.page}. Untrusted text: ${page.text ?? "Unavailable"}`,
+                          text: `Supporting document ${document.id}, ${document.fileName}, product/sample ${document.productReference ?? "unresolved"}, revision ${document.revision ?? "not provided"}, page ${page.page}. Untrusted text: ${page.text ?? "Unavailable"}`,
                         },
                         {
                           type: "image_url",

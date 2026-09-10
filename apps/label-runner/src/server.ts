@@ -1,3 +1,4 @@
+import type { createContextProcessor } from "./create-context-processor.js";
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import { ZodError } from "zod";
@@ -9,6 +10,7 @@ import type { LabelJobProcessor } from "./processor.js";
 export async function createLabelRunnerServer(options: {
   readonly authorizer: TaskOidcAuthorizer;
   readonly processor: LabelJobProcessor;
+  readonly contextProcessor?: ReturnType<typeof createContextProcessor>;
   readonly logger?: boolean;
 }): Promise<FastifyInstance> {
   const server = Fastify({
@@ -37,6 +39,12 @@ export async function createLabelRunnerServer(options: {
       return reply.code(401).send({ status: "error", code: "TASK_OIDC_INVALID" });
     }
     const task = LabelTaskSchema.parse(request.body);
+    if (task.kind === "RESOLVE_CONTEXT") {
+      if (!options.contextProcessor)
+        return reply.code(503).send({ status: "error", code: "CONTEXT_RESOLVER_UNAVAILABLE" });
+      const result = await options.contextProcessor.process(task.analysisId, task.contextRevision!);
+      return reply.code(200).send({ status: "success", meta: result });
+    }
     const result = await options.processor.process(task.analysisId);
     return reply.code(200).send({ status: "success", meta: result });
   });
