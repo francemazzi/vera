@@ -226,7 +226,9 @@ export function createChromaLabelSourceRetriever(options: {
                 ? retrieved
                 : pinnedCitationsForControl({
                     fieldCode: control.fieldCode,
-                    countryCode: input.scope.countryCode,
+                    ...(input.scope.countryCode !== undefined
+                      ? { countryCode: input.scope.countryCode }
+                      : {}),
                   }),
             ...(categories.length > 1 ? { byCategory } : {}),
           };

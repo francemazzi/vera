@@ -172,9 +172,9 @@ async function main(): Promise<void> {
           cause: attributeCiprianiMismatch({
             expected: mismatch.expected,
             predicted: mismatch.predicted,
-            outcome: control?.outcome,
             citationChunkIds: control?.citationChunkIds ?? [],
-            blockerCode: control?.blockerCode,
+            ...(control?.outcome !== undefined ? { outcome: control.outcome } : {}),
+            ...(control?.blockerCode !== undefined ? { blockerCode: control.blockerCode } : {}),
           }),
         };
       });
