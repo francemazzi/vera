@@ -1,5 +1,5 @@
 const NORMATIVE_SIGNAL =
-  /\b(art\.?|articolo|article|regolamento|regulation|direttiva|directive|decreto|d\.lgs|allegato|annex|considerando|recital|legge|legea|lege|hotarare|ordonanta|comma|paragrafo|paragraph)\b/iu;
+  /\b(art\.?|articolo|article|regolamento|regulation|direttiva|directive|decreto|d\.lgs|allegato|annex|considerando|recital|legge|legea|lege|hotarare|ordonanta|comma|paragrafo|paragraph|cfr|u\.?s\.?c\.?|section|sec\.|subsection)\b|§/iu;
 
 const PORTAL_CHROME =
   /\b(menu eu law|eli background|quick search|skip to (main|content)|cookie (policy|settings)|javascript required)\b/iu;

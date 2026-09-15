@@ -45,6 +45,57 @@ describe("evidence-backed v3 decisions", () => {
     expect(parsed.correctiveSuggestion!.length).toBeGreaterThan(60_000);
     expect(parsed.correctiveSuggestion).toContain("11: T");
   });
+  it("allows US EU-only controls to be not applicable", () => {
+    const result = guardControlAssessment({
+      fieldCode: "indicazioni_ambientali",
+      countryCode: "US",
+      outcome: "NOT_APPLICABLE",
+      citedIds: [],
+      requestedIds: [],
+      assessment: { ...assessment, applicability: "FACTUALLY_NOT_APPLICABLE" },
+    });
+    expect(result.requiresReview).toBe(false);
+  });
+  it("allows sourced US generic-prepacked identity checks", () => {
+    const result = guardControlAssessment({
+      fieldCode: "etichettatura_specifica_prodotto",
+      productCategory: "generic-prepacked",
+      countryCode: "US",
+      outcome: "PASS",
+      citedIds: ["us-cfr-139-150-egg-noodles"],
+      requestedIds: ["us-cfr-139-150-egg-noodles"],
+      assessment,
+    });
+    expect(result.requiresReview).toBe(false);
+    expect(result.assessment.blocker?.code).not.toBe("UNIMPLEMENTED_CATEGORY");
+  });
+  it("coerces null claim citation ids instead of rejecting the evaluation payload", () => {
+    const parsed = ControlAssessmentSchema.parse({
+      ...assessment,
+      claims: [
+        {
+          text: "18 HOURS",
+          language: "en",
+          outcome: "UNRESOLVED",
+          rationale: "Process claim needs the formula",
+          conditions: null,
+          productEvidence: "Printed on lid",
+          citationChunkIds: null,
+        },
+      ],
+      actions: [
+        {
+          kind: "REQUEST_DATA",
+          location: "Formula",
+          text: "Egg solids",
+          citationChunkIds: null,
+        },
+      ],
+    });
+    expect(parsed.claims?.[0]?.conditions).toBe("Not specified");
+    expect(parsed.claims?.[0]?.citationChunkIds).toEqual([]);
+    expect(parsed.actions[0]?.citationChunkIds).toEqual([]);
+  });
   it("keeps unimplemented vertical categories in internal review despite an apparent citation", () => {
     const result = guardControlAssessment({
       fieldCode: "etichettatura_specifica_prodotto",

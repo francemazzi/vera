@@ -8,12 +8,12 @@
 const UUID_PATH_SEGMENT = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const SHA256_PATH_SEGMENT = "[0-9a-f]{64}";
 const DISCOVERY_SNAPSHOT_KEY = new RegExp(
-  `^label-governance/source-discovery/${UUID_PATH_SEGMENT}/${UUID_PATH_SEGMENT}/original/(${SHA256_PATH_SEGMENT})\\.(pdf|html)$`,
+  `^label-governance/source-discovery/${UUID_PATH_SEGMENT}/${UUID_PATH_SEGMENT}/original/(${SHA256_PATH_SEGMENT})\\.(pdf|html|xml)$`,
   "u",
 );
 
 export interface DiscoverySnapshotIdentity {
-  readonly sourceFormat: "PDF" | "OFFICIAL_HTML";
+  readonly sourceFormat: "PDF" | "OFFICIAL_HTML" | "OFFICIAL_XML";
   readonly sourceSha256: string | null;
 }
 
@@ -30,6 +30,7 @@ export function isVerifiedDiscoverySnapshotObjectKey(
   if (objectKey === null || input.sourceSha256 === null) return false;
   const match = DISCOVERY_SNAPSHOT_KEY.exec(objectKey);
   if (match === null) return false;
-  const expectedExtension = input.sourceFormat === "PDF" ? "pdf" : "html";
+  const expectedExtension =
+    input.sourceFormat === "PDF" ? "pdf" : input.sourceFormat === "OFFICIAL_XML" ? "xml" : "html";
   return match[1] === input.sourceSha256 && match[2] === expectedExtension;
 }

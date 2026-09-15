@@ -117,6 +117,40 @@ function parseMetadata(value: unknown): ChromaMetadata | null {
   return Object.freeze(Object.fromEntries(entries) as Record<string, ChromaMetadataValue>);
 }
 
+function parseGetMatches(value: unknown): readonly ChromaVectorMatch[] {
+  if (!isRecord(value)) throw new RagError("VECTOR_STORE_INVALID", "Chroma get response is invalid");
+  const ids = value["ids"];
+  if (isUnknownArray(ids) && isUnknownArray(ids[0])) return parseMatches(value);
+  if (!isUnknownArray(ids)) {
+    throw new RagError("VECTOR_STORE_INVALID", "Chroma get response is missing ids");
+  }
+  const documents = isUnknownArray(value["documents"]) ? value["documents"] : [];
+  const metadatas = isUnknownArray(value["metadatas"]) ? value["metadatas"] : [];
+  return ids.map((id, index) => {
+    const document = documents[index];
+    if (
+      typeof id !== "string" ||
+      (document !== undefined && document !== null && typeof document !== "string")
+    ) {
+      throw new RagError("VECTOR_STORE_INVALID", "Chroma get record is invalid");
+    }
+    return {
+      id,
+      distance: null,
+      document: document === undefined || document === null ? null : document,
+      metadata: parseMetadata(metadatas[index] ?? null),
+    };
+  });
+}
+
+function parseCount(value: unknown): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return value;
+  if (isRecord(value) && typeof value["count"] === "number" && Number.isSafeInteger(value["count"])) {
+    return value["count"];
+  }
+  throw new RagError("VECTOR_STORE_INVALID", "Chroma count response is invalid");
+}
+
 function parseMatches(value: unknown): readonly ChromaVectorMatch[] {
   if (!isRecord(value))
     throw new RagError("VECTOR_STORE_INVALID", "Chroma query response is invalid");
@@ -243,14 +277,40 @@ export class ChromaHttpVectorStore implements ChromaVectorStore {
     return parseMatches(response);
   }
 
+  public async get(input: {
+    readonly collection: ChromaCollection;
+    readonly where?: Readonly<Record<string, unknown>>;
+    readonly limit: number;
+  }): Promise<readonly ChromaVectorMatch[]> {
+    const response = await this.#requestJson(
+      `collections/${encodeURIComponent(input.collection.id)}/get`,
+      "POST",
+      {
+        ...(input.where === undefined ? {} : { where: input.where }),
+        limit: input.limit,
+        include: ["documents", "metadatas"],
+      },
+    );
+    return parseGetMatches(response);
+  }
+
+  public async count(input: { readonly collection: ChromaCollection }): Promise<number> {
+    return parseCount(
+      await this.#requestJson(
+        `collections/${encodeURIComponent(input.collection.id)}/count`,
+        "GET",
+      ),
+    );
+  }
+
   public async heartbeat(): Promise<void> {
     await this.#requestAbsoluteVoid(`${this.#options.endpoint}/api/v2/heartbeat`);
   }
 
   async #requestJson(
     path: string,
-    method: "POST",
-    body: Readonly<Record<string, unknown>>,
+    method: "GET" | "POST",
+    body?: Readonly<Record<string, unknown>>,
   ): Promise<unknown> {
     const response = await this.#request(path, method, body);
     const text = await this.#readResponse(response);

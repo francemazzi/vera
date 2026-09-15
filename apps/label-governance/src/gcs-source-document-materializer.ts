@@ -27,6 +27,7 @@ const MAX_EXTRACTED_TEXT_CHARS = 2_000_000;
 const MAX_CLASSIFICATION_TEXT_CHARS = 500_000;
 const MAX_SECTION_CHARS = 90_000;
 const HTML_MEDIA_TYPES = new Set(["text/html", "application/xhtml+xml"]);
+const XML_MEDIA_TYPES = new Set(["text/xml", "application/xml"]);
 const HTML_SUPPRESSED_TAGS = new Set([
   "script",
   "style",
@@ -84,7 +85,7 @@ const ExtractedTextArchiveSchema = z
     sourceSha256: z.string().regex(/^[0-9a-f]{64}$/u),
     // Older PDF archives did not carry a format. They are safely interpreted
     // as PDF so existing governed candidates remain readable after rollout.
-    sourceFormat: z.enum(["PDF", "OFFICIAL_HTML"]).default("PDF"),
+    sourceFormat: z.enum(["PDF", "OFFICIAL_HTML", "OFFICIAL_XML"]).default("PDF"),
     pages: z.array(SourceTextSectionSchema).min(1).max(10_000),
   })
   .strict();
@@ -419,21 +420,34 @@ function splitHtmlText(
   return result;
 }
 
-function extractHtmlSections(
-  bytes: Uint8Array,
-  fallbackTitle: string | null,
-): readonly SourceTextSection[] {
-  let markup: string;
+function decodeOfficialMarkup(bytes: Uint8Array, failureCode: "HTML_UNREADABLE" | "XML_UNREADABLE"): string {
   try {
-    markup = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch (error) {
     throw new SourceDocumentMaterializationError(
-      "The official HTML snapshot is not valid UTF-8",
+      "The official snapshot is not valid UTF-8",
       false,
-      "HTML_UNREADABLE",
+      failureCode,
       { cause: error },
     );
   }
+}
+
+function rewriteEcfrXml(markup: string): string {
+  return markup
+    .replace(/<DIV\d+\b([^>]*)>/giu, (_match, attrs: string) => {
+      const section = /\bN="([^"]+)"/iu.exec(attrs)?.[1];
+      return section ? `<h1>${section}</h1><div>` : "<div>";
+    })
+    .replace(/<\/DIV\d+>/giu, "</div>")
+    .replace(/<HEAD>/giu, "<h1>")
+    .replace(/<\/HEAD>/giu, "</h1>");
+}
+
+function extractHtmlSectionsFromMarkup(
+  markup: string,
+  fallbackTitle: string | null,
+): readonly SourceTextSection[] {
   const blocks = extractHtmlBlocks(selectOfficialHtmlBody(markup));
   const sections: SourceTextSection[] = [];
   let title = fallbackTitle?.slice(0, 300) || "Official source snapshot";
@@ -462,6 +476,23 @@ function extractHtmlSections(
     );
   }
   return sections;
+}
+
+function extractHtmlSections(
+  bytes: Uint8Array,
+  fallbackTitle: string | null,
+): readonly SourceTextSection[] {
+  return extractHtmlSectionsFromMarkup(decodeOfficialMarkup(bytes, "HTML_UNREADABLE"), fallbackTitle);
+}
+
+function extractOfficialXmlSections(
+  bytes: Uint8Array,
+  fallbackTitle: string | null,
+): readonly SourceTextSection[] {
+  return extractHtmlSectionsFromMarkup(
+    rewriteEcfrXml(decodeOfficialMarkup(bytes, "XML_UNREADABLE")),
+    fallbackTitle,
+  );
 }
 
 function textFromPdfItem(item: unknown): string {
@@ -784,7 +815,9 @@ export function createGcsSourceDocumentMaterializer(options: {
         );
       }
       const mediaType = metadata.contentType?.split(";", 1)[0]?.trim().toLowerCase();
-      if (mediaType === undefined || !HTML_MEDIA_TYPES.has(mediaType)) {
+      const allowedMedia =
+        input.sourceFormat === "OFFICIAL_XML" ? XML_MEDIA_TYPES : HTML_MEDIA_TYPES;
+      if (mediaType === undefined || !allowedMedia.has(mediaType)) {
         throw new SourceDocumentMaterializationError(
           "Private official HTML snapshot has an invalid media type",
           false,
@@ -889,14 +922,18 @@ export function createGcsSourceDocumentMaterializer(options: {
 
   return {
     async materialize(input): Promise<MaterializedSourceDocument> {
-      if (input.sourceFormat === "OFFICIAL_HTML") {
+      if (input.sourceFormat === "OFFICIAL_HTML" || input.sourceFormat === "OFFICIAL_XML") {
         const source = await downloadPrivateOfficialHtml(input);
         const digest = sha256(source.bytes);
         const extracted = await loadOrExtractText({
           source: input,
           digest,
           extract: async () =>
-            await Promise.resolve(extractHtmlSections(source.bytes, input.sourceTitle)),
+            await Promise.resolve(
+              input.sourceFormat === "OFFICIAL_XML"
+                ? extractOfficialXmlSections(source.bytes, input.sourceTitle)
+                : extractHtmlSections(source.bytes, input.sourceTitle),
+            ),
         });
         return MaterializedSourceDocumentSchema.parse({
           artifacts: {

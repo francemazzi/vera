@@ -12,6 +12,7 @@ import { createBackendOidcAuthorizer, createLocalBearerAuthorizer } from "./oidc
 import { createOfficialAuthoritySearchTool } from "./official-authority-search-tool.js";
 import { createGcsOfficialSourceAcquirer } from "./official-source-acquirer.js";
 import { createLabelGovernanceServer } from "./server.js";
+import { probeVerifiedSourceIndex } from "./source-index-probe.js";
 import { createSourceDiscoveryBackendClient } from "./source-discovery-backend-client.js";
 import { createSourceDiscoveryJobProcessor } from "./source-discovery-processor.js";
 import { createOpenRouterSourceDiscoveryRanker } from "./source-discovery-ranker.js";
@@ -46,6 +47,19 @@ async function main(): Promise<void> {
           expectedServiceAccountEmail: config.backendServiceAccountEmail,
           expectedServiceAccountEmails: [config.taskInvokerServiceAccountEmail],
         });
+  const chroma = new ChromaHttpVectorStore({
+    endpoint: config.chromaEndpoint,
+    tenant: config.chromaTenant,
+    database: config.chromaDatabase,
+    ...(config.chromaToken === null ? {} : { token: config.chromaToken }),
+    timeoutMs: config.chromaTimeoutMs,
+  });
+  const ragIndex = new ChromaPrivateLabelRagIndex({
+    chroma,
+    embeddingProvider: new OpenRouterEmbeddingProvider({
+      apiKey: config.openRouterApiKey,
+    }),
+  });
   const server = await createLabelGovernanceServer({
     authorizer: backendAuthorizer,
     sourceJobAuthorizer,
@@ -67,18 +81,7 @@ async function main(): Promise<void> {
         apiKey: config.openRouterApiKey,
         timeoutMs: config.openRouterTimeoutMs,
       }),
-      ragIndex: new ChromaPrivateLabelRagIndex({
-        chroma: new ChromaHttpVectorStore({
-          endpoint: config.chromaEndpoint,
-          tenant: config.chromaTenant,
-          database: config.chromaDatabase,
-          ...(config.chromaToken === null ? {} : { token: config.chromaToken }),
-          timeoutMs: config.chromaTimeoutMs,
-        }),
-        embeddingProvider: new OpenRouterEmbeddingProvider({
-          apiKey: config.openRouterApiKey,
-        }),
-      }),
+      ragIndex,
       officialSourceHosts: config.officialSourceHosts,
     }),
     sourceDiscoveryJobProcessor: createSourceDiscoveryJobProcessor({
@@ -96,6 +99,9 @@ async function main(): Promise<void> {
     }),
     sourceLedgerRepository: new PrivateLabelGovernanceRepository(prisma),
     officialSourceHosts: config.officialSourceHosts,
+    sourceIndexProbe: {
+      probe: () => probeVerifiedSourceIndex(chroma),
+    },
     logger: true,
   });
   server.addHook("onClose", async () => prisma.$disconnect());

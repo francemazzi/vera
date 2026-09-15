@@ -24,7 +24,7 @@ const ModelControlSchema = z
       .max(24)
       .nullish()
       .transform((value) => value ?? []),
-    correctiveSuggestion: z.string().min(1).max(80_000).optional(),
+    correctiveSuggestion: z.string().min(1).max(80_000).optional().catch(undefined),
     boundingBox: z.unknown().optional(),
     assessment: ControlAssessmentSchema.optional(),
     marketFeedback: z
@@ -41,7 +41,7 @@ const ModelControlSchema = z
               "NON_APPLICABILE",
             ]),
             rationale: z.string().min(1).max(8_000),
-            correctiveSuggestion: z.string().min(1).max(80_000).optional(),
+            correctiveSuggestion: z.string().min(1).max(80_000).optional().catch(undefined),
           })
           .strict(),
       )
@@ -143,6 +143,7 @@ export function normalizedControls(input: {
   readonly sources: LabelRetrievedSources;
   readonly template: PreliminaryTemplate;
   readonly productCategory?: string;
+  readonly countryCode?: string;
 }): readonly {
   readonly fieldCode: LabelFieldCode;
   readonly outcome: "PASS" | "FAIL" | "REVIEW" | "NOT_APPLICABLE";
@@ -175,6 +176,7 @@ export function normalizedControls(input: {
         ? guardControlAssessment({
             fieldCode,
             ...(input.productCategory ? { productCategory: input.productCategory } : {}),
+            ...(input.countryCode ? { countryCode: input.countryCode } : {}),
             outcome: control.outcome,
             ...(control.assessment ? { assessment: control.assessment } : {}),
             requestedIds: control.citationChunkIds,

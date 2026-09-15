@@ -279,6 +279,7 @@ export const RunnerSourceCitationSchema = z
     sectionTitle: z.string().trim().min(1).max(300),
     pageNumber: z.int().min(1).nullable(),
     quote: z.string().trim().min(1).max(1_000),
+    provenance: z.enum(["RETRIEVED", "PINNED_OFFICIAL"]).optional(),
   })
   .strict();
 export type RunnerSourceCitation = z.infer<typeof RunnerSourceCitationSchema>;

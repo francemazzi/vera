@@ -116,6 +116,26 @@ class FakeChromaStore implements ChromaVectorStore {
   public heartbeat(): Promise<void> {
     return Promise.resolve();
   }
+
+  public get(input: {
+    readonly collection: ChromaCollection;
+    readonly where?: Readonly<Record<string, unknown>>;
+    readonly limit: number;
+  }): Promise<readonly ChromaVectorMatch[]> {
+    void input;
+    return Promise.resolve(
+      this.records.map((record) => ({
+        id: record.id,
+        distance: null,
+        document: record.document,
+        metadata: record.metadata,
+      })),
+    );
+  }
+
+  public count(): Promise<number> {
+    return Promise.resolve(this.records.length);
+  }
 }
 
 describe("ChromaPrivateLabelRagIndex", () => {
@@ -128,7 +148,9 @@ describe("ChromaPrivateLabelRagIndex", () => {
 
     expect(result).toMatchObject({ chunksIndexed: 1, sourceVersionIds: [uuid(101)] });
     expect(chroma.collections.map(({ name }) => name)).toEqual(["silto-label-verified-v1"]);
-    expect(chroma.records[0]?.document).toBe(section().text);
+    expect(chroma.records[0]?.document).toBe(
+      "EU 1169/2011 — Mandatory particulars — Article 9 of the Regulation requires a visible product denomination and allergen declaration.",
+    );
     expect(chroma.records[0]?.metadata).toMatchObject({
       source_state: "VERIFIED",
       validity_status: "ADMIN_DECLARED",
@@ -138,7 +160,9 @@ describe("ChromaPrivateLabelRagIndex", () => {
       workspace_scope: uuid(102),
     });
     expect(chroma.records[0]?.embedding).toHaveLength(1_536);
-    expect(embeddings.documents).toEqual([section().text]);
+    expect(embeddings.documents).toEqual([
+      "EU 1169/2011 — Mandatory particulars — Article 9 of the Regulation requires a visible product denomination and allergen declaration.",
+    ]);
   });
 
   it("upserts replacement chunks before pruning only older content hashes", async () => {
@@ -362,5 +386,22 @@ describe("ChromaPrivateLabelRagIndex", () => {
       requiresReview: true,
       reason: "PROVIDER_UNAVAILABLE: offline",
     });
+  });
+
+  it("keeps table-only serving rows when the section reference prefixes the chunk", async () => {
+    const chroma = new FakeChromaStore();
+    const embeddings = new FakeEmbeddingProvider();
+    const index = new ChromaPrivateLabelRagIndex({ chroma, embeddingProvider: embeddings });
+    await index.indexPreliminarySections([
+      section({
+        actReference: "21 CFR 101.12",
+        sectionTitle: "Table 2 — Pastas, plain",
+        text: "Pastas, plain 55 g 2 oz (56 g/visual unit of measure).",
+      }),
+    ]);
+    expect(chroma.records).toHaveLength(1);
+    expect(chroma.records[0]?.document).toContain("21 CFR 101.12");
+    expect(chroma.records[0]?.document).toContain("Pastas, plain");
+    expect(chroma.records[0]?.document).toContain("56 g");
   });
 });

@@ -81,26 +81,32 @@ function chunkId(
   return `${section.sourceVersionId}:${section.sectionId}:${String(chunkOrdinal)}:${contentHash.slice(0, 16)}`;
 }
 
+function chunkHeader(section: PrivateLabelRagSection): string {
+  return [section.actReference, section.sectionTitle].filter(Boolean).join(" — ");
+}
+
 function buildChunks(sections: readonly PrivateLabelRagSection[]): readonly PrivateLabelRagChunk[] {
-  return sections.flatMap((section) =>
-    splitRagText(section.text)
+  return sections.flatMap((section) => {
+    const header = chunkHeader(section);
+    return splitRagText(section.text)
+      .map((text) => (header ? `${header} — ${text}` : text))
       .filter((text) => hasNormativeSignal(text))
       .map((text, chunkOrdinal) => {
-      const contentHash = sha256CanonicalJson({
-        sourceVersionId: section.sourceVersionId,
-        sectionId: section.sectionId,
-        chunkOrdinal,
-        text,
+        const contentHash = sha256CanonicalJson({
+          sourceVersionId: section.sourceVersionId,
+          sectionId: section.sectionId,
+          chunkOrdinal,
+          text,
+        });
+        return PrivateLabelRagChunkSchema.parse({
+          ...section,
+          chunkId: chunkId(section, chunkOrdinal, contentHash),
+          chunkOrdinal,
+          text,
+          contentHash,
+        });
       });
-      return PrivateLabelRagChunkSchema.parse({
-        ...section,
-        chunkId: chunkId(section, chunkOrdinal, contentHash),
-        chunkOrdinal,
-        text,
-        contentHash,
-      });
-    }),
-  );
+  });
 }
 
 function allowedSourceStates(scope: PrivateLabelRagScope): readonly PrivateLabelRagSourceState[] {

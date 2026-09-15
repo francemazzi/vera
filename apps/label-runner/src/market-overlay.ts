@@ -94,13 +94,20 @@ const UNITED_STATES_OVERLAYS: ControlOverlay = {
   produttore_distributore_indirizzo:
     "Use SUGGERIMENTO for minor address localisation such as translating Italia to Italy or adding a street number.",
   elenco_ingredienti:
-    "For olive oil exported to the US, require the explicit statement “INGREDIENTS: EXTRA VIRGIN OLIVE OIL” on the information panel. Its absence is ATTENZIONE.",
+    "If and only if the visible product is olive oil, require the explicit statement “INGREDIENTS: EXTRA VIRGIN OLIVE OIL” on the information panel. Its absence is ATTENZIONE. Never apply this olive-oil wording to pasta or other foods.",
   quantita_netto_volume_nominale:
     "Require net quantity on the PDP in both metric and US customary units, without the European estimated-sign mark. Layout or unit corrections are ATTENZIONE.",
   termine_minimo_conservazione_data_scadenza:
     "For a voluntary quality date, prefer title case “Best If Used By”. A casing improvement is SUGGERIMENTO.",
   indicazioni_aggiuntive:
     "Use SUGGERIMENTO to remove EU-standard laudatory olive-oil wording or untranslated optional Italian terms that could mislead or trigger full bilingual presentation.",
+};
+
+const UNITED_STATES_NON_OIL_OVERLAYS: ControlOverlay = {
+  elenco_ingredienti:
+    "Check descending-order common names from the artwork. Do not require extra virgin olive oil wording.",
+  indicazioni_aggiuntive:
+    "Assess voluntary claims against US sources. Do not apply EU-standard laudatory olive-oil wording.",
 };
 
 const EXTRA_EU_OVERLAYS: ControlOverlay = {
@@ -128,10 +135,17 @@ const MARKET_OVERLAYS: Readonly<Record<string, ControlOverlay>> = {
 /**
  * Extra-EU overlay. EU member states keep the frozen template wording.
  */
-export function overlayInstructionsForMarket(countryCode: string): ControlOverlay {
+export function overlayInstructionsForMarket(
+  countryCode: string,
+  options: Readonly<{ isOliveOil?: boolean }> = {},
+): ControlOverlay {
   const code = countryCode.trim().toUpperCase();
   if (code === "IT") return ITALY_OVERLAYS;
   if (!(EXTRA_EVALUATION_MARKET_CODES as readonly string[]).includes(code)) return {};
   const market = MARKET_OVERLAYS[code];
-  return market ? { ...EXTRA_EU_OVERLAYS, ...market } : EXTRA_EU_OVERLAYS;
+  const merged = market ? { ...EXTRA_EU_OVERLAYS, ...market } : EXTRA_EU_OVERLAYS;
+  if (code === "US" && options.isOliveOil === false) {
+    return { ...merged, ...UNITED_STATES_NON_OIL_OVERLAYS };
+  }
+  return merged;
 }

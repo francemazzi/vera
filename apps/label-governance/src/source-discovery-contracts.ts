@@ -228,7 +228,7 @@ export const SourceDiscoveryProposalSchema = z
     sourceTitle: z.string().trim().min(1).max(500),
     canonicalUrl: z.url().max(2_048),
     pdfUrl: z.url().max(2_048).nullable(),
-    sourceFormat: z.enum(["PDF", "OFFICIAL_HTML"]),
+    sourceFormat: z.enum(["PDF", "OFFICIAL_HTML", "OFFICIAL_XML"]),
     storageObjectKey: z.string().trim().min(1).max(1_000),
     sourceSha256: Sha256DigestSchema,
     contentByteSize: z

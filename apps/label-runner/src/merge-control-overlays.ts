@@ -30,9 +30,14 @@ export function mergeControlOverlays(
 export function overlayInstructionsForEvaluation(input: {
   readonly productCategory: string;
   readonly countryCode?: string;
+  readonly isOliveOil?: boolean;
 }): ControlOverlay {
   return mergeControlOverlays(
     overlayInstructionsForCategory(input.productCategory),
-    input.countryCode ? overlayInstructionsForMarket(input.countryCode) : {},
+    input.countryCode
+      ? overlayInstructionsForMarket(input.countryCode, {
+          ...(input.isOliveOil === undefined ? {} : { isOliveOil: input.isOliveOil }),
+        })
+      : {},
   );
 }

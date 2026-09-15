@@ -17,6 +17,7 @@ const citation = {
   sectionTitle: "Indicazioni obbligatorie",
   pageNumber: 12,
   quote: "L'etichetta deve riportare le informazioni obbligatorie.",
+  provenance: "RETRIEVED" as const,
 } as const;
 
 describe("Chroma label source retriever", () => {
@@ -159,5 +160,36 @@ describe("Chroma label source retriever", () => {
     });
 
     expect(result.controls.every((control) => control.citations.length === 0)).toBe(true);
+  });
+
+  it("merges pinned official US excerpts when Chroma returns no chunk", async () => {
+    const retriever = createChromaLabelSourceRetriever({
+      ragIndex: {
+        retrievePreliminarySafely: () =>
+          Promise.resolve({
+            status: "AVAILABLE" as const,
+            scope: "PRELIMINARY" as const,
+            requiresReview: true as const,
+            chunks: [],
+          }),
+      },
+    });
+    const result = await retriever.retrieve({
+      workspaceId: "00000000-0000-4000-8000-000000000204",
+      scope: {
+        countryCode: "US",
+        regulatoryAreas: ["AMERICAS"],
+        jurisdictions: ["US"],
+        language: "en",
+        evaluationDate: "2026-09-10T00:00:00.000Z",
+      },
+      productCategory: "generic-prepacked",
+      template: preliminaryTemplate,
+    });
+    const nutrition = result.controls.find((control) => control.fieldCode === "informazioni_nutrizionali");
+    expect(nutrition?.citations.some((citation) => citation.chunkId === "us-cfr-101-12-pasta-racc")).toBe(
+      true,
+    );
+    expect(nutrition?.citations.every((citation) => citation.provenance === "PINNED_OFFICIAL")).toBe(true);
   });
 });

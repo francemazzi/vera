@@ -8,6 +8,7 @@ import type {
   RunnerEvaluation,
 } from "./contracts.js";
 import { evaluationPrompt } from "./evaluation-prompt.js";
+import { applyUsPastaNutritionGuard } from "./guard-us-pasta-nutrition.js";
 import { normalizedControls } from "./normalize-evaluation-controls.js";
 import { OpenRouterLabelEvaluationError } from "./evaluation-error.js";
 export { OpenRouterLabelEvaluationError } from "./evaluation-error.js";
@@ -255,18 +256,33 @@ export function createOpenRouterLabelEvaluator(options: {
             false,
           );
         }
+        const controls = normalizedControls({
+          parsed,
+          sources: input.sources,
+          template: input.template,
+          productCategory: input.productCategory,
+          ...(input.regulatoryScope.countryCode
+            ? { countryCode: input.regulatoryScope.countryCode }
+            : {}),
+        }).map((control) =>
+          applyUsPastaNutritionGuard({
+            control,
+            ...(input.productFacts ? { productFacts: input.productFacts } : {}),
+            retrievedCitations:
+              input.sources.controls.find((entry) => entry.fieldCode === control.fieldCode)
+                ?.citations ?? [],
+            ...(input.regulatoryScope.countryCode
+              ? { countryCode: input.regulatoryScope.countryCode }
+              : {}),
+          }),
+        );
         return RunnerEvaluationSchema.parse({
           provider: "openrouter",
           model: options.model,
           promptVersion,
           rulePackVersion,
           sourceSnapshot: input.sources.sourceSnapshot,
-          controls: normalizedControls({
-            parsed,
-            sources: input.sources,
-            template: input.template,
-            productCategory: input.productCategory,
-          }),
+          controls,
           usage: usageFromResponse(body, Date.now() - startedAt, options.model),
         });
       } catch (error) {

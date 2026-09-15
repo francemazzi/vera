@@ -7,9 +7,9 @@ export const ClaimAssessmentSchema = z
     language: z.string().min(2).max(35),
     outcome: z.enum(["SUPPORTED", "REJECTED", "UNRESOLVED"]),
     rationale: z.string().min(1).max(2000),
-    conditions: z.string().min(1).max(2000),
+    conditions: z.string().min(1).max(2000).catch("Not specified"),
     productEvidence: z.string().min(1).max(2000),
-    proposedWording: z.string().min(1).max(2000).optional(),
-    citationChunkIds: z.array(z.string().min(1).max(300)).max(24),
+    proposedWording: z.string().min(1).max(2000).optional().catch(undefined),
+    citationChunkIds: z.array(z.string().min(1).max(300)).max(24).catch([]),
   })
   .strict();

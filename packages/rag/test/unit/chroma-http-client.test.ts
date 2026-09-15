@@ -31,6 +31,15 @@ describe("ChromaHttpVectorStore", () => {
         { status: 200 },
       ),
       new Response("{}", { status: 200 }),
+      new Response(
+        JSON.stringify({
+          ids: ["chunk-1"],
+          documents: ["Synthetic official source text."],
+          metadatas: [{ jurisdiction: "IT", source_state: "UNVERIFIED" }],
+        }),
+        { status: 200 },
+      ),
+      new Response(JSON.stringify({ count: 1 }), { status: 200 }),
       new Response("ok", { status: 200 }),
     ];
     const fetch: typeof globalThis.fetch = async (input, init) => {
@@ -72,6 +81,8 @@ describe("ChromaHttpVectorStore", () => {
       },
     });
     await chroma.delete({ collection, where: { source_version_id: { $eq: "source-version" } } });
+    const listed = await chroma.get({ collection, limit: 10 });
+    const count = await chroma.count({ collection });
     await chroma.heartbeat();
 
     expect(calls.map(({ input }) => input)).toEqual([
@@ -79,6 +90,8 @@ describe("ChromaHttpVectorStore", () => {
       "http://10.90.0.10:8000/api/v2/tenants/silto/databases/label/collections/collection-1/upsert",
       "http://10.90.0.10:8000/api/v2/tenants/silto/databases/label/collections/collection-1/query",
       "http://10.90.0.10:8000/api/v2/tenants/silto/databases/label/collections/collection-1/delete",
+      "http://10.90.0.10:8000/api/v2/tenants/silto/databases/label/collections/collection-1/get",
+      "http://10.90.0.10:8000/api/v2/tenants/silto/databases/label/collections/collection-1/count",
       "http://10.90.0.10:8000/api/v2/heartbeat",
     ]);
     expect(JSON.parse(requestBodyText(calls[0]?.init?.body))).toMatchObject({
@@ -96,6 +109,15 @@ describe("ChromaHttpVectorStore", () => {
     expect(JSON.parse(requestBodyText(calls[3]?.init?.body))).toEqual({
       where: { source_version_id: { $eq: "source-version" } },
     });
+    expect(listed).toEqual([
+      {
+        id: "chunk-1",
+        distance: null,
+        document: "Synthetic official source text.",
+        metadata: { jurisdiction: "IT", source_state: "UNVERIFIED" },
+      },
+    ]);
+    expect(count).toBe(1);
     expect(matches).toEqual([
       {
         id: "chunk-1",

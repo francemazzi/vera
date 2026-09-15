@@ -6,7 +6,7 @@ export const ControlAssessmentSchema = z
   .object({
     applicability: z.enum(["APPLICABLE", "FACTUALLY_NOT_APPLICABLE", "EXEMPT", "UNRESOLVED"]),
     conditions: z.string().min(1).max(2000).optional(),
-    observation: z.enum(["OBSERVED", "ABSENT", "ILLEGIBLE", "NOT_LOCALIZED"]),
+    observation: z.enum(["OBSERVED", "ABSENT", "ILLEGIBLE", "NOT_LOCALIZED"]).catch("NOT_LOCALIZED"),
     blocker: z
       .object({
         owner: z.enum(["INTERNAL", "CLIENT"]),
@@ -32,11 +32,12 @@ export const ControlAssessmentSchema = z
             language: z.string().min(2).max(35).optional(),
             text: z.string().min(1).max(4_000),
             condition: z.string().min(1).max(1_000).optional(),
-            citationChunkIds: z.array(z.string().min(1).max(300)).max(24),
+            citationChunkIds: z.array(z.string().min(1).max(300)).max(24).catch([]),
           })
           .strict(),
       )
-      .max(12),
+      .max(12)
+      .catch([]),
   })
   .strict()
   .superRefine((value, context) => {

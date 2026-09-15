@@ -1,4 +1,5 @@
 import { currentControlChecks } from "./current-control-checks.js";
+import { pinnedCitationsForControl } from "./pinned-source-citations.js";
 import { sha256CanonicalJson } from "@vera/contracts";
 import {
   normalizeLabelingTopic,
@@ -52,6 +53,7 @@ function citation(chunk: PrivateLabelRagRetrievedChunk): RunnerSourceCitation {
     sectionTitle: chunk.citation.sectionTitle,
     pageNumber: pageNumber !== null && pageNumber >= 1 ? pageNumber : null,
     quote,
+    provenance: "RETRIEVED",
   };
 }
 
@@ -210,15 +212,22 @@ export function createChromaLabelSourceRetriever(options: {
                 ...(labelingTopics.length > 0 ? { labelingTopics } : {}),
               }),
             );
+          const retrieved = [
+            ...new Map(
+              Object.values(byCategory)
+                .flat()
+                .map((entry) => [entry.chunkId, entry]),
+            ).values(),
+          ];
           return {
             fieldCode: control.fieldCode,
-            citations: [
-              ...new Map(
-                Object.values(byCategory)
-                  .flat()
-                  .map((entry) => [entry.chunkId, entry]),
-              ).values(),
-            ],
+            citations:
+              retrieved.length > 0
+                ? retrieved
+                : pinnedCitationsForControl({
+                    fieldCode: control.fieldCode,
+                    countryCode: input.scope.countryCode,
+                  }),
             ...(categories.length > 1 ? { byCategory } : {}),
           };
         }),

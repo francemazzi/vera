@@ -11,6 +11,9 @@
     "test:integration": "vitest run --dir test/integration",
     "test:smoke:openrouter": "vitest run test/smoke/openrouter-live.test.ts",
     "benchmark:openrouter": "node dist/model-benchmark.js",
+    "dataset:cipriani-pasta": "node dist/build-cipriani-pasta-dataset.js",
+    "replay:cipriani-pasta": "node dist/cipriani-pasta-replay.js",
+    "probe:us-pasta-sources": "node dist/probe-us-pasta-sources.js",
     "archive:preliminary-sources": "node dist/import-preliminary-sources.js"
   },
   "dependencies": {

@@ -7,6 +7,16 @@ const FACTUAL_OPTIONAL: readonly string[] = [
   "biologico",
   "denominazioni_dop_igp_stg",
   "istruzioni_uso",
+  "condizioni_particolari_conservazione",
+  "origine_ingrediente_primario",
+];
+const US_EU_ONLY: readonly string[] = [
+  "indicazioni_ambientali",
+  "sede_stabilimento_produzione_confezionamento",
+  "bollatura_sanitaria_marchio_identificazione",
+  "atmosfera_protettiva",
+  "denominazioni_dop_igp_stg",
+  "origine_ingrediente_primario",
 ];
 const PHYSICAL_SIZE: readonly string[] = [
   "altezza_minima_caratteri",
@@ -18,6 +28,7 @@ export function guardControlAssessment(
   input: Readonly<{
     fieldCode: string;
     productCategory?: string;
+    countryCode?: string;
     outcome: string;
     assessment?: Assessment;
     citedIds: readonly string[];
@@ -27,10 +38,13 @@ export function guardControlAssessment(
   const invalidCitation: boolean = input.requestedIds.some((id) => !input.citedIds.includes(id));
   let gap: string | undefined;
   let code: NonNullable<Assessment["blocker"]>["code"] = "SOURCE_MISSING";
+  const isUsGenericPrepacked =
+    input.productCategory === "generic-prepacked" && input.countryCode === "US";
   if (
     input.fieldCode === "etichettatura_specifica_prodotto" &&
     input.productCategory &&
-    !["coffee", "beverages", "supplements"].includes(input.productCategory)
+    !["coffee", "beverages", "supplements"].includes(input.productCategory) &&
+    !isUsGenericPrepacked
   ) {
     gap = `Completare internamente i controlli verticali della categoria ${input.productCategory}; non è possibile dichiararli non applicabili per mancanza di implementazione.`;
     code = "UNIMPLEMENTED_CATEGORY";
@@ -81,8 +95,10 @@ export function guardControlAssessment(
     input.assessment.applicability !== "EXEMPT" &&
     !(
       input.assessment.applicability === "FACTUALLY_NOT_APPLICABLE" &&
-      FACTUAL_OPTIONAL.includes(input.fieldCode)
-    )
+      (FACTUAL_OPTIONAL.includes(input.fieldCode) ||
+        (input.countryCode === "US" && US_EU_ONLY.includes(input.fieldCode)))
+    ) &&
+    !(input.countryCode === "US" && US_EU_ONLY.includes(input.fieldCode))
   )
     gap = "Stabilire e documentare l’applicabilità del requisito per questo prodotto e mercato.";
   else if (

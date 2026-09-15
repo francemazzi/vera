@@ -18,6 +18,10 @@ export const DEFAULT_OFFICIAL_SOURCE_HOSTS = [
   // curated Food Consulting catalogue. As with every other entry, HTTPS,
   // credentials, alternate ports and redirects are rejected below.
   "legislatie.just.ro",
+  "ecfr.gov",
+  ".ecfr.gov",
+  "leginfo.legislature.ca.gov",
+  ".leginfo.legislature.ca.gov",
 ] as const;
 
 function normalizedHost(value: string): string {

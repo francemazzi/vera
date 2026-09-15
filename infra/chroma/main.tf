@@ -274,7 +274,7 @@ resource "google_monitoring_alert_policy" "disk_space" {
 resource "google_logging_metric" "chroma_healthcheck_failures" {
   name        = "silto_chroma_healthcheck_failures"
   description = "Counts failed localhost Chroma heartbeat checks from the private VM."
-  filter      = "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"${google_compute_instance.chroma.instance_id}\" AND textPayload:\"silto-chroma-healthcheck failed\""
+  filter      = "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"${google_compute_instance.chroma.instance_id}\" AND (\"silto-chroma-healthcheck failed\")"
 
   metric_descriptor {
     metric_kind = "DELTA"

@@ -16,7 +16,7 @@ const RagWorkspaceScopeSchema = z.union([z.uuid(), z.literal("GLOBAL")]);
  * catalogue snapshot that the backend has already fetched into private GCS;
  * the governance worker never follows an HTML URL itself.
  */
-export const SourceDocumentFormatSchema = z.enum(["PDF", "OFFICIAL_HTML"]);
+export const SourceDocumentFormatSchema = z.enum(["PDF", "OFFICIAL_HTML", "OFFICIAL_XML"]);
 
 const SourceCandidateStageStatusSchema = z.enum([
   "PENDING_UPLOAD",

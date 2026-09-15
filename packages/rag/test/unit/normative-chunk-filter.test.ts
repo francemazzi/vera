@@ -14,7 +14,12 @@ describe("normative chunk filter", () => {
       hasNormativeSignal("Art. 7 Le informazioni sugli alimenti non inducono in errore."),
     ).toBe(true);
     expect(hasNormativeSignal("Menu EU law ELI background Quick search")).toBe(false);
-    expect(hasNormativeSignal("Normattiva navigazione del portale")).toBe(false);
+    expect(hasNormativeSignal("Pastas, plain 55 g 2 oz (56 g/visual unit)")).toBe(false);
+    expect(
+      hasNormativeSignal(
+        "21 CFR 101.12 — Table 2 — Pastas, plain 55 g 2 oz (56 g/visual unit of measure).",
+      ),
+    ).toBe(true);
   });
 });
 

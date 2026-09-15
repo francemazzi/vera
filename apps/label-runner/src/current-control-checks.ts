@@ -1,3 +1,5 @@
+import { unitedStatesControlChecks } from "./current-control-checks-us.js";
+
 type Checks = Readonly<Record<string, string>>;
 
 /** Domain questions guide retrieval/assessment; they never assert unverified legal rules. */
@@ -40,17 +42,7 @@ export function currentControlChecks(category: string, country?: string): Checks
         "Build a separate claim-by-claim dossier in the rationale and corrective actions: literal claim, legal basis, conditions of use, measured dose/evidence, conclusion and rewrite/removal. Do not generalise one authorised claim to a whole formulation.",
     },
   };
-  const us: Checks =
-    country === "US"
-      ? {
-          campo_visivo:
-            "Use verified US sources to identify the principal display panel, information panel, identity placement, net quantity units and layout. Do not import EU placement rules.",
-          informazioni_nutrizionali:
-            "Check the applicable Nutrition Facts or Supplement Facts format, serving declaration, % Daily Value, added sugars, required nutrients and conditional exemptions using US sources and actual product values.",
-          indicazioni_aggiuntive:
-            "Assess juice-percentage disclosure, alcohol-free/zero claims, nutrient and health claims, language coverage and relevant state requirements only when the applicable jurisdiction is established.",
-        }
-      : {};
+  const us: Checks = country === "US" ? unitedStatesControlChecks() : {};
   const keys: Set<string> = new Set([
     ...Object.keys(common),
     ...Object.keys(categoryChecks[category] ?? {}),

@@ -293,4 +293,62 @@ describe("Label governance HTTP boundary", () => {
     expect(repository.createSourceVersion).not.toHaveBeenCalled();
     await server.close();
   });
+
+  it("exposes a backend-OIDC probe of verified source counts by jurisdiction", async () => {
+    const authorizer = { authorize: vi.fn().mockResolvedValue(undefined) };
+    const server = await createLabelGovernanceServer({
+      authorizer,
+      classifier: { classify: vi.fn() },
+      sourceIndexProbe: {
+        probe: () =>
+          Promise.resolve({
+            heartbeatOk: true,
+            collection: "silto-label-verified-v1",
+            chunkCount: 2,
+            byJurisdiction: { US: 1, IT: 1 },
+            bySection: { "101.12": 1, "art-9": 1 },
+            retrieved: [
+              {
+                chunkId: "chunk-us",
+                jurisdiction: "US",
+                actReference: "21 CFR 101.12",
+                sectionTitle: "Table 2 — Pastas, plain",
+              },
+            ],
+          }),
+      },
+    });
+    const response = await server.inject({
+      method: "GET",
+      url: "/internal/source-index/probe",
+      headers: { authorization: "Bearer synthetic-backend-oidc" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: "success",
+      data: {
+        heartbeatOk: true,
+        collection: "silto-label-verified-v1",
+        byJurisdiction: { US: 1, IT: 1 },
+      },
+    });
+    await server.close();
+  });
+
+  it("rejects a source-index probe without backend OIDC", async () => {
+    const authorizer = { authorize: vi.fn().mockRejectedValue(new Error("invalid")) };
+    const server = await createLabelGovernanceServer({
+      authorizer,
+      classifier: { classify: vi.fn() },
+      sourceIndexProbe: {
+        probe: () => Promise.reject(new Error("must not run")),
+      },
+    });
+    const response = await server.inject({
+      method: "GET",
+      url: "/internal/source-index/probe",
+    });
+    expect(response.statusCode).toBe(401);
+    await server.close();
+  });
 });

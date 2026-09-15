@@ -214,6 +214,39 @@ describe("GCS source document materializer", () => {
     });
   });
 
+  it("extracts eCFR XML sections including table rows for pasta RACC values", async () => {
+    const body = Buffer.from(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<DIV8 N="101.12" TYPE="SECTION">
+<HEAD>§ 101.12 Reference amounts customarily consumed per eating occasion.</HEAD>
+<P>(b) The following reference amounts shall be used as the basis for determining serving sizes for specific products:</P>
+<TABLE><TR><TD>Pastas, plain</TD><TD>55 g</TD><TD>2 oz (56 g/visual unit)</TD></TR></TABLE>
+</DIV8>`,
+      "utf8",
+    );
+    const input = htmlCandidate(body, {
+      sourceFormat: "OFFICIAL_XML",
+      sourceTitle: "21 CFR 101.12",
+      canonicalUrl: "https://www.ecfr.gov/api/versioner/v1/full/2026-09-01/title-21.xml?section=101.12",
+      storageObjectKey: `${sourcePrefix}/source.xml`,
+    });
+    const objects = new Map<string, StoredObject>([
+      [input.storageObjectKey ?? "", { body, contentType: "text/xml" }],
+    ]);
+    const materializer = createGcsSourceDocumentMaterializer({
+      bucketName: "private-label-test",
+      officialSourceHosts: ["ecfr.gov", ".ecfr.gov"],
+      storage: createFakeStorage(objects),
+      fetch: vi.fn(),
+    });
+
+    const materialized = await materializer.materialize(input);
+    const joined = materialized.sections.map((section) => `${section.title} ${section.text}`).join(" ");
+    expect(joined).toContain("101.12");
+    expect(joined).toContain("Pastas, plain");
+    expect(joined).toContain("56 g");
+  });
+
   it("accepts an exact backend-verified discovery snapshot without applying the static host allowlist", async () => {
     const body = Buffer.from(
       "<h1>Lege oficială</h1><p>Etichetarea produselor lactate.</p>",

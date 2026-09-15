@@ -51,5 +51,11 @@ export interface ChromaVectorStore {
     readonly collection: ChromaCollection;
     readonly query: ChromaVectorQuery;
   }): Promise<readonly ChromaVectorMatch[]>;
+  get(input: {
+    readonly collection: ChromaCollection;
+    readonly where?: Readonly<Record<string, unknown>>;
+    readonly limit: number;
+  }): Promise<readonly ChromaVectorMatch[]>;
+  count(input: { readonly collection: ChromaCollection }): Promise<number>;
   heartbeat(): Promise<void>;
 }

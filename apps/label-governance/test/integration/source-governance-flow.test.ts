@@ -208,6 +208,14 @@ class RecordingChromaStore implements ChromaVectorStore {
   public heartbeat(): Promise<void> {
     return Promise.resolve();
   }
+
+  public get(): Promise<readonly never[]> {
+    return Promise.resolve([]);
+  }
+
+  public count(): Promise<number> {
+    return Promise.resolve(this.records.length);
+  }
 }
 
 class InMemoryWorkerBackend implements SourceBackendClient {

@@ -21,6 +21,7 @@ import {
   SourceLedgerRequestSchema,
 } from "./source-ledger.js";
 import type { SourceLedgerRepository } from "./source-ledger.js";
+import type { SourceIndexProbe } from "./source-index-probe.js";
 
 function classificationFailureStatus(error: SourceClassificationError): number {
   return error.retryable ? 503 : 502;
@@ -46,6 +47,8 @@ export async function createLabelGovernanceServer(options: {
   /** Cloud Tasks-only discovery worker; it returns staging proposals only. */
   readonly sourceDiscoveryJobProcessor?: SourceDiscoveryJobProcessor;
   readonly sourceLedgerRepository?: SourceLedgerRepository;
+  /** Backend-OIDC inventory of the verified Chroma collection. */
+  readonly sourceIndexProbe?: { probe(): Promise<SourceIndexProbe> };
   /** Must match the backend's LABEL_SOURCE_ALLOWED_PDF_HOSTS policy. */
   readonly officialSourceHosts?: readonly string[];
   readonly logger?: boolean;
@@ -85,6 +88,24 @@ export async function createLabelGovernanceServer(options: {
   // for Cloud Run/container readiness. The private mutation route below is
   // always authenticated before it parses source text.
   server.get("/health", () => ({ status: "ok", service: "silto-vera-governance" }));
+
+  server.get("/internal/source-index/probe", async (request, reply) => {
+    try {
+      await options.authorizer.authorize(request.headers.authorization);
+    } catch {
+      return reply.code(401).send({ status: "error", code: "BACKEND_OIDC_INVALID" });
+    }
+    if (options.sourceIndexProbe === undefined) {
+      return reply.code(503).send({ status: "error", code: "SOURCE_INDEX_UNAVAILABLE" });
+    }
+    try {
+      const probe = await options.sourceIndexProbe.probe();
+      return await reply.code(200).send({ status: "success", data: probe });
+    } catch (error) {
+      request.log.error({ err: error }, "Source index probe failed");
+      return reply.code(503).send({ status: "error", code: "SOURCE_INDEX_UNAVAILABLE" });
+    }
+  });
 
   server.post("/internal/source-jobs", async (request, reply) => {
     try {
