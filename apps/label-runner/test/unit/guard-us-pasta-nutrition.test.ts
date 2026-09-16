@@ -37,6 +37,8 @@ describe("US pasta nutrition guard", () => {
     expect(result.outcome).toBe("FAIL");
     expect(result.consultantStatus).toBe("NON_CONFORME");
     expect(result.correctiveSuggestion).toContain("56 g");
+    expect(result.assessment?.blocker).toBeUndefined();
+    expect(result.assessment?.actions.some((action) => action.kind === "REPLACE")).toBe(true);
   });
 
   it("marks EU-only US controls as not applicable and fails GGG date wording", () => {
@@ -52,6 +54,8 @@ describe("US pasta nutrition guard", () => {
       countryCode: "US",
     });
     expect(environmental.consultantStatus).toBe("NON_APPLICABILE");
+    expect(environmental.assessment?.applicability).toBe("EXEMPT");
+    expect(environmental.assessment?.blocker).toBeUndefined();
     const origin = applyUsPastaNutritionGuard({
       control: {
         fieldCode: "origine_ingrediente_primario",

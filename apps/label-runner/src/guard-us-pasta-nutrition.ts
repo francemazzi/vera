@@ -1,5 +1,7 @@
 import { LABEL_CONSULTANT_STATUSES, LABEL_OUTCOMES } from "./contracts.js";
 import type { RunnerSourceCitation } from "./contracts.js";
+import { applyUsPastaApplicability } from "./guard-us-pasta-applicability.js";
+import { alignPastaControlAssessment } from "./pasta-control-assessment.js";
 
 type Outcome = (typeof LABEL_OUTCOMES)[number];
 type ConsultantStatus = (typeof LABEL_CONSULTANT_STATUSES)[number];
@@ -12,6 +14,7 @@ type PastaControl = Readonly<{
   correctiveSuggestion?: string;
   confidence: number;
   citations: readonly RunnerSourceCitation[];
+  assessment?: ReturnType<typeof alignPastaControlAssessment>;
 }>;
 
 type ProductFacts = Readonly<{
@@ -20,20 +23,6 @@ type ProductFacts = Readonly<{
     facts: readonly Readonly<{ field?: string; text: string }>[];
   }>[];
 }>;
-
-const SHELF_STABLE_OPTIONAL: readonly string[] = [
-  "condizioni_particolari_conservazione",
-  "istruzioni_uso",
-];
-
-const US_EU_ONLY: readonly string[] = [
-  "atmosfera_protettiva",
-  "bollatura_sanitaria_marchio_identificazione",
-  "denominazioni_dop_igp_stg",
-  "indicazioni_ambientali",
-  "sede_stabilimento_produzione_confezionamento",
-  "origine_ingrediente_primario",
-];
 
 function factsText(facts: ProductFacts | undefined): string {
   if (!facts) return "";
@@ -90,32 +79,6 @@ const RETAIL_LID_ATTENTION_FIELDS: readonly string[] = [
   "indicazione_allergeni",
 ];
 
-function applyEuOnly(control: PastaControl, countryCode?: string): PastaControl {
-  if (countryCode !== "US" || !US_EU_ONLY.includes(control.fieldCode)) return control;
-  if (control.outcome === "NOT_APPLICABLE" && control.consultantStatus === "NON_APPLICABILE") {
-    return control;
-  }
-  return {
-    ...control,
-    outcome: "NOT_APPLICABLE",
-    consultantStatus: "NON_APPLICABILE",
-    rationale: `${control.rationale} US evaluation: EU-only control is not applicable.`,
-  };
-}
-
-function applyShelfStableOptional(control: PastaControl, countryCode?: string): PastaControl {
-  if (countryCode !== "US" || !SHELF_STABLE_OPTIONAL.includes(control.fieldCode)) return control;
-  if (control.outcome === "NOT_APPLICABLE" && control.consultantStatus === "NON_APPLICABILE") {
-    return control;
-  }
-  return {
-    ...control,
-    outcome: "NOT_APPLICABLE",
-    consultantStatus: "NON_APPLICABILE",
-    rationale: `${control.rationale} Dry pasta is shelf-stable; this control is not required for US retail or foodservice packs.`,
-  };
-}
-
 function applyQualityDate(input: {
   readonly control: PastaControl;
   readonly productFacts?: ProductFacts;
@@ -135,15 +98,22 @@ function applyQualityDate(input: {
   ) {
     return input.control;
   }
+  const suggestion =
+    input.control.correctiveSuggestion ??
+    'Replace “BEST BEFORE” / “Best By” with “BEST if Used by” per California AB 660.';
   return {
     ...input.control,
     citations: input.citations,
     outcome: "FAIL",
     consultantStatus: "NON_CONFORME",
-    correctiveSuggestion:
-      input.control.correctiveSuggestion ??
-      'Replace “BEST BEFORE” / “Best By” with “BEST if Used by” per California AB 660.',
+    correctiveSuggestion: suggestion,
     rationale: `${input.control.rationale} California AB 660 requires “BEST if Used by” from 2026-07-01.`,
+    assessment: alignPastaControlAssessment({
+      kind: "FAIL",
+      fieldCode: input.control.fieldCode,
+      detail: suggestion,
+      citations: input.citations,
+    }),
   };
 }
 
@@ -169,15 +139,22 @@ function applyNetQuantityPdp(input: {
       text,
     );
   if (!isLidPack || !missingFromPdp) return input.control;
+  const suggestion =
+    input.control.correctiveSuggestion ??
+    "Declare net quantity on the principal display panel (lid of a lid-plus-body pack) in metric and US customary units, lower 30 percent, per 21 CFR 101.7.";
   return {
     ...input.control,
     citations: input.citations,
     outcome: "FAIL",
     consultantStatus: "NON_CONFORME",
-    correctiveSuggestion:
-      input.control.correctiveSuggestion ??
-      "Declare net quantity on the principal display panel (lid of a lid-plus-body pack) in metric and US customary units, lower 30 percent, per 21 CFR 101.7.",
+    correctiveSuggestion: suggestion,
     rationale: `${input.control.rationale} 21 CFR 101.7 requires net quantity on the PDP.`,
+    assessment: alignPastaControlAssessment({
+      kind: "FAIL",
+      fieldCode: input.control.fieldCode,
+      detail: suggestion,
+      citations: input.citations,
+    }),
   };
 }
 
@@ -196,15 +173,22 @@ function applyProcessClaim(input: {
   if (!/101\.15|prominence of required statements/iu.test(citationCorpus(input.citations))) {
     return input.control;
   }
+  const suggestion =
+    input.control.correctiveSuggestion ??
+    "Remove or reconcile the contradictory drying-time claims (18 hours versus 14 hours) so the label is not misleading under 21 CFR 101.15.";
   return {
     ...input.control,
     citations: input.citations,
     outcome: "FAIL",
     consultantStatus: "NON_CONFORME",
-    correctiveSuggestion:
-      input.control.correctiveSuggestion ??
-      "Remove or reconcile the contradictory drying-time claims (18 hours versus 14 hours) so the label is not misleading under 21 CFR 101.15.",
+    correctiveSuggestion: suggestion,
     rationale: `${input.control.rationale} Contradictory process claims (18h vs 14h) fail 21 CFR 101.15.`,
+    assessment: alignPastaControlAssessment({
+      kind: "FAIL",
+      fieldCode: input.control.fieldCode,
+      detail: suggestion,
+      citations: input.citations,
+    }),
   };
 }
 
@@ -217,11 +201,18 @@ function applyRetailLidAttention(input: {
   if (input.control.outcome === "NOT_APPLICABLE") return input.control;
   if (input.control.consultantStatus === "ATTENZIONE") return input.control;
   if (!isRetail250g(input.productFacts, input.control)) return input.control;
+  const detail =
+    "Retail 250 g lid-plus-body packs keep this particular split or incomplete pending consultant confirmation.";
   return {
     ...input.control,
     outcome: "REVIEW",
     consultantStatus: "ATTENZIONE",
-    rationale: `${input.control.rationale} Retail 250 g lid-plus-body packs keep this particular split or incomplete pending consultant confirmation.`,
+    rationale: `${input.control.rationale} ${detail}`,
+    assessment: alignPastaControlAssessment({
+      kind: "REVIEW",
+      fieldCode: input.control.fieldCode,
+      detail,
+    }),
   };
 }
 
@@ -237,15 +228,22 @@ function applyNutrition(input: {
     isRetail250g(input.productFacts, input.control) || /1[.,]?\s*5\s*kg/iu.test(facts);
   if (!hasPastaServingFiftyFive(facts) && !isKnownPack) return input.control;
   if (!hasCitedServingRule(input.citations)) return input.control;
+  const suggestion =
+    input.control.correctiveSuggestion ??
+    'Replace “Serving size 2 oz (55 g)” with “Serving size 2 oz (56 g/[visual unit])” and recalculate Nutrition Facts from unrounded values.';
   return {
     ...input.control,
     citations: input.citations,
     outcome: "FAIL",
     consultantStatus: "NON_CONFORME",
-    correctiveSuggestion:
-      input.control.correctiveSuggestion ??
-      'Replace “Serving size 2 oz (55 g)” with “Serving size 2 oz (56 g/[visual unit])” and recalculate Nutrition Facts from unrounded values.',
+    correctiveSuggestion: suggestion,
     rationale: `${input.control.rationale} Cited 21 CFR 101.12 requires the labeled dry-pasta serving “2 oz (56 g/visual unit)”, not 55 g.`,
+    assessment: alignPastaControlAssessment({
+      kind: "FAIL",
+      fieldCode: input.control.fieldCode,
+      detail: suggestion,
+      citations: input.citations,
+    }),
   };
 }
 
@@ -259,14 +257,10 @@ export function applyUsPastaNutritionGuard(input: {
   readonly retrievedCitations?: readonly RunnerSourceCitation[];
   readonly countryCode?: string;
 }): PastaControl {
-  if (input.countryCode === "US" && US_EU_ONLY.includes(input.control.fieldCode)) {
-    return applyEuOnly(input.control, input.countryCode);
-  }
-  if (input.countryCode === "US" && SHELF_STABLE_OPTIONAL.includes(input.control.fieldCode)) {
-    return applyShelfStableOptional(input.control, input.countryCode);
-  }
+  const applicable = applyUsPastaApplicability(input.control, input.countryCode);
+  if (applicable.outcome === "NOT_APPLICABLE") return applicable;
   const citations = uniqueCitations(input.control.citations, input.retrievedCitations ?? []);
-  const dated = applyQualityDate({ ...input, citations });
+  const dated = applyQualityDate({ ...input, control: applicable, citations });
   const net = applyNetQuantityPdp({ ...input, control: dated, citations });
   const claimed = applyProcessClaim({ ...input, control: net, citations });
   const nutrition = applyNutrition({ ...input, control: claimed, citations });
