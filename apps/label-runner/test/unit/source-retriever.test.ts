@@ -192,4 +192,31 @@ describe("Chroma label source retriever", () => {
     );
     expect(nutrition?.citations.every((citation) => citation.provenance === "PINNED_OFFICIAL")).toBe(true);
   });
+
+  it("queries US Chroma chunks in English even when the analysis language is Italian", async () => {
+    const retrievePreliminarySafely = vi.fn(() =>
+      Promise.resolve({
+        status: "AVAILABLE" as const,
+        scope: "PRELIMINARY" as const,
+        requiresReview: true as const,
+        chunks: [],
+      }),
+    );
+    const retriever = createChromaLabelSourceRetriever({ ragIndex: { retrievePreliminarySafely } });
+    await retriever.retrieve({
+      workspaceId: "00000000-0000-4000-8000-000000000204",
+      scope: {
+        countryCode: "US",
+        regulatoryAreas: ["AMERICAS"],
+        jurisdictions: ["US"],
+        language: "it",
+        evaluationDate: "2026-09-16T00:00:00.000Z",
+      },
+      productCategory: "pasta-dry",
+      template: preliminaryTemplate,
+    });
+    expect(retrievePreliminarySafely).toHaveBeenCalledWith(
+      expect.objectContaining({ language: "en", jurisdictions: ["US"] }),
+    );
+  });
 });

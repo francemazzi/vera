@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { LABEL_FIELD_CODES } from "../../src/contracts.js";
 import { createOpenRouterLabelEvaluator } from "../../src/openrouter-evaluator.js";
 import type { LabelEvaluator } from "../../src/openrouter-evaluator.js";
-import { fallbackRegulatoryScope } from "../../src/source-retriever.js";
+import { fallbackRegulatoryScope } from "../../src/fallback-regulatory-scope.js";
 import { preliminaryTemplate, sourceSnapshot } from "../fixtures/preliminary-template.js";
 
 const retrieved = {

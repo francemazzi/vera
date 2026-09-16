@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createOpenRouterLabelEvaluator } from "../../src/openrouter-evaluator.js";
-import { fallbackRegulatoryScope } from "../../src/source-retriever.js";
+import { fallbackRegulatoryScope } from "../../src/fallback-regulatory-scope.js";
 import { LABEL_FIELD_CODES } from "../../src/contracts.js";
 import { preliminaryTemplate, sourceSnapshot } from "../fixtures/preliminary-template.js";
 

@@ -207,7 +207,7 @@ export function createChromaLabelSourceRetriever(options: {
                 workspaceId: input.workspaceId,
                 jurisdictions: input.scope.jurisdictions,
                 evaluationDate: input.scope.evaluationDate,
-                language: input.scope.language,
+                language: officialRetrievalLanguage(input.scope),
                 productCategory,
                 ...(labelingTopics.length > 0 ? { labelingTopics } : {}),
               }),
@@ -253,54 +253,12 @@ export function createChromaLabelSourceRetriever(options: {
   };
 }
 
-export function fallbackRegulatoryScope(input: {
-  readonly countryCodes: readonly string[];
-  readonly now?: Date;
-}): RegulatoryScope {
-  const countryCode = input.countryCodes[0];
-  if (!countryCode) {
-    return {
-      regulatoryAreas: ["WORLD"],
-      jurisdictions: ["CUSTOM"],
-      language: "en",
-      evaluationDate: (input.now ?? new Date()).toISOString(),
-    };
-  }
-  const euCountries = new Set([
-    "AT",
-    "BE",
-    "BG",
-    "HR",
-    "CY",
-    "CZ",
-    "DK",
-    "EE",
-    "FI",
-    "FR",
-    "DE",
-    "EL",
-    "HU",
-    "IE",
-    "IT",
-    "LV",
-    "LT",
-    "LU",
-    "MT",
-    "NL",
-    "PL",
-    "PT",
-    "RO",
-    "SK",
-    "SI",
-    "ES",
-    "SE",
-  ]);
-  const isEu = euCountries.has(countryCode);
-  return {
-    countryCode,
-    regulatoryAreas: isEu ? ["EU"] : ["WORLD"],
-    jurisdictions: isEu ? ["EU", countryCode] : [countryCode],
-    language: countryCode === "IT" ? "it" : "en",
-    evaluationDate: (input.now ?? new Date()).toISOString(),
-  };
+/**
+ * Extra-EU official texts are indexed in the jurisdiction language. Consultant
+ * report language (often Italian for a US market) must not empty the Chroma filter.
+ */
+function officialRetrievalLanguage(scope: RegulatoryScope): string {
+  if (scope.jurisdictions.includes("EU")) return scope.language;
+  if (scope.countryCode === "US") return "en";
+  return scope.language;
 }

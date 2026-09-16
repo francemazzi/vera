@@ -7,7 +7,7 @@ import { RunnerEvaluationSchema } from "./contracts.js";
 import type { LabelEvaluator } from "./openrouter-evaluator.js";
 import { OpenRouterLabelEvaluationError } from "./openrouter-evaluator.js";
 import type { LabelPageStore } from "./page-store.js";
-import { fallbackRegulatoryScope } from "./source-retriever.js";
+import { fallbackRegulatoryScope } from "./fallback-regulatory-scope.js";
 import type { LabelSourceRetriever } from "./source-retriever.js";
 
 export interface LabelJobProcessor {
