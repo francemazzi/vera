@@ -9,6 +9,14 @@ import { OpenRouterLabelEvaluationError } from "./openrouter-evaluator.js";
 import type { LabelPageStore } from "./page-store.js";
 import { fallbackRegulatoryScope } from "./fallback-regulatory-scope.js";
 import type { LabelSourceRetriever } from "./source-retriever.js";
+import type { RunnerSourceCitation } from "./contracts.js";
+
+function citationWithoutProvenance(
+  citation: RunnerSourceCitation,
+): Omit<RunnerSourceCitation, "provenance"> {
+  const { provenance: _provenance, ...rest } = citation;
+  return rest;
+}
 
 export interface LabelJobProcessor {
   process(analysisId: string): Promise<{ readonly replayed: boolean }>;
@@ -85,9 +93,9 @@ export function createLabelJobProcessor(options: {
           ...(productFacts ? { productFacts } : {}),
         });
         // `sources.controls` is the canonical retrieval order and evidence
-        // set used to derive sources.sourceSnapshot. Pass it through without
-        // mapping, sorting, filtering, or re-hashing so the backend can pin
-        // the exact frozen manifest for a global analysis.
+        // set used to derive sources.sourceSnapshot. Omit only `provenance`,
+        // which the backend callback contract does not accept as a citation
+        // key, so the frozen manifest still pins the same chunks.
         const evaluation = RunnerEvaluationSchema.parse({
           ...evaluated,
           ...(extracted
@@ -118,7 +126,7 @@ export function createLabelJobProcessor(options: {
                 sourceManifest: {
                   controls: sources.controls.map(({ fieldCode, citations }) => ({
                     fieldCode,
-                    citations,
+                    citations: citations.map(citationWithoutProvenance),
                   })),
                 },
               }
