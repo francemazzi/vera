@@ -128,7 +128,18 @@ async function main(): Promise<void> {
         pages: pages.map((bytes, index) => ({ page: index + 1, bytes })),
         countryCodes: ["US"],
         productCategory: "generic-prepacked",
-        productFacts: extracted.facts,
+        productFacts: {
+          ...extracted.facts,
+          products: extracted.facts.products.map((product, index) =>
+            index === 0
+              ? {
+                  ...product,
+                  name: gold.productName,
+                  facts: [...product.facts, { field: "pack_identity", text: gold.productName }],
+                }
+              : product,
+          ),
+        },
         regulatoryScope: {
           countryCode: "US",
           regulatoryAreas: ["AMERICAS"],

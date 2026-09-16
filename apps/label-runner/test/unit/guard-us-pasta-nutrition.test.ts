@@ -141,6 +141,21 @@ describe("US pasta nutrition guard", () => {
       },
     });
     expect(claimed.consultantStatus).toBe("NON_CONFORME");
+    const retailEighteen = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "indicazioni_aggiuntive",
+        outcome: "REVIEW",
+        consultantStatus: "ATTENZIONE",
+        rationale: "Slow dried 18 hours.",
+        confidence: 0.3,
+        citations: [],
+      },
+      retrievedCitations: usPastaReplayCitations().filter((item) => item.chunkId.includes("101-15")),
+      productFacts: {
+        products: [{ name: "Pappardelle Classica BIO 250 g", facts: [{ text: "Slow dried 18 hours." }] }],
+      },
+    });
+    expect(retailEighteen.consultantStatus).toBe("NON_CONFORME");
   });
 
   it("marks dry-pasta storage and use instructions as not applicable in the US", () => {
@@ -182,7 +197,7 @@ describe("US pasta nutrition guard", () => {
       },
       retrievedCitations: usPastaReplayCitations().filter((item) => item.chunkId.includes("101-7")),
       productFacts: {
-        products: [{ name: "Pappardelle 250 g", facts: [{ text: "Coperchio plus fondo." }] }],
+        products: [{ name: "Pappardelle Classica BIO 250 g", facts: [{ text: "Durum wheat egg pasta." }] }],
       },
     });
     expect(net.consultantStatus).toBe("NON_CONFORME");

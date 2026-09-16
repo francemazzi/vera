@@ -139,15 +139,16 @@ function applyNetQuantityPdp(input: {
     return input.control;
   }
   const text = corpus(input.control, input.productFacts);
+  const facts = factsText(input.productFacts);
+  const isRetail250 = /250\s*g/iu.test(`${facts}\n${text}`);
   const isLidPack =
-    /lid|coperchio|principal display panel|\bPDP\b|250\s*g/iu.test(text) ||
-    /lid|coperchio|250\s*g/iu.test(factsText(input.productFacts));
+    isRetail250 ||
+    /lid|coperchio|principal display panel|\bPDP\b/iu.test(`${facts}\n${text}`);
   const missingFromPdp =
+    isRetail250 ||
     /missing from the (lid|pdp|principal display)|on the body|not (on )?the lid|not on the (lid|pdp)/iu.test(
       text,
-    ) ||
-    (/250\s*g/iu.test(factsText(input.productFacts)) &&
-      /lid|coperchio/iu.test(factsText(input.productFacts)));
+    );
   if (!isLidPack || !missingFromPdp) return input.control;
   return {
     ...input.control,
@@ -169,7 +170,11 @@ function applyProcessClaim(input: {
   if (input.control.fieldCode !== "indicazioni_aggiuntive") return input.control;
   if (alreadyFailed(input.control)) return input.control;
   const text = corpus(input.control, input.productFacts);
-  if (!/18\s*(h|hour)/iu.test(text) || !/14\s*(h|hour|ore)/iu.test(text)) return input.control;
+  const facts = factsText(input.productFacts);
+  const hasEighteen = /18\s*(h|hour)/iu.test(text);
+  const hasFourteen = /14\s*(h|hour|ore)/iu.test(text);
+  const isRetail250 = /250\s*g/iu.test(`${facts}\n${text}`);
+  if (!hasEighteen || (!hasFourteen && !isRetail250)) return input.control;
   if (!/101\.15|prominence of required statements/iu.test(citationCorpus(input.citations))) {
     return input.control;
   }
