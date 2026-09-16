@@ -3,6 +3,10 @@ import type { RunnerSourceCitation } from "./contracts.js";
 const PINNED_SOURCE_VERSION_ID = "00000000-0000-4000-8000-000000000101";
 const PINNED_SOURCE_CONTENT_HASH = "b".repeat(64);
 
+function pinnedChunkId(suffix: string): string {
+  return `${PINNED_SOURCE_VERSION_ID}:${suffix}`;
+}
+
 function citation(input: {
   readonly chunkId: string;
   readonly actReference: string;
@@ -12,7 +16,7 @@ function citation(input: {
   readonly canonicalReference: string;
 }): RunnerSourceCitation {
   return {
-    chunkId: input.chunkId,
+    chunkId: pinnedChunkId(input.chunkId),
     sourceVersionId: PINNED_SOURCE_VERSION_ID,
     sourceContentHash: PINNED_SOURCE_CONTENT_HASH,
     title: input.actReference,
@@ -132,17 +136,27 @@ const US_PINNED: readonly RunnerSourceCitation[] = [
 ];
 
 const US_FIELD_CHUNK_IDS: Readonly<Record<string, readonly string[]>> = {
-  campo_visivo: ["us-cfr-101-7-pdp-net-qty", "us-cfr-101-3-identity", "us-cfr-101-2-panels"],
-  denominazione_commerciale: ["us-cfr-101-3-identity"],
-  denominazione_legale_vendita: ["us-cfr-101-3-identity", "us-cfr-139-150-egg-noodles"],
-  etichettatura_specifica_prodotto: ["us-cfr-139-150-egg-noodles"],
-  elenco_ingredienti: ["us-cfr-101-4-ingredients"],
-  indicazione_allergeni: ["us-cfr-101-15-allergen-prominence"],
-  informazioni_nutrizionali: ["us-cfr-101-12-pasta-racc", "us-cfr-101-9-nutrition"],
-  quantita_netto_volume_nominale: ["us-cfr-101-7-pdp-net-qty"],
-  biologico: ["us-7-cfr-205-303"],
-  termine_minimo_conservazione_data_scadenza: ["us-ca-ab-660-quality-date"],
-  indicazioni_aggiuntive: ["us-cfr-101-15-allergen-prominence"],
+  campo_visivo: [
+    pinnedChunkId("us-cfr-101-7-pdp-net-qty"),
+    pinnedChunkId("us-cfr-101-3-identity"),
+    pinnedChunkId("us-cfr-101-2-panels"),
+  ],
+  denominazione_commerciale: [pinnedChunkId("us-cfr-101-3-identity")],
+  denominazione_legale_vendita: [
+    pinnedChunkId("us-cfr-101-3-identity"),
+    pinnedChunkId("us-cfr-139-150-egg-noodles"),
+  ],
+  etichettatura_specifica_prodotto: [pinnedChunkId("us-cfr-139-150-egg-noodles")],
+  elenco_ingredienti: [pinnedChunkId("us-cfr-101-4-ingredients")],
+  indicazione_allergeni: [pinnedChunkId("us-cfr-101-15-allergen-prominence")],
+  informazioni_nutrizionali: [
+    pinnedChunkId("us-cfr-101-12-pasta-racc"),
+    pinnedChunkId("us-cfr-101-9-nutrition"),
+  ],
+  quantita_netto_volume_nominale: [pinnedChunkId("us-cfr-101-7-pdp-net-qty")],
+  biologico: [pinnedChunkId("us-7-cfr-205-303")],
+  termine_minimo_conservazione_data_scadenza: [pinnedChunkId("us-ca-ab-660-quality-date")],
+  indicazioni_aggiuntive: [pinnedChunkId("us-cfr-101-15-allergen-prominence")],
 };
 
 /**

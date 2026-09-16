@@ -187,12 +187,12 @@ describe("Chroma label source retriever", () => {
       template: preliminaryTemplate,
     });
     const nutrition = result.controls.find((control) => control.fieldCode === "informazioni_nutrizionali");
-    expect(nutrition?.citations.some((citation) => citation.chunkId === "us-cfr-101-12-pasta-racc")).toBe(
+    expect(nutrition?.citations.some((citation) => citation.chunkId.endsWith("us-cfr-101-12-pasta-racc"))).toBe(
       true,
     );
     expect(nutrition?.citations.every((citation) => citation.provenance === "PINNED_OFFICIAL")).toBe(true);
     const identity = result.controls.find((control) => control.fieldCode === "denominazione_commerciale");
-    expect(identity?.citations.some((citation) => citation.chunkId === "us-cfr-101-3-identity")).toBe(true);
+    expect(identity?.citations.some((citation) => citation.chunkId.endsWith("us-cfr-101-3-identity"))).toBe(true);
   });
 
   it("queries US Chroma chunks in English even when the analysis language is Italian", async () => {
