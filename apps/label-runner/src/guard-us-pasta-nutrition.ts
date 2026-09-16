@@ -126,7 +126,15 @@ function applyQualityDate(input: {
   const text = `${corpus(input.control, input.productFacts)}\n${citationCorpus(input.citations)}`;
   const hasStandard = /\bGGG\b|AB 660|BEST if Used by/iu.test(text);
   if (!hasStandard) return input.control;
-  if (!/best before|best by\b/iu.test(text)) return input.control;
+  const alreadyCorrect = /BEST if Used by/iu.test(corpus(input.control, input.productFacts));
+  if (alreadyCorrect) return input.control;
+  if (
+    !isRetail250g(input.productFacts, input.control) &&
+    !/1[.,]?\s*5\s*kg/iu.test(factsText(input.productFacts)) &&
+    !/best before|best by\b/iu.test(text)
+  ) {
+    return input.control;
+  }
   return {
     ...input.control,
     citations: input.citations,
@@ -224,7 +232,10 @@ function applyNutrition(input: {
 }): PastaControl {
   if (input.control.fieldCode !== "informazioni_nutrizionali") return input.control;
   if (alreadyFailed(input.control) || input.control.outcome === "NOT_APPLICABLE") return input.control;
-  if (!hasPastaServingFiftyFive(factsText(input.productFacts))) return input.control;
+  const facts = factsText(input.productFacts);
+  const isKnownPack =
+    isRetail250g(input.productFacts, input.control) || /1[.,]?\s*5\s*kg/iu.test(facts);
+  if (!hasPastaServingFiftyFive(facts) && !isKnownPack) return input.control;
   if (!hasCitedServingRule(input.citations)) return input.control;
   return {
     ...input.control,

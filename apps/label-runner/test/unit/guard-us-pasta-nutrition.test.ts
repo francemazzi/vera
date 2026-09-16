@@ -230,6 +230,36 @@ describe("US pasta nutrition guard", () => {
       },
     });
     expect(net.consultantStatus).toBe("NON_CONFORME");
+    const nutrition = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "informazioni_nutrizionali",
+        outcome: "REVIEW",
+        consultantStatus: "ATTENZIONE",
+        rationale: "Nutrition Facts present.",
+        confidence: 0.4,
+        citations: [],
+      },
+      retrievedCitations: usPastaReplayCitations().filter((item) => item.chunkId.includes("101-12")),
+      productFacts: {
+        products: [{ name: "Tagliarelle Classica BIO 250 g", facts: [{ text: "Egg pasta." }] }],
+      },
+    });
+    expect(nutrition.consultantStatus).toBe("NON_CONFORME");
+    const date = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "termine_minimo_conservazione_data_scadenza",
+        outcome: "REVIEW",
+        consultantStatus: "ATTENZIONE",
+        rationale: "A date is present.",
+        confidence: 0.4,
+        citations: [],
+      },
+      retrievedCitations: usPastaReplayCitations().filter((item) => item.chunkId.includes("ab-660")),
+      productFacts: {
+        products: [{ name: "Tagliarelle Classica BIO 250 g", facts: [{ text: "Egg pasta." }] }],
+      },
+    });
+    expect(date.consultantStatus).toBe("NON_CONFORME");
   });
 });
 

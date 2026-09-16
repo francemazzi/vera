@@ -3,6 +3,14 @@ import type { CiprianiPastaGoldCase } from "./cipriani-pasta-gold.js";
 
 type ConsultantStatus = (typeof LABEL_CONSULTANT_STATUSES)[number];
 
+const FINDING_FIELDS: Readonly<Record<string, string>> = {
+  serving_size_56g: "informazioni_nutrizionali",
+  nutrition_facts_recalculate: "informazioni_nutrizionali",
+  quality_date_ggg: "termine_minimo_conservazione_data_scadenza",
+  net_quantity_pdp: "quantita_netto_volume_nominale",
+  process_claim_18h_vs_14h: "indicazioni_aggiuntive",
+};
+
 const FINDING_PATTERNS: Readonly<Record<string, readonly RegExp[]>> = {
   serving_size_56g: [/56\s*g/iu, /serving size/iu, /2\s*oz/iu],
   nutrition_facts_recalculate: [/nutrition facts/iu, /ricalcol/iu, /recalcul/iu],
@@ -54,9 +62,13 @@ export function scoreCiprianiPastaCase(input: {
   const compared = Object.keys(input.gold.expected).length;
   const matched = compared - mismatches.length;
   const corpus = input.controls.map(joinedText).join("\n");
-  const blockingHits = input.gold.blockingFindings.filter((finding) =>
-    (FINDING_PATTERNS[finding] ?? []).some((pattern) => pattern.test(corpus)),
-  );
+  const blockingHits = input.gold.blockingFindings.filter((finding) => {
+    const fieldCode = FINDING_FIELDS[finding];
+    const fieldHit =
+      fieldCode !== undefined && input.predicted[fieldCode] === "NON_CONFORME";
+    const textHit = (FINDING_PATTERNS[finding] ?? []).some((pattern) => pattern.test(corpus));
+    return fieldHit || textHit;
+  });
   const blockingMisses = input.gold.blockingFindings.filter(
     (finding) => !blockingHits.includes(finding),
   );

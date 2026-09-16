@@ -60,6 +60,16 @@ describe("Cipriani pasta gold mapping", () => {
     });
     expect(score.agreement).toBe(1);
     expect(score.blockingRecall).toBe(1);
+    const statusOnly = scoreCiprianiPastaCase({
+      gold,
+      predicted: gold.expected,
+      controls: Object.entries(gold.expected).map(([fieldCode, consultantStatus]) => ({
+        fieldCode,
+        consultantStatus,
+        rationale: "Status-only replay row.",
+      })),
+    });
+    expect(statusOnly.blockingRecall).toBe(1);
     expect(score.falseEuFailures).toEqual([]);
   });
 });
