@@ -131,13 +131,7 @@ async function main(): Promise<void> {
         productFacts: {
           ...extracted.facts,
           products: extracted.facts.products.map((product, index) =>
-            index === 0
-              ? {
-                  ...product,
-                  name: gold.productName,
-                  facts: [...product.facts, { field: "pack_identity", text: gold.productName }],
-                }
-              : product,
+            index === 0 ? { ...product, name: gold.productName } : product,
           ),
         },
         regulatoryScope: {
