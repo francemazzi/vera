@@ -260,12 +260,12 @@ export function applyUsPastaNutritionGuard(input: {
 }): PastaControl {
   const applicable = applyUsPastaApplicability(input.control, input.countryCode);
   const citations = uniqueCitations(applicable.citations, input.retrievedCitations ?? []);
+  const finalized = {
+    retrievedCitations: citations,
+    ...(input.countryCode !== undefined ? { countryCode: input.countryCode } : {}),
+  };
   if (applicable.outcome === "NOT_APPLICABLE") {
-    return finalizeUsPastaControl({
-      control: applicable,
-      retrievedCitations: citations,
-      countryCode: input.countryCode,
-    });
+    return finalizeUsPastaControl({ control: applicable, ...finalized });
   }
   const dated = applyQualityDate({ ...input, control: applicable, citations });
   const net = applyNetQuantityPdp({ ...input, control: dated, citations });
@@ -273,7 +273,6 @@ export function applyUsPastaNutritionGuard(input: {
   const nutrition = applyNutrition({ ...input, control: claimed, citations });
   return finalizeUsPastaControl({
     control: applyRetailLidAttention({ ...input, control: nutrition }),
-    retrievedCitations: citations,
-    countryCode: input.countryCode,
+    ...finalized,
   });
 }
