@@ -156,6 +156,35 @@ describe("US pasta nutrition guard", () => {
       },
     });
     expect(retailEighteen.consultantStatus).toBe("NON_CONFORME");
+    const retailWithoutHours = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "indicazioni_aggiuntive",
+        outcome: "REVIEW",
+        consultantStatus: "ATTENZIONE",
+        rationale: "Optional claims present.",
+        confidence: 0.3,
+        citations: [],
+      },
+      retrievedCitations: usPastaReplayCitations().filter((item) => item.chunkId.includes("101-15")),
+      productFacts: {
+        products: [{ name: "Pappardelle Classica BIO 250 g", facts: [{ text: "Egg pasta." }] }],
+      },
+    });
+    expect(retailWithoutHours.consultantStatus).toBe("NON_CONFORME");
+    const vision = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "campo_visivo",
+        outcome: "PASS",
+        consultantStatus: "CONFORME",
+        rationale: "Identity is on the lid.",
+        confidence: 0.7,
+        citations: [],
+      },
+      productFacts: {
+        products: [{ name: "Pappardelle Classica BIO 250 g", facts: [{ text: "Egg pasta." }] }],
+      },
+    });
+    expect(vision.consultantStatus).toBe("ATTENZIONE");
   });
 
   it("marks dry-pasta storage and use instructions as not applicable in the US", () => {

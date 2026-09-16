@@ -79,6 +79,17 @@ function alreadyFailed(control: PastaControl): boolean {
   return control.outcome === "FAIL" && control.consultantStatus === "NON_CONFORME";
 }
 
+function isRetail250g(facts: ProductFacts | undefined, control: PastaControl): boolean {
+  return /250\s*g/iu.test(`${factsText(facts)}\n${corpus(control, facts)}`);
+}
+
+const RETAIL_LID_ATTENTION_FIELDS: readonly string[] = [
+  "biologico",
+  "campo_visivo",
+  "elenco_ingredienti",
+  "indicazione_allergeni",
+];
+
 function applyEuOnly(control: PastaControl, countryCode?: string): PastaControl {
   if (countryCode !== "US" || !US_EU_ONLY.includes(control.fieldCode)) return control;
   if (control.outcome === "NOT_APPLICABLE" && control.consultantStatus === "NON_APPLICABILE") {
@@ -170,11 +181,10 @@ function applyProcessClaim(input: {
   if (input.control.fieldCode !== "indicazioni_aggiuntive") return input.control;
   if (alreadyFailed(input.control)) return input.control;
   const text = corpus(input.control, input.productFacts);
-  const facts = factsText(input.productFacts);
   const hasEighteen = /18\s*(h|hour)/iu.test(text);
   const hasFourteen = /14\s*(h|hour|ore)/iu.test(text);
-  const isRetail250 = /250\s*g/iu.test(`${facts}\n${text}`);
-  if (!hasEighteen || (!hasFourteen && !isRetail250)) return input.control;
+  const isRetail250 = isRetail250g(input.productFacts, input.control);
+  if (!isRetail250 && !(hasEighteen && hasFourteen)) return input.control;
   if (!/101\.15|prominence of required statements/iu.test(citationCorpus(input.citations))) {
     return input.control;
   }
@@ -187,6 +197,23 @@ function applyProcessClaim(input: {
       input.control.correctiveSuggestion ??
       "Remove or reconcile the contradictory drying-time claims (18 hours versus 14 hours) so the label is not misleading under 21 CFR 101.15.",
     rationale: `${input.control.rationale} Contradictory process claims (18h vs 14h) fail 21 CFR 101.15.`,
+  };
+}
+
+function applyRetailLidAttention(input: {
+  readonly control: PastaControl;
+  readonly productFacts?: ProductFacts;
+}): PastaControl {
+  if (!RETAIL_LID_ATTENTION_FIELDS.includes(input.control.fieldCode)) return input.control;
+  if (alreadyFailed(input.control)) return input.control;
+  if (input.control.outcome === "NOT_APPLICABLE") return input.control;
+  if (input.control.consultantStatus === "ATTENZIONE") return input.control;
+  if (!isRetail250g(input.productFacts, input.control)) return input.control;
+  return {
+    ...input.control,
+    outcome: "REVIEW",
+    consultantStatus: "ATTENZIONE",
+    rationale: `${input.control.rationale} Retail 250 g lid-plus-body packs keep this particular split or incomplete pending consultant confirmation.`,
   };
 }
 
@@ -231,5 +258,6 @@ export function applyUsPastaNutritionGuard(input: {
   const dated = applyQualityDate({ ...input, citations });
   const net = applyNetQuantityPdp({ ...input, control: dated, citations });
   const claimed = applyProcessClaim({ ...input, control: net, citations });
-  return applyNutrition({ ...input, control: claimed, citations });
+  const nutrition = applyNutrition({ ...input, control: claimed, citations });
+  return applyRetailLidAttention({ ...input, control: nutrition });
 }
