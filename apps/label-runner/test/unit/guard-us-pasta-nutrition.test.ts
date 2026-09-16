@@ -142,6 +142,51 @@ describe("US pasta nutrition guard", () => {
     });
     expect(claimed.consultantStatus).toBe("NON_CONFORME");
   });
+
+  it("marks dry-pasta storage and use instructions as not applicable in the US", () => {
+    const storage = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "condizioni_particolari_conservazione",
+        outcome: "REVIEW",
+        consultantStatus: "ATTENZIONE",
+        rationale: "No storage statement.",
+        confidence: 0.2,
+        citations: [],
+      },
+      countryCode: "US",
+    });
+    expect(storage.consultantStatus).toBe("NON_APPLICABILE");
+    const use = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "istruzioni_uso",
+        outcome: "REVIEW",
+        consultantStatus: "ATTENZIONE",
+        rationale: "No cooking instructions.",
+        confidence: 0.2,
+        citations: [],
+      },
+      countryCode: "US",
+    });
+    expect(use.consultantStatus).toBe("NON_APPLICABILE");
+  });
+
+  it("fails net quantity on a 250 g lid pack even when the model called it PASS", () => {
+    const net = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "quantita_netto_volume_nominale",
+        outcome: "PASS",
+        consultantStatus: "CONFORME",
+        rationale: "Net weight is present on the pack.",
+        confidence: 0.6,
+        citations: [],
+      },
+      retrievedCitations: usPastaReplayCitations().filter((item) => item.chunkId.includes("101-7")),
+      productFacts: {
+        products: [{ name: "Pappardelle 250 g", facts: [{ text: "Coperchio plus fondo." }] }],
+      },
+    });
+    expect(net.consultantStatus).toBe("NON_CONFORME");
+  });
 });
 
 describe("US overlay is category-aware", () => {

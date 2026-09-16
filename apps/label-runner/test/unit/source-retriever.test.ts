@@ -191,6 +191,8 @@ describe("Chroma label source retriever", () => {
       true,
     );
     expect(nutrition?.citations.every((citation) => citation.provenance === "PINNED_OFFICIAL")).toBe(true);
+    const identity = result.controls.find((control) => control.fieldCode === "denominazione_commerciale");
+    expect(identity?.citations.some((citation) => citation.chunkId === "us-cfr-101-3-identity")).toBe(true);
   });
 
   it("queries US Chroma chunks in English even when the analysis language is Italian", async () => {

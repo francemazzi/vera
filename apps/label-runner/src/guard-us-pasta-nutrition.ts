@@ -21,6 +21,11 @@ type ProductFacts = Readonly<{
   }>[];
 }>;
 
+const SHELF_STABLE_OPTIONAL: readonly string[] = [
+  "condizioni_particolari_conservazione",
+  "istruzioni_uso",
+];
+
 const US_EU_ONLY: readonly string[] = [
   "atmosfera_protettiva",
   "bollatura_sanitaria_marchio_identificazione",
@@ -87,6 +92,19 @@ function applyEuOnly(control: PastaControl, countryCode?: string): PastaControl 
   };
 }
 
+function applyShelfStableOptional(control: PastaControl, countryCode?: string): PastaControl {
+  if (countryCode !== "US" || !SHELF_STABLE_OPTIONAL.includes(control.fieldCode)) return control;
+  if (control.outcome === "NOT_APPLICABLE" && control.consultantStatus === "NON_APPLICABILE") {
+    return control;
+  }
+  return {
+    ...control,
+    outcome: "NOT_APPLICABLE",
+    consultantStatus: "NON_APPLICABILE",
+    rationale: `${control.rationale} Dry pasta is shelf-stable; this control is not required for US retail or foodservice packs.`,
+  };
+}
+
 function applyQualityDate(input: {
   readonly control: PastaControl;
   readonly productFacts?: ProductFacts;
@@ -121,11 +139,15 @@ function applyNetQuantityPdp(input: {
     return input.control;
   }
   const text = corpus(input.control, input.productFacts);
-  const isLidPack = /lid|coperchio|principal display panel|\bPDP\b/iu.test(text);
+  const isLidPack =
+    /lid|coperchio|principal display panel|\bPDP\b|250\s*g/iu.test(text) ||
+    /lid|coperchio|250\s*g/iu.test(factsText(input.productFacts));
   const missingFromPdp =
     /missing from the (lid|pdp|principal display)|on the body|not (on )?the lid|not on the (lid|pdp)/iu.test(
       text,
-    );
+    ) ||
+    (/250\s*g/iu.test(factsText(input.productFacts)) &&
+      /lid|coperchio/iu.test(factsText(input.productFacts)));
   if (!isLidPack || !missingFromPdp) return input.control;
   return {
     ...input.control,
@@ -196,6 +218,9 @@ export function applyUsPastaNutritionGuard(input: {
 }): PastaControl {
   if (input.countryCode === "US" && US_EU_ONLY.includes(input.control.fieldCode)) {
     return applyEuOnly(input.control, input.countryCode);
+  }
+  if (input.countryCode === "US" && SHELF_STABLE_OPTIONAL.includes(input.control.fieldCode)) {
+    return applyShelfStableOptional(input.control, input.countryCode);
   }
   const citations = uniqueCitations(input.control.citations, input.retrievedCitations ?? []);
   const dated = applyQualityDate({ ...input, citations });

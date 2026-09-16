@@ -133,6 +133,7 @@ const US_PINNED: readonly RunnerSourceCitation[] = [
 
 const US_FIELD_CHUNK_IDS: Readonly<Record<string, readonly string[]>> = {
   campo_visivo: ["us-cfr-101-7-pdp-net-qty", "us-cfr-101-3-identity", "us-cfr-101-2-panels"],
+  denominazione_commerciale: ["us-cfr-101-3-identity"],
   denominazione_legale_vendita: ["us-cfr-101-3-identity", "us-cfr-139-150-egg-noodles"],
   etichettatura_specifica_prodotto: ["us-cfr-139-150-egg-noodles"],
   elenco_ingredienti: ["us-cfr-101-4-ingredients"],

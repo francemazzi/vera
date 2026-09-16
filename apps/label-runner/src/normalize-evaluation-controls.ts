@@ -80,7 +80,7 @@ function consultantStatusFor(control: ModelControl): ConsultantStatus {
   if (control.outcome === "PASS") {
     return control.consultantStatus === "SUGGERIMENTO" ? "SUGGERIMENTO" : "CONFORME";
   }
-  return control.consultantStatus === "ATTENZIONE" ? "ATTENZIONE" : "NON_CONFORME";
+  return "NON_CONFORME";
 }
 
 type ReconciledControl = {
