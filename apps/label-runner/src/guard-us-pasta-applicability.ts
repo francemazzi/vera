@@ -36,9 +36,6 @@ export function applyUsPastaApplicability(
 ): PastaControl {
   if (countryCode !== "US") return control;
   if (US_EU_ONLY.includes(control.fieldCode)) {
-    if (control.outcome === "NOT_APPLICABLE" && control.consultantStatus === "NON_APPLICABILE") {
-      return control;
-    }
     return {
       ...control,
       outcome: "NOT_APPLICABLE",
@@ -52,9 +49,6 @@ export function applyUsPastaApplicability(
     };
   }
   if (!SHELF_STABLE_OPTIONAL.includes(control.fieldCode)) return control;
-  if (control.outcome === "NOT_APPLICABLE" && control.consultantStatus === "NON_APPLICABILE") {
-    return control;
-  }
   return {
     ...control,
     outcome: "NOT_APPLICABLE",

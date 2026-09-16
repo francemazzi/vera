@@ -219,17 +219,21 @@ export function createChromaLabelSourceRetriever(options: {
                 .map((entry) => [entry.chunkId, entry]),
             ).values(),
           ];
+          const pinned = pinnedCitationsForControl({
+            fieldCode: control.fieldCode,
+            ...(input.scope.countryCode !== undefined
+              ? { countryCode: input.scope.countryCode }
+              : {}),
+          });
+          const seen = new Set<string>();
+          const citations = [...retrieved, ...pinned].filter((item) => {
+            if (seen.has(item.chunkId)) return false;
+            seen.add(item.chunkId);
+            return true;
+          });
           return {
             fieldCode: control.fieldCode,
-            citations:
-              retrieved.length > 0
-                ? retrieved
-                : pinnedCitationsForControl({
-                    fieldCode: control.fieldCode,
-                    ...(input.scope.countryCode !== undefined
-                      ? { countryCode: input.scope.countryCode }
-                      : {}),
-                  }),
+            citations,
             ...(categories.length > 1 ? { byCategory } : {}),
           };
         }),

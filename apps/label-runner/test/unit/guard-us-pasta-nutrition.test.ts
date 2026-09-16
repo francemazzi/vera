@@ -265,6 +265,56 @@ describe("US pasta nutrition guard", () => {
     });
     expect(date.consultantStatus).toBe("NON_CONFORME");
   });
+
+  it("rewrites a model FAIL that kept a REVIEW blocker into a callback-valid FAIL", () => {
+    const result = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "informazioni_nutrizionali",
+        outcome: "FAIL",
+        consultantStatus: "NON_CONFORME",
+        rationale: "Serving size is 55 g.",
+        confidence: 0.8,
+        citations,
+        assessment: {
+          applicability: "APPLICABLE",
+          observation: "OBSERVED",
+          blocker: {
+            owner: "INTERNAL",
+            code: "PRODUCT_DATA_MISSING",
+            detail: "Need artwork.",
+          },
+          actions: [],
+        },
+      },
+      countryCode: "US",
+    });
+    expect(result.outcome).toBe("FAIL");
+    expect(result.assessment?.blocker).toBeUndefined();
+    expect(result.assessment?.actions.some((action) => action.kind === "REPLACE")).toBe(true);
+    expect(result.citations.length).toBeGreaterThan(0);
+  });
+
+  it("gives EU-only NA controls an EXEMPT assessment and at least one citation", () => {
+    const origin = applyUsPastaNutritionGuard({
+      control: {
+        fieldCode: "origine_ingrediente_primario",
+        outcome: "NOT_APPLICABLE",
+        consultantStatus: "NON_APPLICABILE",
+        rationale: "EU origin rule.",
+        confidence: 0.2,
+        citations: [],
+        assessment: {
+          applicability: "FACTUALLY_NOT_APPLICABLE",
+          observation: "ABSENT",
+          actions: [],
+        },
+      },
+      countryCode: "US",
+    });
+    expect(origin.assessment?.applicability).toBe("EXEMPT");
+    expect(origin.assessment?.conditions).toBeTruthy();
+    expect(origin.citations.length).toBeGreaterThan(0);
+  });
 });
 
 describe("US overlay is category-aware", () => {

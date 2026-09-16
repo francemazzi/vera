@@ -157,6 +157,14 @@ const US_FIELD_CHUNK_IDS: Readonly<Record<string, readonly string[]>> = {
   biologico: [pinnedChunkId("us-7-cfr-205-303")],
   termine_minimo_conservazione_data_scadenza: [pinnedChunkId("us-ca-ab-660-quality-date")],
   indicazioni_aggiuntive: [pinnedChunkId("us-cfr-101-15-allergen-prominence")],
+  atmosfera_protettiva: [pinnedChunkId("us-cfr-101-2-panels")],
+  bollatura_sanitaria_marchio_identificazione: [pinnedChunkId("us-cfr-101-2-panels")],
+  denominazioni_dop_igp_stg: [pinnedChunkId("us-cfr-101-3-identity")],
+  indicazioni_ambientali: [pinnedChunkId("us-cfr-101-2-panels")],
+  sede_stabilimento_produzione_confezionamento: [pinnedChunkId("us-cfr-101-2-panels")],
+  origine_ingrediente_primario: [pinnedChunkId("us-cfr-101-3-identity")],
+  condizioni_particolari_conservazione: [pinnedChunkId("us-cfr-101-2-panels")],
+  istruzioni_uso: [pinnedChunkId("us-cfr-101-2-panels")],
 };
 
 /**

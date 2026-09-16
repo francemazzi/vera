@@ -1,6 +1,7 @@
 import { LABEL_CONSULTANT_STATUSES, LABEL_OUTCOMES } from "./contracts.js";
 import type { RunnerSourceCitation } from "./contracts.js";
 import { applyUsPastaApplicability } from "./guard-us-pasta-applicability.js";
+import { finalizeUsPastaControl } from "./finalize-us-pasta-control.js";
 import { alignPastaControlAssessment } from "./pasta-control-assessment.js";
 
 type Outcome = (typeof LABEL_OUTCOMES)[number];
@@ -258,11 +259,21 @@ export function applyUsPastaNutritionGuard(input: {
   readonly countryCode?: string;
 }): PastaControl {
   const applicable = applyUsPastaApplicability(input.control, input.countryCode);
-  if (applicable.outcome === "NOT_APPLICABLE") return applicable;
-  const citations = uniqueCitations(input.control.citations, input.retrievedCitations ?? []);
+  const citations = uniqueCitations(applicable.citations, input.retrievedCitations ?? []);
+  if (applicable.outcome === "NOT_APPLICABLE") {
+    return finalizeUsPastaControl({
+      control: applicable,
+      retrievedCitations: citations,
+      countryCode: input.countryCode,
+    });
+  }
   const dated = applyQualityDate({ ...input, control: applicable, citations });
   const net = applyNetQuantityPdp({ ...input, control: dated, citations });
   const claimed = applyProcessClaim({ ...input, control: net, citations });
   const nutrition = applyNutrition({ ...input, control: claimed, citations });
-  return applyRetailLidAttention({ ...input, control: nutrition });
+  return finalizeUsPastaControl({
+    control: applyRetailLidAttention({ ...input, control: nutrition }),
+    retrievedCitations: citations,
+    countryCode: input.countryCode,
+  });
 }
