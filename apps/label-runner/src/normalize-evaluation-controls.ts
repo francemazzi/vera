@@ -1,10 +1,17 @@
 import { ControlAssessmentSchema } from "./control-assessment-schema.js";
+import { createControlAssessmentSchema } from "./create-control-assessment-schema.js";
 import { guardControlAssessment } from "./guard-control-assessment.js";
 import { z } from "zod";
 import { RunnerBoundingBoxSchema } from "./contracts.js";
-import type { PreliminaryTemplate, RunnerSourceCitation, RunnerBoundingBox } from "./contracts.js";
+import type {
+  PreliminaryTemplate,
+  RunnerSourceCitation,
+  RunnerBoundingBox,
+  RunnerEvaluation,
+} from "./contracts.js";
 import type { LabelRetrievedSources } from "./source-retriever.js";
 import { OpenRouterLabelEvaluationError } from "./evaluation-error.js";
+import { resolveControlEvidence } from "./resolve-control-evidence.js";
 
 const ModelControlSchema = z
   .object({
@@ -52,6 +59,18 @@ const ModelControlSchema = z
   .strict();
 
 const ModelOutputSchema = z.object({ controls: z.array(ModelControlSchema) }).strict();
+const ModelV6OutputSchema = z.strictObject({
+  controls: z.array(
+    ModelControlSchema.omit({ marketFeedback: true }).extend({
+      rationale: z.string().trim().min(1).max(8_000),
+      assessment: createControlAssessmentSchema(true),
+      evidence: z
+        .strictObject({ factIndex: z.int().min(0).max(99), regionIndex: z.int().min(0).max(11) })
+        .optional()
+        .catch(undefined),
+    }),
+  ),
+});
 
 function citationsForControl(
   fieldCode: string,
@@ -71,7 +90,9 @@ function citationsForControl(
 }
 
 type LabelFieldCode = PreliminaryTemplate["controls"][number]["fieldCode"];
-type ModelControl = z.infer<typeof ModelControlSchema>;
+type ModelControl = z.infer<typeof ModelControlSchema> & {
+  readonly evidence?: z.infer<typeof ModelV6OutputSchema>["controls"][number]["evidence"];
+};
 type ConsultantStatus = ModelControl["consultantStatus"];
 
 function consultantStatusFor(control: ModelControl): ConsultantStatus {
@@ -144,6 +165,8 @@ export function normalizedControls(input: {
   readonly template: PreliminaryTemplate;
   readonly productCategory?: string;
   readonly countryCode?: string;
+  readonly productFacts?: RunnerEvaluation["productFacts"];
+  readonly focusedProductId?: string;
 }): readonly {
   readonly fieldCode: LabelFieldCode;
   readonly outcome: "PASS" | "FAIL" | "REVIEW" | "NOT_APPLICABLE";
@@ -154,6 +177,7 @@ export function normalizedControls(input: {
   readonly confidence: number;
   readonly citations: readonly RunnerSourceCitation[];
   readonly boundingBox?: RunnerBoundingBox;
+  readonly observedText?: string;
   readonly assessment?: z.infer<typeof ControlAssessmentSchema>;
   readonly marketFeedback?: readonly Readonly<{
     market: string;
@@ -164,7 +188,23 @@ export function normalizedControls(input: {
     correctiveSuggestion?: string;
   }>[];
 }[] {
-  const output = ModelOutputSchema.parse(input.parsed);
+  const isV6 = input.template.promptVersion === "label-evaluation-v6";
+  const output = (isV6 ? ModelV6OutputSchema : ModelOutputSchema).parse(input.parsed);
+  if (
+    isV6 &&
+    (output.controls.length !== input.template.controls.length ||
+      input.template.controls.some(
+        ({ fieldCode }) => !output.controls.some((control) => control.fieldCode === fieldCode),
+      ))
+  ) {
+    throw new OpenRouterLabelEvaluationError(
+      "Evaluation must return the exact control codes",
+      false,
+      {
+        failureCode: "EVALUATION_CONTRACT_INVALID",
+      },
+    );
+  }
   const reconciled = reconcileFieldCodes({ controls: output.controls, template: input.template });
   return reconciled.map(({ control, fieldCode, repaired }) => {
     const cited = repaired
@@ -190,7 +230,17 @@ export function normalizedControls(input: {
       ((control.outcome === "PASS" || control.outcome === "FAIL") && citations.length === 0);
     const correction: string | undefined =
       guard?.correction || (mustReview ? undefined : control.correctiveSuggestion);
-    const box = repaired ? undefined : RunnerBoundingBoxSchema.safeParse(control.boundingBox);
+    const box =
+      repaired || isV6 ? undefined : RunnerBoundingBoxSchema.safeParse(control.boundingBox);
+    const evidence = isV6
+      ? resolveControlEvidence({
+          fieldCode,
+          observation: guard?.assessment.observation ?? "NOT_LOCALIZED",
+          ...(control.evidence ? { reference: control.evidence } : {}),
+          productFacts: input.productFacts,
+          focusedProductId: input.focusedProductId,
+        })
+      : undefined;
     const outcome = mustReview ? "REVIEW" : control.outcome;
     return {
       fieldCode,
@@ -208,6 +258,7 @@ export function normalizedControls(input: {
       confidence: mustReview ? 0 : control.confidence,
       citations,
       ...(box?.success === true ? { boundingBox: box.data } : {}),
+      ...evidence,
       ...(input.template.version !== "3" && control.marketFeedback
         ? {
             marketFeedback: control.marketFeedback.map((row) => ({

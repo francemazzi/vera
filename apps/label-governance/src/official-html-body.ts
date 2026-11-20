@@ -10,14 +10,14 @@ const LEGAL_CONTAINER_IDS = new Set([
  * Prefer the official act body over EUR-Lex/Normattiva portal chrome.
  */
 export function selectOfficialHtmlBody(markup: string): string {
-  const main = firstElementInnerHtml(markup, "main");
-  if (main && main.trim().length > 40) return main;
-  const article = firstElementInnerHtml(markup, "article");
-  if (article && article.trim().length > 40) return article;
   for (const id of LEGAL_CONTAINER_IDS) {
     const byId = elementInnerHtmlById(markup, id);
     if (byId && byId.trim().length > 40) return byId;
   }
+  const main = firstElementInnerHtml(markup, "main");
+  if (main && main.trim().length > 40) return main;
+  const article = firstElementInnerHtml(markup, "article");
+  if (article && article.trim().length > 40) return article;
   return markup;
 }
 
@@ -26,9 +26,7 @@ function firstElementInnerHtml(markup: string, tag: string): string | null {
   const match = open.exec(markup);
   if (!match || match.index === undefined) return null;
   const start = match.index + match[0].length;
-  const close = markup.toLowerCase().indexOf(`</${tag}>`, start);
-  if (close === -1) return null;
-  return markup.slice(start, close);
+  return readElementBody(markup, tag, start);
 }
 
 function elementInnerHtmlById(markup: string, id: string): string | null {
@@ -37,7 +35,17 @@ function elementInnerHtmlById(markup: string, id: string): string | null {
   if (!match || match.index === undefined || match[1] === undefined) return null;
   const tag = match[1];
   const start = match.index + match[0].length;
-  const close = markup.toLowerCase().indexOf(`</${tag.toLowerCase()}>`, start);
-  if (close === -1) return null;
-  return markup.slice(start, close);
+  return readElementBody(markup, tag, start);
+}
+
+function readElementBody(markup: string, tag: string, start: number): string | null {
+  const tags: RegExp = new RegExp(`<(/?)${tag}\\b[^>]*>`, "giu");
+  tags.lastIndex = start;
+  let depth: number = 1;
+  for (let match = tags.exec(markup); match; match = tags.exec(markup)) {
+    if (match[1]) depth -= 1;
+    else if (!match[0].endsWith("/>")) depth += 1;
+    if (depth === 0) return markup.slice(start, match.index);
+  }
+  return null;
 }

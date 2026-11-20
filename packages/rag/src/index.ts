@@ -1,4 +1,5 @@
 export { citationFromChunk, chunkApprovedSourceSections, splitRagText } from "./chunking.js";
+export { isLabelPortalBoilerplate } from "./is-label-portal-boilerplate.js";
 export type { ChunkingOptions } from "./chunking.js";
 export { RagError } from "./errors.js";
 export type { RagErrorCode } from "./errors.js";

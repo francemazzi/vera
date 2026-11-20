@@ -257,6 +257,7 @@ export function applyUsPastaNutritionGuard(input: {
   readonly productFacts?: ProductFacts;
   readonly retrievedCitations?: readonly RunnerSourceCitation[];
   readonly countryCode?: string;
+  readonly keepStructuredAssessment?: boolean;
 }): PastaControl {
   const applicable = applyUsPastaApplicability(input.control, input.countryCode);
   const citations = uniqueCitations(applicable.citations, input.retrievedCitations ?? []);
@@ -265,14 +266,17 @@ export function applyUsPastaNutritionGuard(input: {
     ...(input.countryCode !== undefined ? { countryCode: input.countryCode } : {}),
   };
   if (applicable.outcome === "NOT_APPLICABLE") {
+    if (input.keepStructuredAssessment && applicable === input.control) return applicable;
     return finalizeUsPastaControl({ control: applicable, ...finalized });
   }
   const dated = applyQualityDate({ ...input, control: applicable, citations });
   const net = applyNetQuantityPdp({ ...input, control: dated, citations });
   const claimed = applyProcessClaim({ ...input, control: net, citations });
   const nutrition = applyNutrition({ ...input, control: claimed, citations });
+  const retail = applyRetailLidAttention({ ...input, control: nutrition });
+  if (input.keepStructuredAssessment && retail === input.control) return retail;
   return finalizeUsPastaControl({
-    control: applyRetailLidAttention({ ...input, control: nutrition }),
+    control: retail,
     ...finalized,
   });
 }

@@ -9,6 +9,8 @@ import type {
 } from "./contracts.js";
 import { evaluationPrompt } from "./evaluation-prompt.js";
 import { applyUsPastaNutritionGuard } from "./guard-us-pasta-nutrition.js";
+import { hasDryPastaObservation } from "./has-dry-pasta-observation.js";
+import { readEvaluationCompletion } from "./read-evaluation-completion.js";
 import { normalizedControls } from "./normalize-evaluation-controls.js";
 import { OpenRouterLabelEvaluationError } from "./evaluation-error.js";
 export { OpenRouterLabelEvaluationError } from "./evaluation-error.js";
@@ -53,28 +55,6 @@ export interface LabelEvaluator {
   }): Promise<RunnerEvaluation>;
 }
 
-function responseContent(value: unknown): string {
-  if (typeof value !== "object" || value === null)
-    throw new OpenRouterLabelEvaluationError("OpenRouter returned an invalid response", false);
-  const rawChoices = (value as Record<string, unknown>)["choices"];
-  if (!Array.isArray(rawChoices) || rawChoices.length !== 1) {
-    throw new OpenRouterLabelEvaluationError("OpenRouter returned no single completion", false);
-  }
-  const choice: unknown = rawChoices[0];
-  if (typeof choice !== "object" || choice === null) {
-    throw new OpenRouterLabelEvaluationError("OpenRouter completion is invalid", false);
-  }
-  const message = (choice as Record<string, unknown>)["message"];
-  if (typeof message !== "object" || message === null) {
-    throw new OpenRouterLabelEvaluationError("OpenRouter completion message is invalid", false);
-  }
-  const content = (message as Record<string, unknown>)["content"];
-  if (typeof content !== "string" || content.length === 0 || content.length > 200_000) {
-    throw new OpenRouterLabelEvaluationError("OpenRouter completion content is invalid", false);
-  }
-  return content;
-}
-
 async function responseErrorSummary(response: Response): Promise<string> {
   const raw = await response.text();
   if (raw.length === 0) return "";
@@ -117,7 +97,8 @@ function isOperationalEvaluationPrompt(promptVersion: string): boolean {
     promptVersion === "label-evaluation-v2" ||
     promptVersion === "label-evaluation-v3" ||
     promptVersion === "label-evaluation-v4" ||
-    promptVersion === "label-evaluation-v5"
+    promptVersion === "label-evaluation-v5" ||
+    promptVersion === "label-evaluation-v6"
   );
 }
 
@@ -132,6 +113,7 @@ export function createOpenRouterLabelEvaluator(options: {
     | "label-evaluation-v3"
     | "label-evaluation-v4"
     | "label-evaluation-v5"
+    | "label-evaluation-v6"
     | null;
   readonly rulePackVersion?:
     | "eu-it-preliminary-v1@1"
@@ -150,16 +132,13 @@ export function createOpenRouterLabelEvaluator(options: {
     async evaluate(input) {
       const rulePackVersion = `${input.template.id}@${input.template.version}`;
       const promptVersion =
-        input.template.version === "3"
+        input.template.version === "3" || options.promptVersion === "label-evaluation-v6"
           ? input.template.promptVersion
           : (options.promptVersion ?? input.template.promptVersion);
+      const isV6 = promptVersion === "label-evaluation-v6";
       if (
         options.promptVersion &&
-        options.promptVersion !== "label-evaluation-v1" &&
-        options.promptVersion !== "label-evaluation-v2" &&
-        options.promptVersion !== "label-evaluation-v3" &&
-        options.promptVersion !== "label-evaluation-v4" &&
-        options.promptVersion !== "label-evaluation-v5" &&
+        !isOperationalEvaluationPrompt(options.promptVersion) &&
         input.template.promptVersion !== options.promptVersion
       ) {
         throw new OpenRouterLabelEvaluationError("Immutable preliminary template mismatch", false);
@@ -240,42 +219,45 @@ export function createOpenRouterLabelEvaluator(options: {
           );
         }
         const body: unknown = await response.json();
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(responseContent(body));
-        } catch (error) {
-          throw new OpenRouterLabelEvaluationError(
-            "OpenRouter did not return valid evaluation JSON",
-            false,
-            { cause: error },
-          );
-        }
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          throw new OpenRouterLabelEvaluationError(
-            "OpenRouter evaluation JSON must be an object",
-            false,
-          );
-        }
-        const controls = normalizedControls({
+        const parsed = readEvaluationCompletion(body, isV6);
+        const useUsPastaGuard =
+          input.regulatoryScope.countryCode === "US" &&
+          (!isV6 || hasDryPastaObservation(input.productFacts));
+        const normalized = normalizedControls({
           parsed,
           sources: input.sources,
           template: input.template,
           productCategory: input.productCategory,
+          ...(input.productFacts ? { productFacts: input.productFacts } : {}),
+          ...(input.focusedProductId ? { focusedProductId: input.focusedProductId } : {}),
           ...(input.regulatoryScope.countryCode
             ? { countryCode: input.regulatoryScope.countryCode }
             : {}),
-        }).map((control) =>
-          applyUsPastaNutritionGuard({
-            control,
-            ...(input.productFacts ? { productFacts: input.productFacts } : {}),
-            retrievedCitations:
-              input.sources.controls.find((entry) => entry.fieldCode === control.fieldCode)
-                ?.citations ?? [],
-            ...(input.regulatoryScope.countryCode
-              ? { countryCode: input.regulatoryScope.countryCode }
-              : {}),
-          }),
-        );
+        });
+        const controls = useUsPastaGuard
+          ? normalized.map((control) => {
+              const guarded = applyUsPastaNutritionGuard({
+                control,
+                ...(input.productFacts ? { productFacts: input.productFacts } : {}),
+                retrievedCitations:
+                  input.sources.controls.find((entry) => entry.fieldCode === control.fieldCode)
+                    ?.citations ?? [],
+                countryCode: "US",
+                keepStructuredAssessment: isV6,
+              });
+              if (
+                !isV6 ||
+                guarded.assessment?.observation === "OBSERVED"
+              )
+                return guarded;
+              const {
+                observedText: _text,
+                boundingBox: _box,
+                ...withoutEvidence
+              } = { ...control, ...guarded };
+              return withoutEvidence;
+            })
+          : normalized;
         return RunnerEvaluationSchema.parse({
           provider: "openrouter",
           model: options.model,
@@ -299,7 +281,9 @@ export function createOpenRouterLabelEvaluator(options: {
           throw new OpenRouterLabelEvaluationError(
             `OpenRouter evaluation does not satisfy the runner contract: ${contractIssueSummary(error)}`,
             false,
-            { cause: error },
+            isV6
+              ? { failureCode: "EVALUATION_CONTRACT_INVALID" }
+              : { cause: error },
           );
         }
         throw new OpenRouterLabelEvaluationError("OpenRouter request failed", true, {

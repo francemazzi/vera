@@ -108,6 +108,7 @@ const PreliminaryPromptVersionSchema = z.enum([
   "label-evaluation-v3",
   "label-evaluation-v4",
   "label-evaluation-v5",
+  "label-evaluation-v6",
 ]);
 
 const PreliminaryCitationSchema = z
@@ -341,6 +342,7 @@ export const EvaluationRunnerControlSchema = z
     consultantStatus: z.enum(LABEL_CONSULTANT_STATUSES).optional(),
     rationale: z.string().min(1).max(8_000),
     correctiveSuggestion: z.string().min(1).max(80_000).optional(),
+    observedText: z.string().min(1).max(4_000).optional(),
     confidence: z.number().min(0).max(1),
     citations: z.array(RunnerSourceCitationSchema).max(192).default([]),
     boundingBox: RunnerBoundingBoxSchema.optional(),
@@ -353,6 +355,7 @@ export const EvaluationRunnerControlSchema = z
             productId: z.string().min(1).max(120).optional(),
             assessment: ControlAssessmentSchema.optional(),
             boundingBox: RunnerBoundingBoxSchema.optional(),
+            observedText: z.string().min(1).max(4_000).optional(),
             citationChunkIds: z.array(z.string().min(1).max(300)).max(24).optional(),
             outcome: z.enum(LABEL_OUTCOMES),
             consultantStatus: z.enum(LABEL_CONSULTANT_STATUSES),
@@ -396,7 +399,7 @@ export const RunnerEvaluationSchema = z
     productFacts: ProductFactsSchema.optional(),
     extraction: z
       .object({
-        promptVersion: z.literal("label-facts-v1"),
+        promptVersion: z.enum(["label-facts-v1", "label-facts-v2"]),
         model: z.enum(OPENROUTER_LABEL_MODELS),
         usage: z
           .object({

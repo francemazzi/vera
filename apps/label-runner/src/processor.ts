@@ -56,7 +56,13 @@ export function createLabelJobProcessor(options: {
           throw new Error("Supporting document store unavailable");
         const extracted =
           input.preliminaryTemplate.version === "3" && options.factExtractor
-            ? await options.factExtractor.extract(pages, documents)
+            ? await options.factExtractor.extract(
+                pages,
+                documents,
+                input.preliminaryTemplate.promptVersion === "label-evaluation-v6"
+                  ? input.preliminaryTemplate.controls.map(({ fieldCode }) => fieldCode)
+                  : [],
+              )
             : undefined;
         const productFacts = extracted?.facts;
         const scope =
@@ -138,6 +144,23 @@ export function createLabelJobProcessor(options: {
           runnerInvocationId,
           evaluation,
         });
+        if (evaluation.promptVersion === "label-evaluation-v6") {
+          const feedback = evaluation.controls.flatMap((control) =>
+            "marketFeedback" in control && control.marketFeedback ? control.marketFeedback : [],
+          );
+          console.info(
+            JSON.stringify({
+              event: "label_evaluation_quality",
+              promptVersion: evaluation.promptVersion,
+              controlCount: feedback.length,
+              pending: feedback.filter(({ outcome }) => outcome === "REVIEW").length,
+              unlinkedObservedRegions: feedback.filter(
+                ({ assessment, boundingBox }) =>
+                  assessment?.observation === "OBSERVED" && !boundingBox,
+              ).length,
+            }),
+          );
+        }
         return { replayed: false };
       } catch (error) {
         console.error("Label runner evaluation failed", error);
@@ -148,7 +171,7 @@ export function createLabelJobProcessor(options: {
           runnerInvocationId,
           failureCode:
             error instanceof OpenRouterLabelEvaluationError
-              ? "OPENROUTER_EVALUATION_FAILED"
+              ? (error.failureCode ?? "OPENROUTER_EVALUATION_FAILED")
               : "EVALUATION_PROCESSING_FAILED",
         });
         return { replayed: false };

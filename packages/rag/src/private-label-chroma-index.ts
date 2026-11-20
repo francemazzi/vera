@@ -2,6 +2,7 @@ import { sha256CanonicalJson } from "@vera/contracts";
 
 import { splitRagText } from "./chunking.js";
 import { hasNormativeSignal } from "./normative-chunk-filter.js";
+import { isLabelPortalBoilerplate } from "./is-label-portal-boilerplate.js";
 import { RagError } from "./errors.js";
 import { labelingTopicQueryValues, normalizeLabelingTopic } from "./labeling-topic.js";
 import type {
@@ -442,7 +443,7 @@ export class ChromaPrivateLabelRagIndex implements PrivateLabelRagIndex {
   ): Promise<PrivateLabelRagIndexResult> {
     const sections = sectionsInput.map((section) => PrivateLabelRagSectionSchema.parse(section));
     assertScope(sections, scope);
-    const chunks = buildChunks(sections);
+    const chunks = buildChunks(sections.filter(({ text }) => !isLabelPortalBoilerplate(text)));
     if (chunks.length === 0) return { chunksIndexed: 0, sourceVersionIds: [] };
     const embeddings = await this.#embeddingProvider.embedDocuments(chunks.map(({ text }) => text));
     if (embeddings.length !== chunks.length) {
@@ -479,7 +480,11 @@ export class ChromaPrivateLabelRagIndex implements PrivateLabelRagIndex {
       collection: await this.#collection(scope),
       query: { embedding, limit: query.topK, where: queryFilter(query, scope) },
     });
-    return matches.map(matchToChunk);
+    return matches.map(matchToChunk).filter((chunk) => {
+      const header = `${chunkHeader(chunk)} — `;
+      const body = chunk.text.startsWith(header) ? chunk.text.slice(header.length) : chunk.text;
+      return !isLabelPortalBoilerplate(chunk.text) && !isLabelPortalBoilerplate(body);
+    });
   }
 
   async #removeSourceVersion(sourceVersionId: string, scope: PrivateLabelRagScope): Promise<void> {

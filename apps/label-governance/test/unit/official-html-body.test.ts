@@ -16,4 +16,16 @@ describe("official HTML body selection", () => {
     expect(body).toContain("Articolo 7");
     expect(body).not.toContain("Menu EU law");
   });
+
+  it("preserves all articles in a nested act container inside a portal main", () => {
+    const markup = [
+      '<main><div>Menu EU law Treaties</div><div id="document1">',
+      "<div><h2>Article 1</h2><p>First synthetic provision.</p></div>",
+      "<div><h2>Article 2</h2><p>Second synthetic provision.</p></div>",
+      "</div></main>",
+    ].join("");
+    const body = selectOfficialHtmlBody(markup);
+    expect(body).toContain("Second synthetic provision.");
+    expect(body).not.toContain("Menu EU law");
+  });
 });

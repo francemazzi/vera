@@ -135,6 +135,23 @@ function pdfCandidate(body: Uint8Array): SourceWorkerInput {
 }
 
 describe("GCS source document materializer", () => {
+  it("rejects a Normattiva error page before extracting legal sections", async () => {
+    const body = Buffer.from(
+      "<title>Normattiva - Errore</title><main><p>Decreto legislativo. Servizio non disponibile.</p></main>",
+    );
+    const input = htmlCandidate(body);
+    const materializer = createGcsSourceDocumentMaterializer({
+      bucketName: "private-label-test",
+      officialSourceHosts: ["normattiva.it"],
+      storage: createFakeStorage(
+        new Map([[input.storageObjectKey ?? "", { body, contentType: "text/html" }]]),
+      ),
+      fetch: vi.fn(),
+    });
+
+    await expect(materializer.materialize(input)).rejects.toThrow(/portal error/u);
+  });
+
   it("extracts a readable private PDF and releases its pdfjs loading task", async () => {
     const body = readablePdf();
     const input = pdfCandidate(body);

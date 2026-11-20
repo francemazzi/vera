@@ -24,6 +24,7 @@ export function createProductFactExtractor(
         revision: string | null;
         pages: readonly Page[];
       }>[] = [],
+      controlCodes: readonly string[] = [],
     ) {
       const startedAt: number = Date.now();
       let response: Response;
@@ -50,6 +51,11 @@ export function createProductFactExtractor(
                   "Inspect all orientations and artwork panels; exclude printer addresses, production cartouches, dieline instructions and invisible PDF text.",
                   "Compare the PDF text layer with rendered pixels before calling it OBSERVED. Missing localization is NOT_LOCALIZED, not ABSENT. Never invent a bounding box.",
                   "Capture denominations, ingredients, quantities, date/lot wording and values, operator addresses, origin, languages, claims, materials, symbols, sale unit and inner packaging.",
+                  ...(controlCodes.length
+                    ? [
+                        `For each visible fact relevant to a control, use that exact catalogue code as its field: ${controlCodes.join(", ")}. Record one fact per relevant control; the same visible wording can support more than one control. Quote the complete printed wording (or identify the actual visible symbol) and enclose the entire relevant line or block, including any continuation.`,
+                      ]
+                    : []),
                   "Treat analytical evidence, process declarations, regulatory exemptions and sale-unit assumptions as unknown unless explicitly provided. Nespresso compatibility is not decaffeination.",
                   "A brand containing Coffee does not establish the category: use ingredients, dosage and intended use to distinguish supplements and beverages.",
                   "Supporting documents are separate evidence. Identify products only from the artwork, attach document facts only to their explicitly identified product/sample and revision. Evidence from a support document MUST include documentId and its own page number. Never treat a certificate, sample request or analytical report as printed label text. Compare conflicting dates, doses and claims explicitly. Do not attach an ambiguous document to every SKU.",
@@ -136,7 +142,9 @@ export function createProductFactExtractor(
       return {
         facts,
         usage: usageFromResponse(body, Date.now() - startedAt, options.model),
-        promptVersion: "label-facts-v1" as const,
+        promptVersion: controlCodes.length
+          ? ("label-facts-v2" as const)
+          : ("label-facts-v1" as const),
       };
     },
   };

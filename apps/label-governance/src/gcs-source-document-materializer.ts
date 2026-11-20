@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { Storage } from "@google-cloud/storage";
+import { isLabelPortalBoilerplate } from "@vera/rag";
 import { z } from "zod";
 
 import { selectOfficialHtmlBody } from "./official-html-body.js";
@@ -448,6 +449,14 @@ function extractHtmlSectionsFromMarkup(
   markup: string,
   fallbackTitle: string | null,
 ): readonly SourceTextSection[] {
+  const pageTitle: string = /<title\b[^>]*>([^<]*)<\/title>/iu.exec(markup)?.[1] ?? "";
+  if (/\berrore\b/iu.test(pageTitle) && isLabelPortalBoilerplate(pageTitle)) {
+    throw new SourceDocumentMaterializationError(
+      "The official snapshot contains a portal error or navigation page",
+      false,
+      "HTML_NO_TEXT",
+    );
+  }
   const blocks = extractHtmlBlocks(selectOfficialHtmlBody(markup));
   const sections: SourceTextSection[] = [];
   let title = fallbackTitle?.slice(0, 300) || "Official source snapshot";
@@ -461,6 +470,7 @@ function extractHtmlSectionsFromMarkup(
     sectionNumber += 1;
   };
   for (const block of blocks) {
+    if (isLabelPortalBoilerplate(block.text)) continue;
     if (block.heading) {
       flush();
       title = block.text.slice(0, 300);

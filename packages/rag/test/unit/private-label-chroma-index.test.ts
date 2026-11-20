@@ -139,6 +139,41 @@ class FakeChromaStore implements ChromaVectorStore {
 }
 
 describe("ChromaPrivateLabelRagIndex", () => {
+  it("excludes portal boilerplate before embedding and when retrieving older rows", async () => {
+    const chroma = new FakeChromaStore();
+    const index = new ChromaPrivateLabelRagIndex({
+      chroma,
+      embeddingProvider: new FakeEmbeddingProvider(),
+    });
+    await index.indexPreliminarySections([
+      section(),
+      section({
+        sectionId: "nav",
+        text: "Regolamento UE. Menu EU law Treaties currently in force.",
+      }),
+      section({ sectionId: "error", text: "Normattiva - Errore. Decreto legislativo." }),
+    ]);
+    expect(chroma.records).toHaveLength(1);
+    const record = chroma.records[0]!;
+    chroma.nextMatches = [
+      {
+        ...record,
+        distance: 0.01,
+        document: "Regolamento UE. Menu EU law Treaties currently in force.",
+      },
+      { ...record, distance: 0.02, document: "Normattiva - Errore. Decreto legislativo." },
+      { ...record, distance: 0.03 },
+    ];
+    const chunks = await index.retrievePreliminary({
+      queryText: "allergen declaration",
+      workspaceId: uuid(102),
+      jurisdiction: "IT",
+      evaluationDate: "2026-07-19T00:00:00.000Z",
+      productCategory: "food",
+    });
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.citation.quote).toContain("visible product denomination");
+  });
   it("indexes expert-verified sources only in the verified collection with auditable metadata", async () => {
     const chroma = new FakeChromaStore();
     const embeddings = new FakeEmbeddingProvider();

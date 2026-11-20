@@ -79,6 +79,7 @@ type ControlRetrievalQuery = Readonly<{
   language: string;
   productCategory: string;
   labelingTopics?: readonly string[];
+  topK?: number;
 }>;
 
 /**
@@ -95,7 +96,7 @@ async function retrieveControlChunks(
     jurisdictions: [...query.jurisdictions],
     evaluationDate: query.evaluationDate,
     language: query.language,
-    topK: 3,
+    topK: query.topK ?? 3,
   };
   const attempts: PrivateLabelRagQuery[] = [
     {
@@ -209,6 +210,7 @@ export function createChromaLabelSourceRetriever(options: {
                 evaluationDate: input.scope.evaluationDate,
                 language: officialRetrievalLanguage(input.scope),
                 productCategory,
+                ...(input.template.promptVersion === "label-evaluation-v6" ? { topK: 9 } : {}),
                 ...(labelingTopics.length > 0 ? { labelingTopics } : {}),
               }),
             );

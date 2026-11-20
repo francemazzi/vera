@@ -87,6 +87,7 @@ export async function evaluateMarkets(
           rationale: control.rationale,
           ...(control.assessment ? { assessment: control.assessment } : {}),
           ...(control.boundingBox ? { boundingBox: control.boundingBox } : {}),
+          ...(control.observedText ? { observedText: control.observedText } : {}),
           citationChunkIds: control.citations.map((citation) => citation.chunkId),
           ...(control.correctiveSuggestion
             ? { correctiveSuggestion: control.correctiveSuggestion }
